@@ -1,0 +1,600 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  level     String   // info, error, warning, debug
+  message   String
+  meta      Json?    // Additional metadata as JSON
+  userId    String?  // Optional user ID if log is associated with a user
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("logs")
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  name               String
+  password           String
+  role               UserRole            @default(CLIENT)
+  phone              String?
+  address            String?
+  avatarS3Key        String?             // S3 key for user's avatar
+  isActive           Boolean             @default(true)
+  emailVerified      Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  // Relations
+  assignedCases      LegalCase[]         @relation("AssignedLawyer")
+  clientCases        LegalCase[]         @relation("Client")
+  uploadedDocuments  LegalDocument[]
+  documentVersions   DocumentVersion[]   // Added relation for document versions
+  chatMessagesSent   ChatMessage[]       @relation("MessageSender")
+  chatMessagesReceived ChatMessage[]     @relation("MessageReceiver")
+  caseNotes          CaseNote[]
+  billingRecords     BillingRecord[]
+  userSettings       UserSettings?
+  documentSignatures DocumentSignature[]
+  fileShares         FileShare[]         @relation("FileOwner")
+  sharedFiles        FileShare[]         @relation("FileSharedWith")
+  notifications      Notification[]
+  createdEvents      CalendarEvent[]     @relation("EventCreator")
+  eventParticipants  EventParticipant[]
+  videoCalls         VideoCall[]         @relation("CallHost")
+  callParticipants   CallParticipant[]
+  timeEntries        TimeEntry[]
+  assignedTasks      Task[]              @relation("TaskAssignee")
+  createdTasks       Task[]              @relation("TaskCreator")
+  clientPortal       ClientPortal?
+  logs               Log[]
+
+  @@map("users")
+}
+
+model Court {
+  id            String     @id @default(cuid())
+  name          String     @unique
+  type          CourtType
+  address       String
+  city          String
+  state         String
+  country       String     @default("India")
+  pincode       String?
+  phone         String?
+  email         String?
+  website       String?
+  jurisdiction  String?    // Jurisdiction area
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  // Relations
+  cases         LegalCase[]
+
+  @@map("courts")
+}
+
+model LegalCase {
+  id                      String          @id @default(cuid())
+  caseNumber              String          @unique
+  title                   String
+  description             String
+  status                  CaseStatus      @default(OPEN)
+  priority                CasePriority    @default(MEDIUM)
+  category                CaseCategory
+  courtId                 String?         // Reference to Court table
+  court                   Court?          @relation(fields: [courtId], references: [id])
+  judge                   String?
+  opposingParty           String?
+  opposingLawyer          String?
+  filingDate              DateTime?
+  nextHearingDate         DateTime?
+  estimatedCompletionDate DateTime?
+  assignedLawyerId        String
+  clientId                String
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  billingRecords          BillingRecord[]
+  events                  CalendarEvent[]
+  notes                   CaseNote[]
+  fileShares              FileShare[]
+  assignedLawyer          User            @relation("AssignedLawyer", fields: [assignedLawyerId], references: [id])
+  client                  User            @relation("Client", fields: [clientId], references: [id])
+  documents               LegalDocument[]
+  tasks                   Task[]
+  timeEntries             TimeEntry[]
+  videoCalls              VideoCall[]
+
+  @@map("legal_cases")
+}
+
+model LegalDocument {
+  id           String              @id @default(cuid())
+  title        String
+  description  String?
+  fileUrl      String              // Current version S3 key
+  fileType     String
+  fileSize     Int
+  category     DocumentCategory
+  status       DocumentStatus      @default(DRAFT)
+  caseId       String?
+  uploadedById String
+  version      Int                 @default(1) // Current version number
+  // AI Service fields
+  aiDocumentId String?             // Document ID from AI service
+  aiChunks     Int?                // Number of chunks processed by AI service
+  content      String?             // Extracted text content from AI service
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  signatures   DocumentSignature[]
+  fileShares   FileShare[]
+  versions     DocumentVersion[]   // All versions of this document
+  case         LegalCase?          @relation(fields: [caseId], references: [id])
+  uploadedBy   User                @relation(fields: [uploadedById], references: [id])
+
+  @@map("legal_documents")
+}
+
+model DocumentVersion {
+  id           String              @id @default(cuid())
+  documentId   String
+  version      Int                 // Version number
+  fileUrl      String              // S3 key for this version
+  fileType     String
+  fileSize     Int
+  uploadedById String
+  changeReason String?             // Reason for this version
+  aiDocumentId String?             // Document ID from AI service for this version
+  createdAt    DateTime            @default(now())
+  document     LegalDocument       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploadedBy   User                @relation(fields: [uploadedById], references: [id])
+
+  @@unique([documentId, version])
+  @@map("document_versions")
+}
+
+model CaseNote {
+  id        String    @id @default(cuid())
+  content   String
+  type      NoteType  @default(GENERAL)
+  caseId    String
+  userId    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  case      LegalCase @relation(fields: [caseId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("case_notes")
+}
+
+model ChatMessage {
+  id          String      @id @default(cuid())
+  content     String
+  messageType MessageType @default(TEXT)
+  senderId    String
+  receiverId  String
+  isRead      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  receiver    User        @relation("MessageReceiver", fields: [receiverId], references: [id])
+  sender      User        @relation("MessageSender", fields: [senderId], references: [id])
+
+  @@map("chat_messages")
+}
+
+model BillingRecord {
+  id          String     @id @default(cuid())
+  amount      Float
+  currency    Currency   @default(INR)
+  description String
+  billType    BillType
+  status      BillStatus @default(PENDING)
+  dueDate     DateTime?
+  paidDate    DateTime?
+  caseId      String?
+  userId      String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  case        LegalCase? @relation(fields: [caseId], references: [id])
+  user        User       @relation(fields: [userId], references: [id])
+
+  @@map("billing_records")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  userId    String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model CalendarEvent {
+  id             String             @id @default(cuid())
+  title          String
+  description    String?
+  startTime      DateTime
+  endTime        DateTime
+  location       String?
+  eventType      EventType
+  isAllDay       Boolean            @default(false)
+  isRecurring    Boolean            @default(false)
+  recurrenceRule String?
+  caseId         String?
+  createdById    String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  case           LegalCase?         @relation(fields: [caseId], references: [id])
+  createdBy      User               @relation("EventCreator", fields: [createdById], references: [id])
+  participants   EventParticipant[]
+
+  @@map("calendar_events")
+}
+
+model EventParticipant {
+  id        String            @id @default(cuid())
+  eventId   String
+  userId    String
+  status    ParticipantStatus @default(PENDING)
+  response  String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  event     CalendarEvent     @relation(fields: [eventId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+  @@map("event_participants")
+}
+
+model VideoCall {
+  id           String            @id @default(cuid())
+  title        String
+  description  String?
+  startTime    DateTime
+  endTime      DateTime?
+  meetingUrl   String
+  meetingId    String            @unique
+  status       CallStatus        @default(SCHEDULED)
+  caseId       String?
+  hostId       String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  participants CallParticipant[]
+  case         LegalCase?        @relation(fields: [caseId], references: [id])
+  host         User              @relation("CallHost", fields: [hostId], references: [id])
+
+  @@map("video_calls")
+}
+
+model CallParticipant {
+  id        String    @id @default(cuid())
+  callId    String
+  userId    String
+  joinedAt  DateTime?
+  leftAt    DateTime?
+  duration  Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  call      VideoCall @relation(fields: [callId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([callId, userId])
+  @@map("call_participants")
+}
+
+model TimeEntry {
+  id          String     @id @default(cuid())
+  description String
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?
+  billable    Boolean    @default(true)
+  rate        Float?
+  caseId      String?
+  userId      String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  case        LegalCase? @relation(fields: [caseId], references: [id])
+  user        User       @relation(fields: [userId], references: [id])
+
+  @@map("time_entries")
+}
+
+model Task {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?
+  status       TaskStatus   @default(PENDING)
+  priority     TaskPriority @default(MEDIUM)
+  dueDate      DateTime?
+  completedAt  DateTime?
+  caseId       String?
+  createdById  String
+  assignedToId String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  assignedTo   User?        @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  case         LegalCase?   @relation(fields: [caseId], references: [id])
+  createdBy    User         @relation("TaskCreator", fields: [createdById], references: [id])
+
+  @@map("tasks")
+}
+
+model ClientPortal {
+  id          String    @id @default(cuid())
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  preferences Json?
+  userId      String    @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@map("client_portals")
+}
+
+model DocumentSignature {
+  id         String        @id @default(cuid())
+  signature  String
+  signedAt   DateTime
+  ipAddress  String?
+  userAgent  String?
+  documentId String
+  userId     String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  document   LegalDocument @relation(fields: [documentId], references: [id])
+  user       User          @relation(fields: [userId], references: [id])
+
+  @@map("document_signatures")
+}
+
+model FileShare {
+  id           String         @id @default(cuid())
+  fileUrl      String         // Changed from filePath to fileUrl for S3
+  fileName     String
+  fileType     String
+  fileSize     Int
+  expiresAt    DateTime?
+  isPublic     Boolean        @default(false)
+  caseId       String?
+  documentId   String?
+  ownerId      String
+  sharedWithId String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  case         LegalCase?     @relation(fields: [caseId], references: [id])
+  document     LegalDocument? @relation(fields: [documentId], references: [id])
+  owner        User           @relation("FileOwner", fields: [ownerId], references: [id])
+  sharedWith   User?          @relation("FileSharedWith", fields: [sharedWithId], references: [id])
+
+  @@map("file_shares")
+}
+
+model UserSettings {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  currency            Currency  @default(INR)
+  
+  // Notification settings
+  emailNotifications  Boolean   @default(true)
+  pushNotifications   Boolean   @default(true)
+  smsNotifications    Boolean   @default(false)
+  caseUpdates         Boolean   @default(true)
+  billingAlerts       Boolean   @default(true)
+  calendarReminders   Boolean   @default(true)
+  
+  // Privacy settings
+  profileVisibility   String    @default("public")
+  dataSharing         Boolean   @default(true)
+  twoFactorAuth       Boolean   @default(false)
+  
+  // Preference settings
+  language            String    @default("en")
+  timezone            String    @default("UTC")
+  dateFormat          String    @default("MM/DD/YYYY")
+  theme               String    @default("system")
+  
+  // Admin settings
+  maintenanceMode     Boolean   @default(false)
+  debugMode           Boolean   @default(false)
+  autoBackup          Boolean   @default(true)
+  dataRetention       String    @default("90")
+  sessionTimeout      String    @default("30")
+  passwordPolicy      String    @default("strong")
+  ipWhitelist         String    @default("")
+  auditLogging        Boolean   @default(true)
+  systemAlerts        Boolean   @default(true)
+  userActivity        Boolean   @default(false)
+  securityEvents      Boolean   @default(true)
+  backupNotifications  Boolean   @default(true)
+  emailProvider       String    @default("smtp")
+  smsProvider         String    @default("twilio")
+  storageProvider     String    @default("local")
+  analyticsEnabled    Boolean   @default(true)
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  user                User      @relation(fields: [userId], references: [id])
+
+  @@map("user_settings")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  LAWYER
+  ASSOCIATE
+  PARALEGAL
+  CLIENT
+}
+
+enum CaseStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING
+  CLOSED
+  ARCHIVED
+}
+
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CaseCategory {
+  CIVIL
+  CRIMINAL
+  FAMILY
+  CORPORATE
+  PROPERTY
+  LABOR
+  TAX
+  INTELLECTUAL_PROPERTY
+  OTHER
+}
+
+enum DocumentCategory {
+  CONTRACT
+  AGREEMENT
+  PETITION
+  AFFIDAVIT
+  EVIDENCE
+  COURT_ORDER
+  LEGAL_OPINION
+  OTHER
+}
+
+enum DocumentStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  FILED
+  ARCHIVED
+}
+
+enum NoteType {
+  GENERAL
+  HEARING
+  EVIDENCE
+  STRATEGY
+  REMINDER
+}
+
+enum MessageType {
+  TEXT
+  FILE
+  IMAGE
+  AUDIO
+}
+
+enum BillType {
+  CONSULTATION
+  COURT_APPEARANCE
+  DOCUMENT_PREPARATION
+  RESEARCH
+  OTHER
+}
+
+enum BillStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum NotificationType {
+  CASE_UPDATE
+  DOCUMENT_UPLOAD
+  HEARING_REMINDER
+  BILLING
+  MESSAGE
+  SYSTEM
+}
+
+enum EventType {
+  HEARING
+  CLIENT_MEETING
+  COURT_APPEARANCE
+  DEADLINE
+  INTERNAL_MEETING
+  OTHER
+}
+
+enum ParticipantStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  TENTATIVE
+}
+
+enum CallStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum Currency {
+  INR
+  USD
+  EUR
+  GBP
+  JPY
+  AUD
+  CAD
+  CHF
+  CNY
+  HKD
+  NZD
+  SEK
+  SGD
+  THB
+  TRY
+  ZAR
+}
+
+enum CourtType {
+  SUPREME_COURT
+  HIGH_COURT
+  DISTRICT_COURT
+  SESSIONS_COURT
+  MAGISTRATE_COURT
+  FAMILY_COURT
+  LABOR_COURT
+  CONSUMER_COURT
+  TRIBUNAL
+  SPECIAL_COURT
+  OTHER
+}

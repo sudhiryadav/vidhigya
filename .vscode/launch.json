@@ -1,0 +1,134 @@
+{
+  "version": "0.2.0",
+  "compounds": [
+    {
+      "name": "Debug Full Stack (Backend + Web)",
+      "configurations": [
+        "Debug Backend (NestJS)",
+        "Debug Web (Next.js)"
+      ],
+      "stopAll": true
+    },
+    {
+      "name": "Debug Full Stack (Backend + Web + AI)",
+      "configurations": [
+        "Debug Backend (NestJS)",
+        "Debug Web (Next.js)",
+        "Debug AI Service (FastAPI)"
+      ],
+      "stopAll": true
+    },
+    {
+      "name": "Debug All Services + Mobile",
+      "configurations": [
+        "Debug Backend (NestJS)",
+        "Debug Web (Next.js)",
+        "Debug AI Service (FastAPI)",
+        "Debug Mobile (React Native)"
+      ],
+      "stopAll": true
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Debug Backend (NestJS)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/apps/backend/node_modules/.bin/nest",
+      "args": [
+        "start",
+        "--watch"
+      ],
+      "cwd": "${workspaceFolder}/apps/backend",
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "3001"
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "sourceMaps": true,
+      "outFiles": [
+        "${workspaceFolder}/apps/backend/dist/**/*.js"
+      ]
+    },
+    {
+      "name": "Debug Web (Next.js)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/apps/web/node_modules/.bin/next",
+      "args": [
+        "dev"
+      ],
+      "cwd": "${workspaceFolder}/apps/web",
+      "env": {
+        "NODE_ENV": "development",
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "sourceMaps": true
+    },
+    {
+      "name": "Debug AI Service (FastAPI)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+          "main:app",
+          "--reload",
+          "--port",
+          "8001"
+        ],
+      "cwd": "${workspaceFolder}/apps/ai-service",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/apps/ai-service/.venv/bin/python"
+    },
+    {
+      "name": "Debug Mobile (React Native)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/apps/mobile/node_modules/.bin/expo",
+      "args": [
+        "start",
+        "--dev-client"
+      ],
+      "cwd": "${workspaceFolder}/apps/mobile",
+      "env": {
+        "NODE_ENV": "development",
+        "EXPO_PUBLIC_API_URL": "http://localhost:3001",
+        "EXPO_DEVTOOLS_LISTEN_ADDRESS": "0.0.0.0"
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "sourceMaps": true
+    },
+    {
+      "name": "Debug All Services",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/turbo",
+      "args": [
+        "dev"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "NODE_ENV": "development",
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "sourceMaps": true
+    }
+  ]
+} 

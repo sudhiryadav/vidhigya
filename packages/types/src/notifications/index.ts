@@ -1,0 +1,1 @@
+export interface Notification { id: string; userId: string; title: string; message: string; type: NotificationType; read: boolean; data?: any; createdAt: Date; } export enum NotificationType { CASE_UPDATE = "case_update", HEARING_REMINDER = "hearing_reminder", DOCUMENT_UPLOAD = "document_upload", AI_ANALYSIS = "ai_analysis", SYSTEM = "system" }

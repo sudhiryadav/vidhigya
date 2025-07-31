@@ -1,0 +1,101 @@
+{
+    "info": {
+        "name": "MyQuery API",
+        "description": "API collection for the MyQuery document AI chatbot",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Documents",
+            "item": [
+                {
+                    "name": "Upload Files",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/admin/documents/upload",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "admin",
+                                "documents",
+                                "upload"
+                            ]
+                        },
+                        "description": "Upload one or more documents (PDF, DOC, DOCX, TXT, CSV, XLS, XLSX) for processing."
+                    }
+                },
+                {
+                    "name": "Query Documents",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/admin/documents/query",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "admin",
+                                "documents",
+                                "query"
+                            ]
+                        },
+                        "description": "Query documents - supports both search and Q&A modes."
+                    }
+                },
+                {
+                    "name": "Delete Document Embeddings",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/admin/documents/{document_id}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "admin",
+                                "documents",
+                                "{document_id}"
+                            ]
+                        },
+                        "description": "Delete document embeddings from Qdrant."
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000",
+            "type": "string"
+        },
+        {
+            "key": "auth_token",
+            "value": "your_auth_token_here",
+            "type": "string",
+            "description": "Get this token from the /users endpoint response"
+        },
+        {
+            "key": "userId",
+            "value": "your_userId_here",
+            "type": "string",
+            "description": "Get this ID from the /users endpoint response"
+        },
+        {
+            "key": "session_id",
+            "value": "your_session_id_here",
+            "type": "string"
+        }
+    ]
+}
