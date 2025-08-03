@@ -1,8 +1,10 @@
 "use client";
 
+import ModalDialog from "@/components/ui/ModalDialog";
 import { apiClient } from "@/services/api";
 import {
   Bot,
+  Cloud,
   Copy,
   ExternalLink,
   FileText,
@@ -13,13 +15,15 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 interface QAMessage {
   id: string;
   type: "question" | "answer";
   content: string;
   timestamp: Date;
+  question?: string; // Store the original question for feedback
   sources?: Array<{
     document_id: string;
     document_title: string;
@@ -29,11 +33,150 @@ interface QAMessage {
     start_char?: number;
     end_char?: number;
   }>;
-  confidence?: number;
 }
 
 interface DocumentQAProps {
   className?: string;
+}
+
+interface WordCloudOverlayProps {
+  suggestions: string[];
+  onSuggestionClick: (suggestion: string) => void;
+  onClose: () => void;
+  isLoading: boolean;
+}
+
+// Curated Suggestions Component
+function CuratedSuggestions({
+  suggestions,
+  onSuggestionClick,
+}: {
+  suggestions: string[];
+  onSuggestionClick: (suggestion: string) => void;
+}) {
+  if (!suggestions || suggestions.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        <p>No suggestions available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full h-full p-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {suggestions.map((suggestion, index) => (
+          <button
+            key={`suggestion-${index}`}
+            onClick={() => onSuggestionClick(suggestion)}
+            className="text-left p-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-white/20 rounded-lg hover:bg-white dark:hover:bg-gray-700 transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+          >
+            <div className="flex items-start space-x-2">
+              <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs font-medium text-white">
+                  {index + 1}
+                </span>
+              </div>
+              <div className="flex-1">
+                <p className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed text-sm">
+                  {suggestion}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Click for instant answer
+                </p>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WordCloudOverlay({
+  suggestions,
+  onSuggestionClick,
+  onClose,
+  isLoading,
+}: WordCloudOverlayProps) {
+  return (
+    <ModalDialog
+      isOpen={true}
+      onClose={onClose}
+      header={
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <Cloud className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Quick Actions
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Click any word or suggestion to get instant answers
+            </p>
+          </div>
+        </div>
+      }
+      maxWidth="4xl"
+      maxHeight="80vh"
+      closeOnEscape={true}
+      closeOnOverlayClick={true}
+    >
+      <div className="relative min-h-[400px]">
+        {/* Curated Suggestions */}
+        <div className="relative w-full mb-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 rounded-xl p-4">
+          <CuratedSuggestions
+            suggestions={suggestions}
+            onSuggestionClick={onSuggestionClick}
+          />
+        </div>
+
+        {/* Full Suggestions List */}
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            All Quick Actions
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                onClick={() => onSuggestionClick(suggestion)}
+                disabled={isLoading}
+                className="text-left p-4 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-sm font-medium text-white">
+                      {index + 1}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
+                      {suggestion}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Get AI-powered answer instantly
+                    </p>
+                  </div>
+                  <div className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors flex-shrink-0 mt-0.5">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </ModalDialog>
+  );
 }
 
 interface DocumentViewerProps {
@@ -178,7 +321,7 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
   const [context, setContext] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [showWordCloudOverlay, setShowWordCloudOverlay] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{
     documentId: string;
     documentTitle: string;
@@ -211,6 +354,7 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
         type: "answer",
         content: response.answer,
         timestamp: new Date(),
+        question: question, // Store the question for feedback
         sources: response.sources,
       };
 
@@ -234,12 +378,48 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    console.log("Copied to clipboard!");
+    toast.success("Copied to clipboard!");
   };
 
   const clearChat = () => {
     setMessages([]);
     setContext("");
+  };
+
+  const handleFeedback = async (
+    messageId: string,
+    feedback: "positive" | "negative"
+  ) => {
+    // Find the message to get question and answer
+    const message = messages.find((m) => m.id === messageId);
+
+    if (message && message.type === "answer") {
+      try {
+        const feedbackData = {
+          messageId,
+          feedback,
+          question: message.question || "Unknown question",
+          answer: message.content,
+        };
+
+        // Submit feedback to backend
+        await apiClient.submitFeedback(feedbackData);
+
+        // Show success toast
+        const feedbackText =
+          feedback === "positive"
+            ? "Thank you for your feedback! 👍"
+            : "Thank you for your feedback! We'll work to improve. 👎";
+        toast.success(feedbackText);
+
+        console.log("Feedback submitted successfully:", feedbackData);
+      } catch (error) {
+        console.error("Failed to submit feedback:", error);
+        toast.error("Failed to submit feedback. Please try again.");
+      }
+    } else {
+      toast.error("Unable to submit feedback. Please try again.");
+    }
   };
 
   const openDocumentViewer = (source: NonNullable<QAMessage["sources"]>[0]) => {
@@ -251,6 +431,9 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
   };
 
   const handleSuggestedQuestionClick = async (suggestion: string) => {
+    // Close the overlay
+    setShowWordCloudOverlay(false);
+
     // Set the question in the input
     setQuestion(suggestion);
 
@@ -273,8 +456,8 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
         type: "answer",
         content: response.answer,
         timestamp: new Date(),
+        question: suggestion, // Store the question for feedback
         sources: response.sources,
-        confidence: response.confidence,
       };
 
       setMessages((prev) => [...prev, answerMessage]);
@@ -319,10 +502,11 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
           </div>
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setShowSuggestions(!showSuggestions)}
-              className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              onClick={() => setShowWordCloudOverlay(true)}
+              className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
             >
-              {showSuggestions ? "Hide" : "Show"} Suggestions
+              <Cloud className="w-4 h-4" />
+              <span className="text-sm font-medium">Quick Actions</span>
             </button>
             <button
               onClick={clearChat}
@@ -346,63 +530,6 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
             rows={2}
           />
         </div>
-
-        {/* Suggested Questions */}
-        {showSuggestions && (
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              {messages.length === 0
-                ? "Quick Start - Click any suggestion to get an instant answer:"
-                : "Quick Actions - Click for instant answers:"}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {suggestedQuestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSuggestedQuestionClick(suggestion)}
-                  disabled={isLoading}
-                  className="text-left p-3 text-sm bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
-                >
-                  <div className="flex items-start space-x-2">
-                    <div className="w-6 h-6 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                        {index + 1}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
-                        {suggestion}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Click to get AI-powered answer
-                      </p>
-                    </div>
-                    <div className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors flex-shrink-0 mt-0.5">
-                      <svg
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            {messages.length === 0 && (
-              <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 text-center">
-                💡 These suggestions help you get started quickly. You can also
-                type your own questions below.
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -474,12 +601,6 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
                             </div>
                           </div>
                         )}
-
-                      {message.type === "answer" && message.confidence && (
-                        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          Confidence: {Math.round(message.confidence * 100)}%
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -496,10 +617,22 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
                       </button>
                       {message.type === "answer" && (
                         <>
-                          <button className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                          <button
+                            onClick={() =>
+                              handleFeedback(message.id, "positive")
+                            }
+                            className="text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors"
+                            title="This answer was helpful"
+                          >
                             <ThumbsUp className="w-3 h-3" />
                           </button>
-                          <button className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                          <button
+                            onClick={() =>
+                              handleFeedback(message.id, "negative")
+                            }
+                            className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+                            title="This answer was not helpful"
+                          >
                             <ThumbsDown className="w-3 h-3" />
                           </button>
                         </>
@@ -517,7 +650,7 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
                 <div className="flex items-center space-x-2">
                   <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Generating answer...
+                    Thinking...
                   </span>
                 </div>
               </div>
@@ -566,6 +699,16 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
           startChar={undefined}
           endChar={undefined}
           onClose={() => setSelectedDocument(null)}
+        />
+      )}
+
+      {/* Word Cloud Overlay */}
+      {showWordCloudOverlay && (
+        <WordCloudOverlay
+          suggestions={suggestedQuestions}
+          onSuggestionClick={handleSuggestedQuestionClick}
+          onClose={() => setShowWordCloudOverlay(false)}
+          isLoading={isLoading}
         />
       )}
     </>

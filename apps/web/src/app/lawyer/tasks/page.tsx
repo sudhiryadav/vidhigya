@@ -1,5 +1,7 @@
 "use client";
 
+import ModalDialog from "@/components/ui/ModalDialog";
+import CustomSelect, { SelectOption } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
@@ -88,6 +90,37 @@ export default function TasksPage() {
     caseId: "",
     assignedToId: "",
   });
+
+  // Select options
+  const statusOptions: SelectOption[] = [
+    { value: "all", label: "All Status" },
+    { value: "PENDING", label: "Pending" },
+    { value: "IN_PROGRESS", label: "In Progress" },
+    { value: "COMPLETED", label: "Completed" },
+    { value: "CANCELLED", label: "Cancelled" },
+  ];
+
+  const priorityOptions: SelectOption[] = [
+    { value: "all", label: "All Priorities" },
+    { value: "LOW", label: "Low" },
+    { value: "MEDIUM", label: "Medium" },
+    { value: "HIGH", label: "High" },
+    { value: "URGENT", label: "Urgent" },
+  ];
+
+  const taskStatusOptions: SelectOption[] = [
+    { value: "PENDING", label: "Pending" },
+    { value: "IN_PROGRESS", label: "In Progress" },
+    { value: "COMPLETED", label: "Completed" },
+    { value: "CANCELLED", label: "Cancelled" },
+  ];
+
+  const taskPriorityOptions: SelectOption[] = [
+    { value: "LOW", label: "Low" },
+    { value: "MEDIUM", label: "Medium" },
+    { value: "HIGH", label: "High" },
+    { value: "URGENT", label: "Urgent" },
+  ];
 
   useEffect(() => {
     fetchTasks();
@@ -314,7 +347,7 @@ export default function TasksPage() {
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="btn-primary"
+              className="btn-primary flex items-center"
             >
               <Plus className="w-4 h-4 mr-2" />
               New Task
@@ -357,33 +390,31 @@ export default function TasksPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Status
                   </label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="PENDING">Pending</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
+                  <CustomSelect
+                    options={statusOptions}
+                    value={statusOptions.find(
+                      (option) => option.value === statusFilter
+                    )}
+                    onChange={(selectedOption) =>
+                      setStatusFilter(selectedOption?.value || "all")
+                    }
+                    placeholder="Select status"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Priority
                   </label>
-                  <select
-                    value={priorityFilter}
-                    onChange={(e) => setPriorityFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="all">All Priorities</option>
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="URGENT">Urgent</option>
-                  </select>
+                  <CustomSelect
+                    options={priorityOptions}
+                    value={priorityOptions.find(
+                      (option) => option.value === priorityFilter
+                    )}
+                    onChange={(selectedOption) =>
+                      setPriorityFilter(selectedOption?.value || "all")
+                    }
+                    placeholder="Select priority"
+                  />
                 </div>
               </div>
             </div>
@@ -563,348 +594,366 @@ export default function TasksPage() {
       </div>
 
       {/* Create Task Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Create New Task
-              </h2>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleCreateTask} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Task Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={createFormData.title}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        title: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter task title"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Assigned To
-                  </label>
-                  <select
-                    value={createFormData.assignedToId}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        assignedToId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select assignee</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name} ({user.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Status *
-                  </label>
-                  <select
-                    required
-                    value={createFormData.status}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        status: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Priority *
-                  </label>
-                  <select
-                    required
-                    value={createFormData.priority}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        priority: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="URGENT">Urgent</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Due Date
-                  </label>
-                  <input
-                    type="date"
-                    value={createFormData.dueDate}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        dueDate: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Related Case
-                  </label>
-                  <select
-                    value={createFormData.caseId}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        caseId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select case (optional)</option>
-                    {cases.map((caseItem) => (
-                      <option key={caseItem.id} value={caseItem.id}>
-                        {caseItem.caseNumber} - {caseItem.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={createFormData.description}
-                  onChange={(e) =>
-                    setCreateFormData({
-                      ...createFormData,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter task description"
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Create Task
-                </button>
-              </div>
-            </form>
+      <ModalDialog
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        header="Create New Task"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="create-task-form"
+              className="btn-primary"
+            >
+              Create Task
+            </button>
           </div>
-        </div>
-      )}
+        }
+        maxWidth="2xl"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <form
+          id="create-task-form"
+          onSubmit={handleCreateTask}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Task Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={createFormData.title}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    title: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Enter task title"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Assigned To
+              </label>
+              <CustomSelect
+                options={[
+                  { value: "", label: "Select assignee" },
+                  ...users.map((user) => ({
+                    value: user.id,
+                    label: `${user.name} (${user.email})`,
+                  })),
+                ]}
+                value={[
+                  { value: "", label: "Select assignee" },
+                  ...users.map((user) => ({
+                    value: user.id,
+                    label: `${user.name} (${user.email})`,
+                  })),
+                ].find(
+                  (option) => option.value === createFormData.assignedToId
+                )}
+                onChange={(selectedOption) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    assignedToId: selectedOption?.value || "",
+                  })
+                }
+                placeholder="Select assignee"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Status *
+              </label>
+              <CustomSelect
+                options={taskStatusOptions}
+                value={taskStatusOptions.find(
+                  (option) => option.value === createFormData.status
+                )}
+                onChange={(selectedOption) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    status: selectedOption?.value || "PENDING",
+                  })
+                }
+                placeholder="Select status"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Priority *
+              </label>
+              <CustomSelect
+                options={taskPriorityOptions}
+                value={taskPriorityOptions.find(
+                  (option) => option.value === createFormData.priority
+                )}
+                onChange={(selectedOption) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    priority: selectedOption?.value || "MEDIUM",
+                  })
+                }
+                placeholder="Select priority"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Due Date
+              </label>
+              <input
+                type="date"
+                value={createFormData.dueDate}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    dueDate: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Related Case
+              </label>
+              <CustomSelect
+                options={[
+                  { value: "", label: "Select case (optional)" },
+                  ...cases.map((caseItem) => ({
+                    value: caseItem.id,
+                    label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                  })),
+                ]}
+                value={[
+                  { value: "", label: "Select case (optional)" },
+                  ...cases.map((caseItem) => ({
+                    value: caseItem.id,
+                    label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                  })),
+                ].find((option) => option.value === createFormData.caseId)}
+                onChange={(selectedOption) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    caseId: selectedOption?.value || "",
+                  })
+                }
+                placeholder="Select case (optional)"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              value={createFormData.description}
+              onChange={(e) =>
+                setCreateFormData({
+                  ...createFormData,
+                  description: e.target.value,
+                })
+              }
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter task description"
+            />
+          </div>
+        </form>
+      </ModalDialog>
 
       {/* Edit Task Modal */}
-      {showEditModal && selectedTask && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Edit Task: {selectedTask.title}
-              </h2>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleEditTask} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Task Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editFormData.title}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        title: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter task title"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Assigned To
-                  </label>
-                  <select
-                    value={editFormData.assignedToId}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        assignedToId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select assignee</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name} ({user.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Status *
-                  </label>
-                  <select
-                    required
-                    value={editFormData.status}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        status: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Priority *
-                  </label>
-                  <select
-                    required
-                    value={editFormData.priority}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        priority: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="URGENT">Urgent</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Due Date
-                  </label>
-                  <input
-                    type="date"
-                    value={editFormData.dueDate}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        dueDate: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Related Case
-                  </label>
-                  <select
-                    value={editFormData.caseId}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        caseId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select case (optional)</option>
-                    {cases.map((caseItem) => (
-                      <option key={caseItem.id} value={caseItem.id}>
-                        {caseItem.caseNumber} - {caseItem.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={editFormData.description}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter task description"
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Save Changes
-                </button>
-              </div>
-            </form>
+      <ModalDialog
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        header={`Edit Task: ${selectedTask?.title}`}
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowEditModal(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" form="edit-task-form" className="btn-primary">
+              Save Changes
+            </button>
           </div>
-        </div>
-      )}
+        }
+        maxWidth="2xl"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <form
+          id="edit-task-form"
+          onSubmit={handleEditTask}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Task Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={editFormData.title}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    title: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Enter task title"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Assigned To
+              </label>
+              <CustomSelect
+                options={[
+                  { value: "", label: "Select assignee" },
+                  ...users.map((user) => ({
+                    value: user.id,
+                    label: `${user.name} (${user.email})`,
+                  })),
+                ]}
+                value={[
+                  { value: "", label: "Select assignee" },
+                  ...users.map((user) => ({
+                    value: user.id,
+                    label: `${user.name} (${user.email})`,
+                  })),
+                ].find((option) => option.value === editFormData.assignedToId)}
+                onChange={(selectedOption) =>
+                  setEditFormData({
+                    ...editFormData,
+                    assignedToId: selectedOption?.value || "",
+                  })
+                }
+                placeholder="Select assignee"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Status *
+              </label>
+              <CustomSelect
+                options={taskStatusOptions}
+                value={taskStatusOptions.find(
+                  (option) => option.value === editFormData.status
+                )}
+                onChange={(selectedOption) =>
+                  setEditFormData({
+                    ...editFormData,
+                    status: selectedOption?.value || "PENDING",
+                  })
+                }
+                placeholder="Select status"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Priority *
+              </label>
+              <CustomSelect
+                options={taskPriorityOptions}
+                value={taskPriorityOptions.find(
+                  (option) => option.value === editFormData.priority
+                )}
+                onChange={(selectedOption) =>
+                  setEditFormData({
+                    ...editFormData,
+                    priority: selectedOption?.value || "MEDIUM",
+                  })
+                }
+                placeholder="Select priority"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Due Date
+              </label>
+              <input
+                type="date"
+                value={editFormData.dueDate}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    dueDate: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Related Case
+              </label>
+              <CustomSelect
+                options={[
+                  { value: "", label: "Select case (optional)" },
+                  ...cases.map((caseItem) => ({
+                    value: caseItem.id,
+                    label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                  })),
+                ]}
+                value={[
+                  { value: "", label: "Select case (optional)" },
+                  ...cases.map((caseItem) => ({
+                    value: caseItem.id,
+                    label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                  })),
+                ].find((option) => option.value === editFormData.caseId)}
+                onChange={(selectedOption) =>
+                  setEditFormData({
+                    ...editFormData,
+                    caseId: selectedOption?.value || "",
+                  })
+                }
+                placeholder="Select case (optional)"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              value={editFormData.description}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  description: e.target.value,
+                })
+              }
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter task description"
+            />
+          </div>
+        </form>
+      </ModalDialog>
 
       {/* View Task Modal */}
       {showViewModal && selectedTask && (

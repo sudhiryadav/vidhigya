@@ -503,6 +503,63 @@ class ApiClient {
     return this.queryDocuments(question, "qa", context);
   }
 
+  async submitFeedback(feedbackData: {
+    messageId: string;
+    feedback: "positive" | "negative";
+    question: string;
+    answer: string;
+  }): Promise<any> {
+    return this.request("/feedback", {
+      method: "POST",
+      body: JSON.stringify(feedbackData),
+    });
+  }
+
+  async getFeedbackStats(): Promise<any> {
+    return this.request("/feedback/stats/my");
+  }
+
+  // Reports endpoints
+  async getDashboardReport(
+    period: "week" | "month" | "quarter" = "month"
+  ): Promise<any> {
+    return this.request(`/reports/dashboard?period=${period}`);
+  }
+
+  async getAIUsageAnalytics(
+    startDate?: string,
+    endDate?: string
+  ): Promise<any> {
+    const params = new URLSearchParams();
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    return this.request(`/reports/ai-usage?${params.toString()}`);
+  }
+
+  async getFeedbackAnalytics(
+    startDate?: string,
+    endDate?: string
+  ): Promise<any> {
+    const params = new URLSearchParams();
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    return this.request(`/reports/feedback?${params.toString()}`);
+  }
+
+  async getProductivityMetrics(
+    startDate?: string,
+    endDate?: string
+  ): Promise<any> {
+    const params = new URLSearchParams();
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    return this.request(`/reports/productivity?${params.toString()}`);
+  }
+
+  async getCaseSpecificAnalytics(caseId: string): Promise<any> {
+    return this.request(`/reports/case/${caseId}`);
+  }
+
   // Billing endpoints
   async getBills(filters?: { status?: string; clientId?: string }) {
     const params = new URLSearchParams();

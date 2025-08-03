@@ -3,6 +3,7 @@
 import { AuthGuard } from "@/components/AuthGuard";
 import { LayoutWrapper } from "@/components/LayoutWrapper";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { FontSizeProvider } from "@/contexts/FontSizeContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Inter } from "next/font/google";
@@ -17,13 +18,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
+      <head>
+        <meta name="color-scheme" content="light dark" />
+      </head>
       <body className={inter.className}>
         <ThemeProvider>
           <AuthProvider>
             <SettingsProvider>
-              <AuthGuard>
-                <LayoutWrapper>{children}</LayoutWrapper>
-              </AuthGuard>
+              <FontSizeProvider>
+                <AuthGuard>
+                  <LayoutWrapper>{children}</LayoutWrapper>
+                </AuthGuard>
+              </FontSizeProvider>
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>

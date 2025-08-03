@@ -13,9 +13,11 @@ import { QdrantModule } from './config/qdrant.module';
 import { S3Module } from './config/s3.module';
 import { CourtsModule } from './courts/courts.module';
 import { DocumentsModule } from './documents/documents.module';
+import { FeedbackModule } from './feedback/feedback.module';
 import { LogsModule } from './logs/logs.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ReportsModule } from './reports/reports.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
 import { VideoCallsModule } from './video-calls/video-calls.module';
@@ -43,6 +45,8 @@ import { VideoCallsModule } from './video-calls/video-calls.module';
     VideoCallsModule,
     AdminModule,
     CourtsModule,
+    FeedbackModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

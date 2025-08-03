@@ -56,6 +56,8 @@ model User {
   createdTasks       Task[]              @relation("TaskCreator")
   clientPortal       ClientPortal?
   logs               Log[]
+  feedback           Feedback[]
+  documentQueries    DocumentQuery[]
 
   @@map("users")
 }
@@ -113,6 +115,7 @@ model LegalCase {
   tasks                   Task[]
   timeEntries             TimeEntry[]
   videoCalls              VideoCall[]
+  documentQueries         DocumentQuery[]
 
   @@map("legal_cases")
 }
@@ -409,6 +412,7 @@ model UserSettings {
   timezone            String    @default("UTC")
   dateFormat          String    @default("MM/DD/YYYY")
   theme               String    @default("system")
+  fontSize            String    @default("sm")
   
   // Admin settings
   maintenanceMode     Boolean   @default(false)
@@ -597,4 +601,50 @@ enum CourtType {
   TRIBUNAL
   SPECIAL_COURT
   OTHER
+}
+
+model Feedback {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  messageId   String        // ID of the AI response message
+  feedback    FeedbackType
+  question    String        // Original user question
+  answer      String        // AI response
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("feedback")
+}
+
+model DocumentQuery {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  caseId      String?       // Optional: if query is related to a specific case
+  case        LegalCase?    @relation(fields: [caseId], references: [id])
+  question    String        // User's question
+  answer      String        // AI response
+  sources     Json?         // Array of source documents used
+  queryType   QueryType     @default(GENERAL)
+  responseTime Int?         // Response time in milliseconds
+  tokensUsed  Int?          // Number of tokens used
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("document_queries")
+}
+
+enum FeedbackType {
+  POSITIVE
+  NEGATIVE
+}
+
+enum QueryType {
+  GENERAL
+  CASE_SPECIFIC
+  DOCUMENT_ANALYSIS
+  LEGAL_RESEARCH
+  DRAFT_GENERATION
+  SUMMARY_REQUEST
 }

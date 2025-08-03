@@ -1,5 +1,6 @@
 "use client";
 
+import ModalDialog from "@/components/ui/ModalDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
@@ -16,7 +17,6 @@ import {
   Search,
   Trash2,
   User,
-  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -454,341 +454,340 @@ export default function ClientsPage() {
       </div>
 
       {/* Create Client Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Add New Client
-              </h2>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleCreateClient} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={createFormData.name}
-                  onChange={(e) =>
-                    setCreateFormData({
-                      ...createFormData,
-                      name: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter full name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={createFormData.email}
-                  onChange={(e) =>
-                    setCreateFormData({
-                      ...createFormData,
-                      email: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter email address"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={createFormData.phone}
-                  onChange={(e) =>
-                    setCreateFormData({
-                      ...createFormData,
-                      phone: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter phone number"
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Create Client
-                </button>
-              </div>
-            </form>
+      <ModalDialog
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        header="Add New Client"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="create-client-form"
+              className="btn-primary"
+            >
+              Create Client
+            </button>
           </div>
-        </div>
-      )}
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <form
+          id="create-client-form"
+          onSubmit={handleCreateClient}
+          className="space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Full Name *
+            </label>
+            <input
+              type="text"
+              required
+              value={createFormData.name}
+              onChange={(e) =>
+                setCreateFormData({
+                  ...createFormData,
+                  name: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter full name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Email *
+            </label>
+            <input
+              type="email"
+              required
+              value={createFormData.email}
+              onChange={(e) =>
+                setCreateFormData({
+                  ...createFormData,
+                  email: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter email address"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Phone
+            </label>
+            <input
+              type="tel"
+              value={createFormData.phone}
+              onChange={(e) =>
+                setCreateFormData({
+                  ...createFormData,
+                  phone: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter phone number"
+            />
+          </div>
+        </form>
+      </ModalDialog>
 
       {/* Edit Client Modal */}
-      {showEditModal && selectedClient && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Edit Client
-              </h2>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleEditClient} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editFormData.name}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={editFormData.email}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, email: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={editFormData.phone}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, phone: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={editFormData.isActive}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        isActive: e.target.checked,
-                      })
-                    }
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                    Active Client
-                  </span>
-                </label>
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Save Changes
-                </button>
-              </div>
-            </form>
+      <ModalDialog
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        header="Edit Client"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowEditModal(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="edit-client-form"
+              className="btn-primary"
+            >
+              Save Changes
+            </button>
           </div>
-        </div>
-      )}
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <form
+          id="edit-client-form"
+          onSubmit={handleEditClient}
+          className="space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Full Name *
+            </label>
+            <input
+              type="text"
+              required
+              value={editFormData.name}
+              onChange={(e) =>
+                setEditFormData({ ...editFormData, name: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Email *
+            </label>
+            <input
+              type="email"
+              required
+              value={editFormData.email}
+              onChange={(e) =>
+                setEditFormData({ ...editFormData, email: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Phone
+            </label>
+            <input
+              type="tel"
+              value={editFormData.phone}
+              onChange={(e) =>
+                setEditFormData({ ...editFormData, phone: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={editFormData.isActive}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    isActive: e.target.checked,
+                  })
+                }
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                Active Client
+              </span>
+            </label>
+          </div>
+        </form>
+      </ModalDialog>
 
       {/* View Client Details Modal */}
-      {showViewModal && selectedClient && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Client Details
-              </h2>
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
+      <ModalDialog
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        header="Client Details"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowViewModal(false)}
+              className="btn-secondary"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                setShowViewModal(false);
+                if (selectedClient) {
+                  handleEditClick(selectedClient);
+                }
+              }}
+              className="btn-primary"
+            >
+              Edit Client
+            </button>
+          </div>
+        }
+        maxWidth="2xl"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <div className="space-y-6">
+          {/* Client Info */}
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
+              <span className="text-white font-medium text-xl">
+                {selectedClient?.name?.charAt(0).toUpperCase()}
+              </span>
             </div>
-            <div className="p-6 space-y-6">
-              {/* Client Info */}
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-medium text-xl">
-                    {selectedClient.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    {selectedClient.name}
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    {selectedClient.email}
-                  </p>
-                  {selectedClient.phone && (
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {selectedClient.phone}
-                    </p>
-                  )}
-                  {getStatusBadge(selectedClient.isActive)}
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {(selectedClient.cases ?? []).length}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    Cases
-                  </div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {(selectedClient.documents ?? []).length}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    Documents
-                  </div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {(selectedClient.billingRecords ?? []).length}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    Bills
-                  </div>
-                </div>
-              </div>
-
-              {/* Recent Cases */}
-              {(selectedClient.cases ?? []).length > 0 && (
-                <div>
-                  <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
-                    Recent Cases
-                  </h4>
-                  <div className="space-y-2">
-                    {(selectedClient.cases ?? [])
-                      .slice(0, 5)
-                      .map((caseItem) => (
-                        <div
-                          key={caseItem.id}
-                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                        >
-                          <div>
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {caseItem.caseNumber}
-                            </div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400">
-                              {caseItem.title}
-                            </div>
-                          </div>
-                          <span
-                            className={`px-2 py-1 rounded text-xs ${
-                              caseItem.status === "OPEN"
-                                ? "bg-blue-100 text-blue-800"
-                                : caseItem.status === "IN_PROGRESS"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : caseItem.status === "CLOSED"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {caseItem.status.replace("_", " ")}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                {selectedClient?.name}
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                {selectedClient?.email}
+              </p>
+              {selectedClient?.phone && (
+                <p className="text-gray-600 dark:text-gray-400">
+                  {selectedClient.phone}
+                </p>
               )}
+              {getStatusBadge(selectedClient?.isActive || false)}
+            </div>
+          </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => setShowViewModal(false)}
-                  className="btn-secondary"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => {
-                    setShowViewModal(false);
-                    handleEditClick(selectedClient);
-                  }}
-                  className="btn-primary"
-                >
-                  Edit Client
-                </button>
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                {(selectedClient?.cases ?? []).length}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Cases
+              </div>
+            </div>
+            <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                {(selectedClient?.documents ?? []).length}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Documents
+              </div>
+            </div>
+            <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                {(selectedClient?.billingRecords ?? []).length}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Bills
               </div>
             </div>
           </div>
+
+          {/* Recent Cases */}
+          {(selectedClient?.cases ?? []).length > 0 && (
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                Recent Cases
+              </h4>
+              <div className="space-y-2">
+                {(selectedClient?.cases ?? []).slice(0, 5).map((caseItem) => (
+                  <div
+                    key={caseItem.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                  >
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">
+                        {caseItem.caseNumber}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {caseItem.title}
+                      </div>
+                    </div>
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        caseItem.status === "OPEN"
+                          ? "bg-blue-100 text-blue-800"
+                          : caseItem.status === "IN_PROGRESS"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : caseItem.status === "CLOSED"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {caseItem.status.replace("_", " ")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </ModalDialog>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && selectedClient && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Delete Client
-              </h2>
-              <p className="text-gray-700 dark:text-gray-300 mb-6">
-                Are you sure you want to delete the client{" "}
-                <span className="font-bold">{selectedClient.name}</span>? This
-                action cannot be undone.
-              </p>
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button onClick={handleDeleteClient} className="btn-danger">
-                  Delete
-                </button>
-              </div>
-            </div>
+      <ModalDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        header="Delete Client"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button onClick={handleDeleteClient} className="btn-danger">
+              Delete
+            </button>
           </div>
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <div className="text-center">
+          <p className="text-gray-700 dark:text-gray-300">
+            Are you sure you want to delete the client{" "}
+            <span className="font-bold">{selectedClient?.name}</span>? This
+            action cannot be undone.
+          </p>
         </div>
-      )}
+      </ModalDialog>
     </div>
   );
 }

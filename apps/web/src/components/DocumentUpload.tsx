@@ -1,22 +1,25 @@
 "use client";
 
-import { Upload, X } from "lucide-react";
-import { useState } from "react";
+import { X } from "lucide-react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import DragAndDrop from "./DragAndDrop";
 
 interface DocumentUploadProps {
   onUpload: (files: File[]) => Promise<void>;
+  onFilesSelected?: (files: File[]) => void; // New callback for selected files
   maxFiles?: number;
   maxSize?: number;
   accept?: Record<string, string[]>;
   disabled?: boolean;
   className?: string;
   showPreview?: boolean;
+  autoUpload?: boolean; // New prop to control auto-upload behavior
 }
 
 export default function DocumentUpload({
   onUpload,
+  onFilesSelected,
   maxFiles = 5,
   maxSize = 10 * 1024 * 1024, // 10MB default
   accept = {
@@ -30,29 +33,43 @@ export default function DocumentUpload({
   },
   disabled = false,
   className = "",
-  showPreview = true,
+  showPreview = false,
+  autoUpload = false, // Default to false for manual upload
 }: DocumentUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  // Notify parent component when files are selected
+  useEffect(() => {
+    if (onFilesSelected) {
+      onFilesSelected(selectedFiles);
+    }
+  }, [selectedFiles, onFilesSelected]);
 
   const handleFilesAccepted = async (files: File[]) => {
     if (disabled) return;
 
-    try {
-      setIsUploading(true);
-      await onUpload(files);
-      setUploadedFiles((prev) => [...prev, ...files]);
-      toast.success(`${files.length} file(s) uploaded successfully`);
-    } catch (error) {
-      console.error("Upload error:", error);
-      toast.error("Failed to upload files");
-    } finally {
-      setIsUploading(false);
+    if (autoUpload) {
+      // Auto-upload behavior (original)
+      try {
+        setIsUploading(true);
+        await onUpload(files);
+        toast.success(`${files.length} file(s) uploaded successfully`);
+      } catch (error) {
+        console.error("Upload error:", error);
+        toast.error("Failed to upload files");
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      // Manual upload behavior - just store files
+      setSelectedFiles((prev) => [...prev, ...files]);
+      toast.success(`${files.length} file(s) selected`);
     }
   };
 
   const removeFile = (index: number) => {
-    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const getFileIcon = (file: File) => {
@@ -88,31 +105,28 @@ export default function DocumentUpload({
         className="w-full"
         showPreview={showPreview}
       >
-        <div className="flex flex-col items-center justify-center space-y-2">
-          <Upload className="w-8 h-8 text-gray-400" />
-          <div className="text-center">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Drag & drop documents here
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              or click to browse files
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              Supported: PDF, DOC, DOCX, TXT, Images (Max{" "}
-              {formatFileSize(maxSize)})
-            </p>
-          </div>
+        <div className="text-center">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Drag & drop documents here
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            or click to browse files
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            Supported: PDF, DOC, DOCX, TXT, Images (Max{" "}
+            {formatFileSize(maxSize)})
+          </p>
         </div>
       </DragAndDrop>
 
-      {/* Uploaded Files List */}
-      {uploadedFiles.length > 0 && (
+      {/* Selected Files List */}
+      {selectedFiles.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-            Uploaded Files
+            Selected Files
           </h4>
           <div className="space-y-2">
-            {uploadedFiles.map((file, index) => (
+            {selectedFiles.map((file, index) => (
               <div
                 key={index}
                 className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"

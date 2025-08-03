@@ -1,5 +1,7 @@
 "use client";
 
+import ModalDialog from "@/components/ui/ModalDialog";
+import CustomSelect, { SelectOption } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
@@ -18,7 +20,6 @@ import {
   Trash2,
   User,
   Users,
-  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -85,6 +86,17 @@ export default function CalendarPage() {
   const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] =
     useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Select options
+  const eventTypeOptions: SelectOption[] = [
+    { value: "HEARING", label: "Court Hearing" },
+    { value: "CLIENT_MEETING", label: "Client Meeting" },
+    { value: "COURT_APPEARANCE", label: "Court Appearance" },
+    { value: "DEADLINE", label: "Deadline" },
+    { value: "INTERNAL_MEETING", label: "Internal Meeting" },
+    { value: "OTHER", label: "Other" },
+  ];
+
   const [createFormData, setCreateFormData] = useState({
     title: "",
     description: "",
@@ -1054,544 +1066,541 @@ export default function CalendarPage() {
       </div>
 
       {/* Create Event Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Create New Event
-              </h2>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
+      <ModalDialog
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        header="Create New Event"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="create-event-form"
+              className="btn-primary"
+            >
+              Create Event
+            </button>
+          </div>
+        }
+        maxWidth="2xl"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <form
+          id="create-event-form"
+          onSubmit={handleCreateEvent}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Event Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={createFormData.title}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    title: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Enter event title"
+              />
             </div>
-            <form onSubmit={handleCreateEvent} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Event Title *
-                  </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Event Type *
+              </label>
+              <CustomSelect
+                options={eventTypeOptions}
+                value={eventTypeOptions.find(
+                  (option) => option.value === createFormData.eventType
+                )}
+                onChange={(selectedOption) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    eventType: selectedOption?.value || "CLIENT_MEETING",
+                  })
+                }
+                placeholder="Select event type"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Start Time *
+              </label>
+              <input
+                type="datetime-local"
+                required
+                value={createFormData.startTime}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    startTime: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                End Time *
+              </label>
+              <input
+                type="datetime-local"
+                required
+                value={createFormData.endTime}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    endTime: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Location
+              </label>
+              <input
+                type="text"
+                value={createFormData.location}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    location: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Enter location"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Related Case
+              </label>
+              <CustomSelect
+                options={[
+                  { value: "", label: "Select case (optional)" },
+                  ...cases.map((caseItem) => ({
+                    value: caseItem.id,
+                    label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                  })),
+                ]}
+                value={[
+                  { value: "", label: "Select case (optional)" },
+                  ...cases.map((caseItem) => ({
+                    value: caseItem.id,
+                    label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                  })),
+                ].find((option) => option.value === createFormData.caseId)}
+                onChange={(selectedOption) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    caseId: selectedOption?.value || "",
+                  })
+                }
+                placeholder="Select case (optional)"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              value={createFormData.description}
+              onChange={(e) =>
+                setCreateFormData({
+                  ...createFormData,
+                  description: e.target.value,
+                })
+              }
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter event description"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Participants
+            </label>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {users.map((user) => (
+                <label key={user.id} className="flex items-center space-x-2">
                   <input
-                    type="text"
-                    required
-                    value={createFormData.title}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        title: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter event title"
+                    type="checkbox"
+                    checked={createFormData.participantIds.includes(user.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setCreateFormData({
+                          ...createFormData,
+                          participantIds: [
+                            ...createFormData.participantIds,
+                            user.id,
+                          ],
+                        });
+                      } else {
+                        setCreateFormData({
+                          ...createFormData,
+                          participantIds: createFormData.participantIds.filter(
+                            (id) => id !== user.id
+                          ),
+                        });
+                      }
+                    }}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Event Type *
-                  </label>
-                  <select
-                    required
-                    value={createFormData.eventType}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        eventType: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="CLIENT_MEETING">Client Meeting</option>
-                    <option value="HEARING">Court Hearing</option>
-                    <option value="COURT_APPEARANCE">Court Appearance</option>
-                    <option value="DEADLINE">Deadline</option>
-                    <option value="INTERNAL_MEETING">Internal Meeting</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Start Time *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={createFormData.startTime}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        startTime: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    End Time *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={createFormData.endTime}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        endTime: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    value={createFormData.location}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        location: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter location"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Related Case
-                  </label>
-                  <select
-                    value={createFormData.caseId}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        caseId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select case (optional)</option>
-                    {cases.map((caseItem) => (
-                      <option key={caseItem.id} value={caseItem.id}>
-                        {caseItem.caseNumber} - {caseItem.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    {user.name} ({user.email})
+                  </span>
                 </label>
-                <textarea
-                  value={createFormData.description}
-                  onChange={(e) =>
-                    setCreateFormData({
-                      ...createFormData,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter event description"
-                />
+              ))}
+            </div>
+          </div>
+        </form>
+      </ModalDialog>
+
+      {/* Edit Event Modal */}
+      <ModalDialog
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        header="Edit Event"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowEditModal(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="edit-event-form"
+              className="btn-primary"
+            >
+              Save Changes
+            </button>
+          </div>
+        }
+        maxWidth="2xl"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <form
+          id="edit-event-form"
+          onSubmit={handleEditEvent}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Event Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={editFormData.title}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    title: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Event Type *
+              </label>
+              <CustomSelect
+                options={eventTypeOptions}
+                value={eventTypeOptions.find(
+                  (option) => option.value === editFormData.eventType
+                )}
+                onChange={(selectedOption) =>
+                  setEditFormData({
+                    ...editFormData,
+                    eventType: selectedOption?.value || "CLIENT_MEETING",
+                  })
+                }
+                placeholder="Select event type"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Start Time *
+              </label>
+              <input
+                type="datetime-local"
+                required
+                value={editFormData.startTime}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    startTime: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                End Time *
+              </label>
+              <input
+                type="datetime-local"
+                required
+                value={editFormData.endTime}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    endTime: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Location
+              </label>
+              <input
+                type="text"
+                value={editFormData.location}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    location: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Enter location"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Related Case
+              </label>
+              <CustomSelect
+                options={[
+                  { value: "", label: "Select case (optional)" },
+                  ...cases.map((caseItem) => ({
+                    value: caseItem.id,
+                    label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                  })),
+                ]}
+                value={[
+                  { value: "", label: "Select case (optional)" },
+                  ...cases.map((caseItem) => ({
+                    value: caseItem.id,
+                    label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                  })),
+                ].find((option) => option.value === editFormData.caseId)}
+                onChange={(selectedOption) =>
+                  setEditFormData({
+                    ...editFormData,
+                    caseId: selectedOption?.value || "",
+                  })
+                }
+                placeholder="Select case (optional)"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              value={editFormData.description}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  description: e.target.value,
+                })
+              }
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter event description"
+            />
+          </div>
+        </form>
+      </ModalDialog>
+
+      {/* View Event Details Modal */}
+      <ModalDialog
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        header="Event Details"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowViewModal(false)}
+              className="btn-secondary"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                setShowViewModal(false);
+                if (selectedEvent) {
+                  handleEditClick(selectedEvent);
+                }
+              }}
+              className="btn-primary"
+            >
+              Edit Event
+            </button>
+          </div>
+        }
+        maxWidth="2xl"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {selectedEvent?.title}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              {selectedEvent?.description}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Start Time
+              </label>
+              <p className="text-gray-900 dark:text-white">
+                {formatDate(selectedEvent?.startTime || "")}
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                End Time
+              </label>
+              <p className="text-gray-900 dark:text-white">
+                {formatDate(selectedEvent?.endTime || "")}
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Event Type
+              </label>
+              <p className="text-gray-900 dark:text-white">
+                {selectedEvent?.eventType?.replace("_", " ") || ""}
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Location
+              </label>
+              <p className="text-gray-900 dark:text-white">
+                {selectedEvent?.location || "Not specified"}
+              </p>
+            </div>
+          </div>
+
+          {selectedEvent?.case && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Related Case
+              </label>
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="font-medium text-gray-900 dark:text-white">
+                  {selectedEvent.case.caseNumber}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {selectedEvent.case.title}
+                </div>
               </div>
+            </div>
+          )}
+
+          {selectedEvent?.participants &&
+            selectedEvent.participants.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Participants
                 </label>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {users.map((user) => (
-                    <label
-                      key={user.id}
-                      className="flex items-center space-x-2"
+                <div className="space-y-2">
+                  {selectedEvent.participants.map((participant) => (
+                    <div
+                      key={participant.id}
+                      className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
                     >
-                      <input
-                        type="checkbox"
-                        checked={createFormData.participantIds.includes(
-                          user.id
-                        )}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setCreateFormData({
-                              ...createFormData,
-                              participantIds: [
-                                ...createFormData.participantIds,
-                                user.id,
-                              ],
-                            });
-                          } else {
-                            setCreateFormData({
-                              ...createFormData,
-                              participantIds:
-                                createFormData.participantIds.filter(
-                                  (id) => id !== user.id
-                                ),
-                            });
-                          }
-                        }}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {user.name} ({user.email})
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {participant.user.name}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          {participant.user.email}
+                        </div>
+                      </div>
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${
+                          participant.status === "ACCEPTED"
+                            ? "bg-green-100 text-green-800"
+                            : participant.status === "PENDING"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {participant.status}
                       </span>
-                    </label>
+                    </div>
                   ))}
                 </div>
               </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="btn-secondary flex items-center"
-                >
-                  <span>Cancel</span>
-                </button>
-                <button type="submit" className="btn-primary flex items-center">
-                  <span>Create Event</span>
-                </button>
-              </div>
-            </form>
-          </div>
+            )}
         </div>
-      )}
-
-      {/* Edit Event Modal */}
-      {showEditModal && selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Edit Event
-              </h2>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleEditEvent} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Event Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editFormData.title}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        title: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Event Type *
-                  </label>
-                  <select
-                    required
-                    value={editFormData.eventType}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        eventType: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="CLIENT_MEETING">Client Meeting</option>
-                    <option value="HEARING">Court Hearing</option>
-                    <option value="COURT_APPEARANCE">Court Appearance</option>
-                    <option value="DEADLINE">Deadline</option>
-                    <option value="INTERNAL_MEETING">Internal Meeting</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Start Time *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={editFormData.startTime}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        startTime: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    End Time *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={editFormData.endTime}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        endTime: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    value={editFormData.location}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        location: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter location"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Related Case
-                  </label>
-                  <select
-                    value={editFormData.caseId}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        caseId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select case (optional)</option>
-                    {cases.map((caseItem) => (
-                      <option key={caseItem.id} value={caseItem.id}>
-                        {caseItem.caseNumber} - {caseItem.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={editFormData.description}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter event description"
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="btn-secondary flex items-center"
-                >
-                  <span>Cancel</span>
-                </button>
-                <button type="submit" className="btn-primary flex items-center">
-                  <span>Save Changes</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* View Event Details Modal */}
-      {showViewModal && selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Event Details
-              </h2>
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  {selectedEvent.title}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  {selectedEvent.description}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Start Time
-                  </label>
-                  <p className="text-gray-900 dark:text-white">
-                    {formatDate(selectedEvent.startTime)}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    End Time
-                  </label>
-                  <p className="text-gray-900 dark:text-white">
-                    {formatDate(selectedEvent.endTime)}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Event Type
-                  </label>
-                  <p className="text-gray-900 dark:text-white">
-                    {selectedEvent.eventType.replace("_", " ")}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Location
-                  </label>
-                  <p className="text-gray-900 dark:text-white">
-                    {selectedEvent.location || "Not specified"}
-                  </p>
-                </div>
-              </div>
-
-              {selectedEvent.case && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Related Case
-                  </label>
-                  <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="font-medium text-gray-900 dark:text-white">
-                      {selectedEvent.case.caseNumber}
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {selectedEvent.case.title}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {selectedEvent.participants.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Participants
-                  </label>
-                  <div className="space-y-2">
-                    {selectedEvent.participants.map((participant) => (
-                      <div
-                        key={participant.id}
-                        className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
-                      >
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-white">
-                            {participant.user.name}
-                          </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">
-                            {participant.user.email}
-                          </div>
-                        </div>
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            participant.status === "ACCEPTED"
-                              ? "bg-green-100 text-green-800"
-                              : participant.status === "PENDING"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {participant.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => setShowViewModal(false)}
-                  className="btn-secondary flex items-center"
-                >
-                  <span>Close</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowViewModal(false);
-                    handleEditClick(selectedEvent);
-                  }}
-                  className="btn-primary flex items-center"
-                >
-                  <span>Edit Event</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </ModalDialog>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Delete Event
-              </h2>
-              <p className="text-gray-700 dark:text-gray-300 mb-6">
-                Are you sure you want to delete the event{" "}
-                <span className="font-bold">{selectedEvent.title}</span>? This
-                action cannot be undone.
-              </p>
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="btn-secondary flex items-center"
-                >
-                  <span>Cancel</span>
-                </button>
-                <button
-                  onClick={handleDeleteEvent}
-                  className="btn-danger flex items-center"
-                >
-                  <span>Delete</span>
-                </button>
-              </div>
-            </div>
+      <ModalDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        header="Delete Event"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button onClick={handleDeleteEvent} className="btn-danger">
+              Delete
+            </button>
           </div>
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <div className="text-center">
+          <p className="text-gray-700 dark:text-gray-300">
+            Are you sure you want to delete the event{" "}
+            <span className="font-bold">{selectedEvent?.title}</span>? This
+            action cannot be undone.
+          </p>
         </div>
-      )}
+      </ModalDialog>
     </div>
   );
 }

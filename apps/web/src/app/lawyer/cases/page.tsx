@@ -1,6 +1,8 @@
 "use client";
 
 import CourtSelector from "@/components/CourtSelector";
+import ModalDialog from "@/components/ui/ModalDialog";
+import CustomSelect, { SelectOption } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
@@ -14,7 +16,6 @@ import {
   Plus,
   Search,
   Trash2,
-  X,
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -100,6 +101,49 @@ export default function CasesPage() {
   const [caseToEdit, setCaseToEdit] = useState<Case | null>(null);
   const [caseToDelete, setCaseToDelete] = useState<Case | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Select options
+  const statusOptions: SelectOption[] = [
+    { value: "all", label: "All Status" },
+    { value: "OPEN", label: "Open" },
+    { value: "IN_PROGRESS", label: "In Progress" },
+    { value: "ON_HOLD", label: "On Hold" },
+    { value: "CLOSED", label: "Closed" },
+  ];
+
+  const priorityOptions: SelectOption[] = [
+    { value: "all", label: "All Priorities" },
+    { value: "LOW", label: "Low" },
+    { value: "MEDIUM", label: "Medium" },
+    { value: "HIGH", label: "High" },
+    { value: "URGENT", label: "Urgent" },
+  ];
+
+  const categoryOptions: SelectOption[] = [
+    { value: "CIVIL", label: "Civil" },
+    { value: "CRIMINAL", label: "Criminal" },
+    { value: "FAMILY", label: "Family" },
+    { value: "CORPORATE", label: "Corporate" },
+    { value: "PROPERTY", label: "Property" },
+    { value: "EMPLOYMENT", label: "Employment" },
+    { value: "INTELLECTUAL_PROPERTY", label: "Intellectual Property" },
+    { value: "TAX", label: "Tax" },
+    { value: "OTHER", label: "Other" },
+  ];
+
+  const casePriorityOptions: SelectOption[] = [
+    { value: "LOW", label: "Low" },
+    { value: "MEDIUM", label: "Medium" },
+    { value: "HIGH", label: "High" },
+    { value: "URGENT", label: "Urgent" },
+  ];
+
+  const caseStatusOptions: SelectOption[] = [
+    { value: "OPEN", label: "Open" },
+    { value: "IN_PROGRESS", label: "In Progress" },
+    { value: "ON_HOLD", label: "On Hold" },
+    { value: "CLOSED", label: "Closed" },
+  ];
 
   useEffect(() => {
     fetchCases();
@@ -346,33 +390,31 @@ export default function CasesPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Status
                   </label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="OPEN">Open</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="ON_HOLD">On Hold</option>
-                    <option value="CLOSED">Closed</option>
-                  </select>
+                  <CustomSelect
+                    options={statusOptions}
+                    value={statusOptions.find(
+                      (option) => option.value === statusFilter
+                    )}
+                    onChange={(selectedOption) =>
+                      setStatusFilter(selectedOption?.value || "all")
+                    }
+                    placeholder="Select status"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Priority
                   </label>
-                  <select
-                    value={priorityFilter}
-                    onChange={(e) => setPriorityFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="all">All Priorities</option>
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="URGENT">Urgent</option>
-                  </select>
+                  <CustomSelect
+                    options={priorityOptions}
+                    value={priorityOptions.find(
+                      (option) => option.value === priorityFilter
+                    )}
+                    onChange={(selectedOption) =>
+                      setPriorityFilter(selectedOption?.value || "all")
+                    }
+                    placeholder="Select priority"
+                  />
                 </div>
               </div>
             </div>
@@ -506,505 +548,485 @@ export default function CasesPage() {
       </div>
 
       {/* Create Case Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Create New Case
-              </h2>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleCreateCase} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Case Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={createFormData.title}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        title: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter case title"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Client *
-                  </label>
-                  <select
-                    required
-                    value={createFormData.clientId}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        clientId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select a client</option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.name} ({client.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Category *
-                  </label>
-                  <select
-                    required
-                    value={createFormData.category}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        category: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="CIVIL">Civil</option>
-                    <option value="CRIMINAL">Criminal</option>
-                    <option value="FAMILY">Family</option>
-                    <option value="CORPORATE">Corporate</option>
-                    <option value="PROPERTY">Property</option>
-                    <option value="EMPLOYMENT">Employment</option>
-                    <option value="INTELLECTUAL_PROPERTY">
-                      Intellectual Property
-                    </option>
-                    <option value="TAX">Tax</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Priority *
-                  </label>
-                  <select
-                    required
-                    value={createFormData.priority}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        priority: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="URGENT">Urgent</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Court
-                  </label>
-                  <CourtSelector
-                    value={createFormData.courtId}
-                    onChange={(courtId: string) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        courtId: courtId,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Judge
-                  </label>
-                  <input
-                    type="text"
-                    value={createFormData.judge}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        judge: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter judge name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Opposing Party
-                  </label>
-                  <input
-                    type="text"
-                    value={createFormData.opposingParty}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        opposingParty: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter opposing party name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Opposing Lawyer
-                  </label>
-                  <input
-                    type="text"
-                    value={createFormData.opposingLawyer}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        opposingLawyer: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter opposing lawyer name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Filing Date
-                  </label>
-                  <input
-                    type="date"
-                    value={createFormData.filingDate}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        filingDate: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Next Hearing Date
-                  </label>
-                  <input
-                    type="date"
-                    value={createFormData.nextHearingDate}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        nextHearingDate: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={createFormData.description}
-                  onChange={(e) =>
-                    setCreateFormData({
-                      ...createFormData,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter case description"
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Create Case
-                </button>
-              </div>
-            </form>
+      <ModalDialog
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        header="Create New Case"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="create-case-form"
+              className="btn-primary"
+            >
+              Create Case
+            </button>
           </div>
-        </div>
-      )}
+        }
+        maxWidth="2xl"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <form
+          id="create-case-form"
+          onSubmit={handleCreateCase}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Case Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={createFormData.title}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    title: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Enter case title"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Client *
+              </label>
+              <CustomSelect
+                options={clients.map((client) => ({
+                  value: client.id,
+                  label: `${client.name} (${client.email})`,
+                }))}
+                value={clients
+                  .map((client) => ({
+                    value: client.id,
+                    label: `${client.name} (${client.email})`,
+                  }))
+                  .find((option) => option.value === createFormData.clientId)}
+                onChange={(selectedOption) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    clientId: selectedOption?.value || "",
+                  })
+                }
+                placeholder="Select a client"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Category *
+              </label>
+              <CustomSelect
+                options={categoryOptions}
+                value={categoryOptions.find(
+                  (option) => option.value === createFormData.category
+                )}
+                onChange={(selectedOption) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    category: selectedOption?.value || "CIVIL",
+                  })
+                }
+                placeholder="Select category"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Priority *
+              </label>
+              <CustomSelect
+                options={casePriorityOptions}
+                value={casePriorityOptions.find(
+                  (option) => option.value === createFormData.priority
+                )}
+                onChange={(selectedOption) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    priority: selectedOption?.value || "MEDIUM",
+                  })
+                }
+                placeholder="Select priority"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Court
+              </label>
+              <CourtSelector
+                value={createFormData.courtId}
+                onChange={(courtId: string) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    courtId: courtId,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Judge
+              </label>
+              <input
+                type="text"
+                value={createFormData.judge}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    judge: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Enter judge name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Opposing Party
+              </label>
+              <input
+                type="text"
+                value={createFormData.opposingParty}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    opposingParty: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Enter opposing party name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Opposing Lawyer
+              </label>
+              <input
+                type="text"
+                value={createFormData.opposingLawyer}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    opposingLawyer: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Enter opposing lawyer name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Filing Date
+              </label>
+              <input
+                type="date"
+                value={createFormData.filingDate}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    filingDate: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Next Hearing Date
+              </label>
+              <input
+                type="date"
+                value={createFormData.nextHearingDate}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    nextHearingDate: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              value={createFormData.description}
+              onChange={(e) =>
+                setCreateFormData({
+                  ...createFormData,
+                  description: e.target.value,
+                })
+              }
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter case description"
+            />
+          </div>
+        </form>
+      </ModalDialog>
 
       {/* Edit Case Modal */}
-      {showEditModal && caseToEdit && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Edit Case
-              </h2>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleEditCase} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Case Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editFormData.title}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        title: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Status *
-                  </label>
-                  <select
-                    required
-                    value={editFormData.status}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        status: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="OPEN">Open</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="ON_HOLD">On Hold</option>
-                    <option value="CLOSED">Closed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Priority *
-                  </label>
-                  <select
-                    required
-                    value={editFormData.priority}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        priority: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="URGENT">Urgent</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Category *
-                  </label>
-                  <select
-                    required
-                    value={editFormData.category}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        category: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="CIVIL">Civil</option>
-                    <option value="CRIMINAL">Criminal</option>
-                    <option value="FAMILY">Family</option>
-                    <option value="CORPORATE">Corporate</option>
-                    <option value="PROPERTY">Property</option>
-                    <option value="EMPLOYMENT">Employment</option>
-                    <option value="INTELLECTUAL_PROPERTY">
-                      Intellectual Property
-                    </option>
-                    <option value="TAX">Tax</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Court
-                  </label>
-                  <CourtSelector
-                    value={editFormData.courtId}
-                    onChange={(courtId: string) =>
-                      setEditFormData({
-                        ...editFormData,
-                        courtId: courtId,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Judge
-                  </label>
-                  <input
-                    type="text"
-                    value={editFormData.judge}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        judge: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Opposing Party
-                  </label>
-                  <input
-                    type="text"
-                    value={editFormData.opposingParty}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        opposingParty: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Opposing Lawyer
-                  </label>
-                  <input
-                    type="text"
-                    value={editFormData.opposingLawyer}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        opposingLawyer: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Filing Date
-                  </label>
-                  <input
-                    type="date"
-                    value={editFormData.filingDate}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        filingDate: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Next Hearing Date
-                  </label>
-                  <input
-                    type="date"
-                    value={editFormData.nextHearingDate}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        nextHearingDate: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={editFormData.description}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter case description"
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Save Changes
-                </button>
-              </div>
-            </form>
+      <ModalDialog
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        header="Edit Case"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowEditModal(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" form="edit-case-form" className="btn-primary">
+              Save Changes
+            </button>
           </div>
-        </div>
-      )}
+        }
+        maxWidth="2xl"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <form
+          id="edit-case-form"
+          onSubmit={handleEditCase}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Case Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={editFormData.title}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    title: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Status *
+              </label>
+              <CustomSelect
+                options={caseStatusOptions}
+                value={caseStatusOptions.find(
+                  (option) => option.value === editFormData.status
+                )}
+                onChange={(selectedOption) =>
+                  setEditFormData({
+                    ...editFormData,
+                    status: selectedOption?.value || "OPEN",
+                  })
+                }
+                placeholder="Select status"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Priority *
+              </label>
+              <CustomSelect
+                options={casePriorityOptions}
+                value={casePriorityOptions.find(
+                  (option) => option.value === editFormData.priority
+                )}
+                onChange={(selectedOption) =>
+                  setEditFormData({
+                    ...editFormData,
+                    priority: selectedOption?.value || "MEDIUM",
+                  })
+                }
+                placeholder="Select priority"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Category *
+              </label>
+              <CustomSelect
+                options={categoryOptions}
+                value={categoryOptions.find(
+                  (option) => option.value === editFormData.category
+                )}
+                onChange={(selectedOption) =>
+                  setEditFormData({
+                    ...editFormData,
+                    category: selectedOption?.value || "CIVIL",
+                  })
+                }
+                placeholder="Select category"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Court
+              </label>
+              <CourtSelector
+                value={editFormData.courtId}
+                onChange={(courtId: string) =>
+                  setEditFormData({
+                    ...editFormData,
+                    courtId: courtId,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Judge
+              </label>
+              <input
+                type="text"
+                value={editFormData.judge}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    judge: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Opposing Party
+              </label>
+              <input
+                type="text"
+                value={editFormData.opposingParty}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    opposingParty: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Opposing Lawyer
+              </label>
+              <input
+                type="text"
+                value={editFormData.opposingLawyer}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    opposingLawyer: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Filing Date
+              </label>
+              <input
+                type="date"
+                value={editFormData.filingDate}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    filingDate: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Next Hearing Date
+              </label>
+              <input
+                type="date"
+                value={editFormData.nextHearingDate}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    nextHearingDate: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              value={editFormData.description}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  description: e.target.value,
+                })
+              }
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter case description"
+            />
+          </div>
+        </form>
+      </ModalDialog>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && caseToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Delete Case
-              </h2>
-              <p className="text-gray-700 dark:text-gray-300 mb-6">
-                Are you sure you want to delete the case{" "}
-                <span className="font-bold">{caseToDelete.title}</span>? This
-                action cannot be undone.
-              </p>
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button onClick={handleDeleteCase} className="btn-danger">
-                  Delete
-                </button>
-              </div>
-            </div>
+      <ModalDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        header="Delete Case"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button onClick={handleDeleteCase} className="btn-danger">
+              Delete
+            </button>
           </div>
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <div className="text-center">
+          <p className="text-gray-700 dark:text-gray-300">
+            Are you sure you want to delete the case{" "}
+            <span className="font-bold">{caseToDelete?.title}</span>? This
+            action cannot be undone.
+          </p>
         </div>
-      )}
+      </ModalDialog>
     </div>
   );
 }

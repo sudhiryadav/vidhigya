@@ -7,6 +7,10 @@ import { DocumentCategory, DocumentStatus } from '@prisma/client';
 import { QdrantService } from '../config/qdrant.service';
 import { LogsService } from '../logs/logs.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  CreateDocumentQueryDto,
+  QueryType,
+} from './dto/create-document-query.dto';
 
 export interface CreateDocumentDto {
   title: string;
@@ -421,5 +425,38 @@ export class DocumentsService {
         aiDocumentId: aiDocumentId,
       } as any,
     });
+  }
+
+  async logDocumentQuery(
+    userId: string,
+    question: string,
+    answer: string,
+    caseId?: string,
+    sources?: any[],
+    responseTime?: number,
+    tokensUsed?: number,
+    queryType: QueryType = QueryType.GENERAL,
+  ) {
+    try {
+      const queryData: CreateDocumentQueryDto = {
+        question,
+        answer,
+        caseId,
+        sources,
+        queryType,
+        responseTime,
+        tokensUsed,
+      };
+
+      await this.prisma.documentQuery.create({
+        data: {
+          userId,
+          ...queryData,
+        },
+      });
+    } catch (error) {
+      // Log error but don't fail the main operation
+      console.error('Failed to log document query:', error);
+    }
   }
 }

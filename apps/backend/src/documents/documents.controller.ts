@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { QdrantService } from '../config/qdrant.service';
 import { S3Service } from '../config/s3.config';
 import { CreateDocumentDto, DocumentsService } from './documents.service';
+import { QueryType } from './dto/create-document-query.dto';
 
 // Import DocumentQuery interface
 interface DocumentQuery {
@@ -289,7 +290,6 @@ export class DocumentsController {
             if (done) break;
 
             const chunk = decoder.decode(value);
-            fullResponse += chunk;
 
             // Parse SSE format
             const lines = chunk.split('\n');
@@ -300,7 +300,7 @@ export class DocumentsController {
                   const data = JSON.parse(jsonStr);
 
                   if (data.response) {
-                    fullResponse = data.response;
+                    fullResponse += data.response;
                   }
                   if (data.sources) {
                     sources = data.sources;
@@ -318,13 +318,27 @@ export class DocumentsController {
           reader.releaseLock();
         }
 
-        return {
+        const result = {
           question: query,
           answer: fullResponse || 'No answer generated',
           sources: sources,
           confidence: 0.8, // Default confidence for Modal responses
           generated_at: new Date().toISOString(),
         };
+
+        // Log the Q&A query
+        await this.documentsService.logDocumentQuery(
+          req.user.sub,
+          query,
+          fullResponse || 'No answer generated',
+          undefined,
+          sources,
+          undefined,
+          undefined,
+          QueryType.GENERAL,
+        );
+
+        return result;
       } else {
         // Search mode
         const searchResults = await this.qdrantService.searchDocuments(
@@ -333,12 +347,26 @@ export class DocumentsController {
           limit,
         );
 
-        return {
+        const result = {
           query,
           results: searchResults,
           total_results: searchResults.length,
           generated_at: new Date().toISOString(),
         };
+
+        // Log the search query
+        await this.documentsService.logDocumentQuery(
+          req.user.sub,
+          query,
+          JSON.stringify(searchResults),
+          undefined,
+          searchResults,
+          undefined,
+          undefined,
+          QueryType.DOCUMENT_ANALYSIS,
+        );
+
+        return result;
       }
     } catch (error) {
       console.error('Error processing document query:', error);

@@ -3,6 +3,7 @@
 import DocumentUpload from "@/components/DocumentUpload";
 import DocumentViewer from "@/components/DocumentViewer";
 import Overlay from "@/components/Overlay";
+import ModalDialog from "@/components/ui/ModalDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
@@ -53,6 +54,11 @@ interface Case {
 
 export default function DocumentsPage() {
   const { user } = useAuth();
+
+  // Ensure all state is properly initialized
+  if (!user) {
+    return null;
+  }
   const [documents, setDocuments] = useState<Document[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +84,7 @@ export default function DocumentsPage() {
     caseId: "",
     file: null as File | null,
   });
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   useEffect(() => {
     fetchDocuments();
@@ -108,6 +115,12 @@ export default function DocumentsPage() {
   const handleUploadDocument = async (files: File[]) => {
     if (files.length === 0) return;
 
+    // Validate required fields
+    if (!uploadFormData.title.trim()) {
+      toast.error("Please enter a document title");
+      return;
+    }
+
     try {
       setUploading(true);
 
@@ -115,7 +128,7 @@ export default function DocumentsPage() {
       for (const file of files) {
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("title", uploadFormData.title || file.name);
+        formData.append("title", uploadFormData.title);
         formData.append("description", uploadFormData.description);
         formData.append("category", uploadFormData.category);
         formData.append("status", uploadFormData.status);
@@ -135,6 +148,7 @@ export default function DocumentsPage() {
         caseId: "",
         file: null,
       });
+      setSelectedFiles([]);
       fetchDocuments();
       toast.success(`${files.length} document(s) uploaded successfully`);
     } catch (error) {
@@ -143,6 +157,21 @@ export default function DocumentsPage() {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleSaveDocuments = async () => {
+    if (selectedFiles.length === 0) {
+      toast.error("Please select at least one file to upload");
+      return;
+    }
+
+    // Validate required fields
+    if (!uploadFormData.title.trim()) {
+      toast.error("Please enter a document title");
+      return;
+    }
+
+    await handleUploadDocument(selectedFiles);
   };
 
   const handleViewClick = (document: Document) => {
@@ -566,145 +595,182 @@ export default function DocumentsPage() {
 
       {/* Upload Document Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <ModalDialog
+          isOpen={true}
+          onClose={() => {
+            setShowUploadModal(false);
+            setSelectedFiles([]);
+            setUploadFormData({
+              title: "",
+              description: "",
+              category: "PETITION",
+              status: "DRAFT",
+              caseId: "",
+              file: null,
+            });
+          }}
+          header={
+            <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Upload Document
               </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Fill in the details and select files to upload
+              </p>
+            </div>
+          }
+          footer={
+            <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setShowUploadModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                type="button"
+                onClick={() => {
+                  setShowUploadModal(false);
+                  setSelectedFiles([]);
+                  setUploadFormData({
+                    title: "",
+                    description: "",
+                    category: "PETITION",
+                    status: "DRAFT",
+                    caseId: "",
+                    file: null,
+                  });
+                }}
+                className="btn-secondary"
               >
-                <X className="w-6 h-6" />
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDocuments}
+                disabled={uploading || selectedFiles.length === 0}
+                className="btn-primary"
+              >
+                {uploading ? "Uploading..." : "Save Documents"}
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Document Title
-                  </label>
-                  <input
-                    type="text"
-                    value={uploadFormData.title}
-                    onChange={(e) =>
-                      setUploadFormData({
-                        ...uploadFormData,
-                        title: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter document title (optional - will use filename if empty)"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Category *
-                  </label>
-                  <select
-                    required
-                    value={uploadFormData.category}
-                    onChange={(e) =>
-                      setUploadFormData({
-                        ...uploadFormData,
-                        category: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="PETITION">Petition</option>
-                    <option value="EVIDENCE">Evidence</option>
-                    <option value="CONTRACT">Contract</option>
-                    <option value="AGREEMENT">Agreement</option>
-                    <option value="REPORT">Report</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Status *
-                  </label>
-                  <select
-                    required
-                    value={uploadFormData.status}
-                    onChange={(e) =>
-                      setUploadFormData({
-                        ...uploadFormData,
-                        status: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="DRAFT">Draft</option>
-                    <option value="FILED">Filed</option>
-                    <option value="APPROVED">Approved</option>
-                    <option value="REJECTED">Rejected</option>
-                    <option value="ARCHIVED">Archived</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Related Case
-                  </label>
-                  <select
-                    value={uploadFormData.caseId}
-                    onChange={(e) =>
-                      setUploadFormData({
-                        ...uploadFormData,
-                        caseId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select case (optional)</option>
-                    {cases.map((caseItem) => (
-                      <option key={caseItem.id} value={caseItem.id}>
-                        {caseItem.caseNumber} - {caseItem.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
+          }
+          maxWidth="2xl"
+          closeOnEscape={true}
+          closeOnOverlayClick={true}
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description
+                  Document Title <span className="text-red-500">*</span>
                 </label>
-                <textarea
-                  value={uploadFormData.description}
+                <input
+                  type="text"
+                  required
+                  value={uploadFormData.title}
                   onChange={(e) =>
                     setUploadFormData({
                       ...uploadFormData,
-                      description: e.target.value,
+                      title: e.target.value,
                     })
                   }
-                  rows={4}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter document description"
+                  placeholder="Enter document title"
                 />
               </div>
-
-              {/* Drag and Drop Upload Area */}
-              <DocumentUpload
-                onUpload={handleUploadDocument}
-                maxFiles={5}
-                maxSize={10 * 1024 * 1024} // 10MB
-                disabled={uploading}
-                showPreview={true}
-              />
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowUploadModal(false)}
-                  className="btn-secondary"
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={uploadFormData.category}
+                  onChange={(e) =>
+                    setUploadFormData({
+                      ...uploadFormData,
+                      category: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 >
-                  Cancel
-                </button>
+                  <option value="PETITION">Petition</option>
+                  <option value="EVIDENCE">Evidence</option>
+                  <option value="CONTRACT">Contract</option>
+                  <option value="AGREEMENT">Agreement</option>
+                  <option value="REPORT">Report</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Status <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={uploadFormData.status}
+                  onChange={(e) =>
+                    setUploadFormData({
+                      ...uploadFormData,
+                      status: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="DRAFT">Draft</option>
+                  <option value="FILED">Filed</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="ARCHIVED">Archived</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Related Case
+                </label>
+                <select
+                  value={uploadFormData.caseId}
+                  onChange={(e) =>
+                    setUploadFormData({
+                      ...uploadFormData,
+                      caseId: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">Select case (optional)</option>
+                  {cases.map((caseItem) => (
+                    <option key={caseItem.id} value={caseItem.id}>
+                      {caseItem.caseNumber} - {caseItem.title}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Description
+              </label>
+              <textarea
+                value={uploadFormData.description}
+                onChange={(e) =>
+                  setUploadFormData({
+                    ...uploadFormData,
+                    description: e.target.value,
+                  })
+                }
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Enter document description"
+              />
+            </div>
+
+            {/* Drag and Drop Upload Area */}
+            <DocumentUpload
+              onUpload={handleUploadDocument}
+              onFilesSelected={setSelectedFiles}
+              maxFiles={5}
+              maxSize={10 * 1024 * 1024} // 10MB
+              disabled={uploading}
+              showPreview={false}
+              autoUpload={false}
+            />
           </div>
-        </div>
+        </ModalDialog>
       )}
 
       {/* Upload Overlay Loader */}
@@ -715,53 +781,47 @@ export default function DocumentsPage() {
       />
 
       {/* View Document Modal */}
-      {showViewModal && selectedDocument && (
+      {showViewModal && selectedDocument ? (
         <DocumentViewer
           documentId={selectedDocument.id}
           documentTitle={selectedDocument.title}
           fileType={selectedDocument.fileType}
           onClose={() => setShowViewModal(false)}
         />
-      )}
+      ) : null}
 
       {/* Delete Document Confirmation Modal */}
-      {showDeleteConfirm && selectedDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Confirm Deletion
-              </h2>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="p-6 text-center">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                Delete Document
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-6">
-                Are you sure you want to delete "{selectedDocument.title}"? This
-                action cannot be undone.
-              </p>
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button onClick={handleDeleteDocument} className="btn-danger">
-                  Delete
-                </button>
-              </div>
-            </div>
+      <ModalDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        header="Confirm Deletion"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button onClick={handleDeleteDocument} className="btn-danger">
+              Delete
+            </button>
           </div>
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <div className="text-center">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            Delete Document
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400">
+            Are you sure you want to delete "{selectedDocument?.title}"? This
+            action cannot be undone.
+          </p>
         </div>
-      )}
+      </ModalDialog>
     </div>
   );
 }

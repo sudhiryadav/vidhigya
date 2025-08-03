@@ -24,6 +24,7 @@ interface UserSettings {
   dateFormat: string;
   theme: string;
   currency: string;
+  fontSize: "xs" | "sm" | "base" | "lg" | "xl";
 
   // Admin settings
   maintenanceMode?: boolean;
@@ -67,6 +68,7 @@ const defaultSettings: UserSettings = {
   dateFormat: "MM/DD/YYYY",
   theme: "system",
   currency: "INR",
+  fontSize: "sm", // Default to small font size
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(

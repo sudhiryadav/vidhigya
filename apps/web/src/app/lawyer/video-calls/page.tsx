@@ -1,5 +1,6 @@
 "use client";
 
+import ModalDialog from "@/components/ui/ModalDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
@@ -804,338 +805,352 @@ export default function VideoCallsPage() {
       </div>
 
       {/* Create Modal (Instant Meeting) */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Create Instant Video Call
-              </h3>
-              <form onSubmit={handleCreateVideoCall} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Title (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={createFormData.title}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        title: e.target.value,
-                      })
-                    }
-                    placeholder="Instant Video Call"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Description (Optional)
-                  </label>
-                  <textarea
-                    value={createFormData.description}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        description: e.target.value,
-                      })
-                    }
-                    placeholder="Meeting description..."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Case (Optional)
-                  </label>
-                  <select
-                    value={createFormData.caseId}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        caseId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select a case</option>
-                    {cases.map((caseItem) => (
-                      <option key={caseItem.id} value={caseItem.id}>
-                        {caseItem.caseNumber} - {caseItem.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {isLoading ? "Creating..." : "Create & Join"}
-                  </button>
-                </div>
-              </form>
-            </div>
+      <ModalDialog
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        header="Create Instant Video Call"
+        footer={
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(false)}
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="create-video-call-form"
+              disabled={isLoading}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+            >
+              {isLoading ? "Creating..." : "Create & Join"}
+            </button>
           </div>
-        </div>
-      )}
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <form
+          id="create-video-call-form"
+          onSubmit={handleCreateVideoCall}
+          className="space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Title (Optional)
+            </label>
+            <input
+              type="text"
+              value={createFormData.title}
+              onChange={(e) =>
+                setCreateFormData({
+                  ...createFormData,
+                  title: e.target.value,
+                })
+              }
+              placeholder="Instant Video Call"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description (Optional)
+            </label>
+            <textarea
+              value={createFormData.description}
+              onChange={(e) =>
+                setCreateFormData({
+                  ...createFormData,
+                  description: e.target.value,
+                })
+              }
+              placeholder="Meeting description..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Case (Optional)
+            </label>
+            <select
+              value={createFormData.caseId}
+              onChange={(e) =>
+                setCreateFormData({
+                  ...createFormData,
+                  caseId: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">Select a case</option>
+              {cases.map((caseItem) => (
+                <option key={caseItem.id} value={caseItem.id}>
+                  {caseItem.caseNumber} - {caseItem.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        </form>
+      </ModalDialog>
 
       {/* Schedule Modal (Future Meeting) */}
-      {showScheduleModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Schedule Video Call
-              </h3>
-              <form onSubmit={handleScheduleVideoCall} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={scheduleFormData.title}
-                    onChange={(e) =>
-                      setScheduleFormData({
-                        ...scheduleFormData,
-                        title: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={scheduleFormData.description}
-                    onChange={(e) =>
-                      setScheduleFormData({
-                        ...scheduleFormData,
-                        description: e.target.value,
-                      })
-                    }
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Start Time *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={scheduleFormData.startTime}
-                    onChange={(e) =>
-                      setScheduleFormData({
-                        ...scheduleFormData,
-                        startTime: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    End Time *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={scheduleFormData.endTime}
-                    onChange={(e) =>
-                      setScheduleFormData({
-                        ...scheduleFormData,
-                        endTime: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Case (Optional)
-                  </label>
-                  <select
-                    value={scheduleFormData.caseId}
-                    onChange={(e) =>
-                      setScheduleFormData({
-                        ...scheduleFormData,
-                        caseId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select a case</option>
-                    {cases.map((caseItem) => (
-                      <option key={caseItem.id} value={caseItem.id}>
-                        {caseItem.caseNumber} - {caseItem.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowScheduleModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isLoading ? "Scheduling..." : "Schedule Call"}
-                  </button>
-                </div>
-              </form>
-            </div>
+      <ModalDialog
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        header="Schedule Video Call"
+        footer={
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowScheduleModal(false)}
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="schedule-video-call-form"
+              disabled={isLoading}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isLoading ? "Scheduling..." : "Schedule Call"}
+            </button>
           </div>
-        </div>
-      )}
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <form
+          id="schedule-video-call-form"
+          onSubmit={handleScheduleVideoCall}
+          className="space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Title *
+            </label>
+            <input
+              type="text"
+              required
+              value={scheduleFormData.title}
+              onChange={(e) =>
+                setScheduleFormData({
+                  ...scheduleFormData,
+                  title: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              value={scheduleFormData.description}
+              onChange={(e) =>
+                setScheduleFormData({
+                  ...scheduleFormData,
+                  description: e.target.value,
+                })
+              }
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Start Time *
+            </label>
+            <input
+              type="datetime-local"
+              required
+              value={scheduleFormData.startTime}
+              onChange={(e) =>
+                setScheduleFormData({
+                  ...scheduleFormData,
+                  startTime: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              End Time *
+            </label>
+            <input
+              type="datetime-local"
+              required
+              value={scheduleFormData.endTime}
+              onChange={(e) =>
+                setScheduleFormData({
+                  ...scheduleFormData,
+                  endTime: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Case (Optional)
+            </label>
+            <select
+              value={scheduleFormData.caseId}
+              onChange={(e) =>
+                setScheduleFormData({
+                  ...scheduleFormData,
+                  caseId: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">Select a case</option>
+              {cases.map((caseItem) => (
+                <option key={caseItem.id} value={caseItem.id}>
+                  {caseItem.caseNumber} - {caseItem.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        </form>
+      </ModalDialog>
 
       {/* Edit Modal */}
-      {showEditModal && selectedVideoCall && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Edit Video Call
-              </h3>
-              <form onSubmit={handleEditVideoCall} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editFormData.title}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        title: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={editFormData.description}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        description: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    rows={3}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Start Time
-                    </label>
-                    <input
-                      type="datetime-local"
-                      required
-                      value={editFormData.startTime}
-                      onChange={(e) =>
-                        setEditFormData({
-                          ...editFormData,
-                          startTime: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      End Time
-                    </label>
-                    <input
-                      type="datetime-local"
-                      required
-                      value={editFormData.endTime}
-                      onChange={(e) =>
-                        setEditFormData({
-                          ...editFormData,
-                          endTime: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={editFormData.status}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        status: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="SCHEDULED">Scheduled</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
-                </div>
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                  >
-                    Update
-                  </button>
-                </div>
-              </form>
+      <ModalDialog
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        header="Edit Video Call"
+        footer={
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowEditModal(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="edit-video-call-form"
+              disabled={isLoading}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isLoading ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <form
+          id="edit-video-call-form"
+          onSubmit={handleEditVideoCall}
+          className="space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Title
+            </label>
+            <input
+              type="text"
+              required
+              value={editFormData.title}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  title: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              value={editFormData.description}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  description: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              rows={3}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Start Time
+              </label>
+              <input
+                type="datetime-local"
+                required
+                value={editFormData.startTime}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    startTime: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                End Time
+              </label>
+              <input
+                type="datetime-local"
+                required
+                value={editFormData.endTime}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    endTime: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              />
             </div>
           </div>
-        </div>
-      )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Status
+            </label>
+            <select
+              value={editFormData.status}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  status: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="SCHEDULED">Scheduled</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+        </form>
+      </ModalDialog>
 
       {/* View Modal */}
       {/* This modal is no longer used for viewing details, but kept for consistency */}
@@ -1228,179 +1243,181 @@ export default function VideoCallsPage() {
       )} */}
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && videoCallToDelete && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-            <div className="mt-3">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20">
-                <X className="h-6 w-6 text-red-600 dark:text-red-400" />
-              </div>
-              <div className="mt-3 text-center">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Delete Video Call
-                </h3>
-                <div className="mt-2 px-7 py-3">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Are you sure you want to delete the video call{" "}
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      "{videoCallToDelete.title}"
-                    </span>
-                    ? This action cannot be undone.
-                  </p>
-                </div>
-              </div>
-              <div className="items-center px-4 py-3">
-                <button
-                  onClick={handleDeleteConfirm}
-                  className="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={handleDeleteCancel}
-                  className="mt-3 px-4 py-2 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-200 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+      <ModalDialog
+        isOpen={showDeleteConfirm}
+        onClose={handleDeleteCancel}
+        header="Delete Video Call"
+        footer={
+          <div className="flex space-x-3">
+            <button
+              onClick={handleDeleteCancel}
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-base font-medium rounded-md shadow-sm hover:bg-gray-200 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteConfirm}
+              className="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300"
+            >
+              Delete
+            </button>
           </div>
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 mb-4">
+            <X className="h-6 w-6 text-red-600 dark:text-red-400" />
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Are you sure you want to delete the video call{" "}
+            <span className="font-medium text-gray-900 dark:text-white">
+              "{videoCallToDelete?.title}"
+            </span>
+            ? This action cannot be undone.
+          </p>
         </div>
-      )}
+      </ModalDialog>
 
       {/* Join Modal with Pre-call Settings */}
-      {showJoinModal && selectedVideoCall && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Join Video Call
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowJoinModal(false);
-                    setSelectedVideoCall(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
+      <ModalDialog
+        isOpen={showJoinModal}
+        onClose={() => {
+          setShowJoinModal(false);
+          setSelectedVideoCall(null);
+        }}
+        header="Join Video Call"
+        footer={
+          <div className="flex space-x-3">
+            <button
+              onClick={() => {
+                setShowJoinModal(false);
+                setSelectedVideoCall(null);
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmJoinCall}
+              disabled={isLoading}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+            >
+              {isLoading ? "Joining..." : "Join Call"}
+            </button>
+          </div>
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <div>
+          <div className="mb-4">
+            <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+              {selectedVideoCall?.title}
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Meeting ID:{" "}
+              <span className="font-mono font-medium text-blue-600 dark:text-blue-400">
+                {selectedVideoCall?.meetingId}
+              </span>
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {formatDate(selectedVideoCall?.startTime || "")} at{" "}
+              {formatTime(selectedVideoCall?.startTime || "")}
+            </p>
+          </div>
 
-              <div className="mb-4">
-                <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                  {selectedVideoCall.title}
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  Meeting ID:{" "}
-                  <span className="font-mono font-medium text-blue-600 dark:text-blue-400">
-                    {selectedVideoCall.meetingId}
-                  </span>
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {formatDate(selectedVideoCall.startTime)} at{" "}
-                  {formatTime(selectedVideoCall.startTime)}
-                </p>
-              </div>
+          <div className="mb-4">
+            <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+              {selectedVideoCall?.title}
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Meeting ID:{" "}
+              <span className="font-mono font-medium text-blue-600 dark:text-blue-400">
+                {selectedVideoCall?.meetingId}
+              </span>
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {formatDate(selectedVideoCall?.startTime || "")} at{" "}
+              {formatTime(selectedVideoCall?.startTime || "")}
+            </p>
+          </div>
 
-              {/* Pre-call Settings */}
-              <div className="mb-6">
-                <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                  Before joining, you can:
-                </h5>
+          {/* Pre-call Settings */}
+          <div className="mb-6">
+            <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+              Before joining, you can:
+            </h5>
 
-                <div className="space-y-3">
-                  {/* Audio Setting */}
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      {preCallAudioEnabled ? (
-                        <Mic className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <MicOff className="h-5 w-5 text-red-600 dark:text-red-400" />
-                      )}
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          Microphone
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {preCallAudioEnabled
-                            ? "Will be enabled"
-                            : "Will be muted"}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() =>
-                        setPreCallAudioEnabled(!preCallAudioEnabled)
-                      }
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        preCallAudioEnabled
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                          : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-                      }`}
-                    >
-                      {preCallAudioEnabled ? "ON" : "OFF"}
-                    </button>
-                  </div>
-
-                  {/* Video Setting */}
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      {preCallVideoEnabled ? (
-                        <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <VideoOff className="h-5 w-5 text-red-600 dark:text-red-400" />
-                      )}
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          Camera
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {preCallVideoEnabled
-                            ? "Will be enabled"
-                            : "Will be turned off"}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() =>
-                        setPreCallVideoEnabled(!preCallVideoEnabled)
-                      }
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        preCallVideoEnabled
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                          : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-                      }`}
-                    >
-                      {preCallVideoEnabled ? "ON" : "OFF"}
-                    </button>
+            <div className="space-y-3">
+              {/* Audio Setting */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  {preCallAudioEnabled ? (
+                    <Mic className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <MicOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      Microphone
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {preCallAudioEnabled
+                        ? "Will be enabled"
+                        : "Will be muted"}
+                    </p>
                   </div>
                 </div>
+                <button
+                  onClick={() => setPreCallAudioEnabled(!preCallAudioEnabled)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    preCallAudioEnabled
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                      : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                  }`}
+                >
+                  {preCallAudioEnabled ? "ON" : "OFF"}
+                </button>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex space-x-3">
+              {/* Video Setting */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  {preCallVideoEnabled ? (
+                    <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <VideoOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      Camera
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {preCallVideoEnabled
+                        ? "Will be enabled"
+                        : "Will be turned off"}
+                    </p>
+                  </div>
+                </div>
                 <button
-                  onClick={() => {
-                    setShowJoinModal(false);
-                    setSelectedVideoCall(null);
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                  onClick={() => setPreCallVideoEnabled(!preCallVideoEnabled)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    preCallVideoEnabled
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                      : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                  }`}
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmJoinCall}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
-                >
-                  Join Call
+                  {preCallVideoEnabled ? "ON" : "OFF"}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
+      </ModalDialog>
     </div>
   );
 }

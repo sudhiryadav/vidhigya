@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { ImageOptimizer } from "@/utils/imageOptimizer";
-import { Upload, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import DragAndDrop from "./DragAndDrop";
@@ -177,16 +177,13 @@ export default function ProfilePictureUpload({
               className="w-full max-w-xs mx-auto"
               showPreview={false}
             >
-              <div className="flex flex-col items-center justify-center space-y-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
-                <Upload className="w-6 h-6 text-gray-400" />
-                <div className="text-center">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Drag & drop your image here
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    or click to browse files
-                  </p>
-                </div>
+              <div className="text-center p-6">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Drag & drop your image here
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  or click to browse files
+                </p>
               </div>
             </DragAndDrop>
 

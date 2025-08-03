@@ -1,5 +1,6 @@
 "use client";
 
+import FontSizeSelector from "@/components/FontSizeSelector";
 import ProfilePictureUpload from "@/components/ProfilePictureUpload";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
@@ -526,6 +527,11 @@ export default function ClientSettingsPage() {
                         </select>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Font Size Settings */}
+                  <div className="mt-8">
+                    <FontSizeSelector />
                   </div>
                 </div>
               )}

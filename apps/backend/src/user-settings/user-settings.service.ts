@@ -22,6 +22,7 @@ export interface UpdateUserSettingsDto {
   timezone?: string;
   dateFormat?: string;
   theme?: string;
+  fontSize?: string;
   // Admin settings
   maintenanceMode?: boolean;
   debugMode?: boolean;
@@ -82,6 +83,7 @@ export class UserSettingsService {
         id: null,
         userId,
         currency: 'INR' as Currency,
+        fontSize: 'sm',
         createdAt: new Date(),
         updatedAt: new Date(),
         user: await this.prisma.user.findUnique({
