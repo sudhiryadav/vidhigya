@@ -1,8 +1,8 @@
 "use client";
 
+import { useToast } from "@/components/ui/ToastContainer";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
 import DragAndDrop from "./DragAndDrop";
 
 interface DocumentUploadProps {
@@ -36,6 +36,7 @@ export default function DocumentUpload({
   showPreview = false,
   autoUpload = false, // Default to false for manual upload
 }: DocumentUploadProps) {
+  const { showSuccess, showError } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
@@ -54,17 +55,20 @@ export default function DocumentUpload({
       try {
         setIsUploading(true);
         await onUpload(files);
-        toast.success(`${files.length} file(s) uploaded successfully`);
+        showSuccess(`${files.length} file(s) uploaded successfully`);
       } catch (error) {
         console.error("Upload error:", error);
-        toast.error("Failed to upload files");
+        showError("Failed to upload files");
       } finally {
         setIsUploading(false);
       }
     } else {
       // Manual upload behavior - just store files
       setSelectedFiles((prev) => [...prev, ...files]);
-      toast.success(`${files.length} file(s) selected`);
+      // Only show success toast if files were actually added
+      if (files.length > 0) {
+        showSuccess(`${files.length} file(s) selected`);
+      }
     }
   };
 

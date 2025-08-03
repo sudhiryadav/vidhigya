@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/ui/ToastContainer";
 import { Upload, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -29,6 +30,7 @@ export default function DragAndDrop({
   showPreview = false,
   previewClassName = "",
 }: DragAndDropProps) {
+  const { showError } = useToast();
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
 
@@ -42,7 +44,10 @@ export default function DragAndDrop({
         setPreviewUrls(urls);
       }
 
-      onFilesAccepted(acceptedFiles);
+      // Only call onFilesAccepted if there are actually accepted files
+      if (acceptedFiles.length > 0) {
+        onFilesAccepted(acceptedFiles);
+      }
     },
     [onFilesAccepted, disabled, showPreview]
   );
@@ -56,6 +61,34 @@ export default function DragAndDrop({
       disabled,
       onDragEnter: () => setDragActive(true),
       onDragLeave: () => setDragActive(false),
+      onDropRejected: (rejectedFiles) => {
+        rejectedFiles.forEach((rejection) => {
+          if (
+            rejection.errors.some((error) => error.code === "file-too-large")
+          ) {
+            const maxSizeMB = Math.round(maxSize / (1024 * 1024));
+            showError(
+              `File "${rejection.file.name}" is too large. Maximum size is ${maxSizeMB}MB.`
+            );
+          } else if (
+            rejection.errors.some((error) => error.code === "file-invalid-type")
+          ) {
+            showError(
+              `File "${rejection.file.name}" is not a supported file type.`
+            );
+          } else if (
+            rejection.errors.some((error) => error.code === "too-many-files")
+          ) {
+            showError(
+              `Too many files. Maximum allowed is ${maxFiles} file(s).`
+            );
+          } else {
+            showError(
+              `Error uploading "${rejection.file.name}". Please try again.`
+            );
+          }
+        });
+      },
     });
 
   const clearPreviews = () => {
@@ -98,12 +131,17 @@ export default function DragAndDrop({
                 {isDragActive && !isDragReject
                   ? "Drop files here"
                   : isDragReject
-                    ? "Invalid file type"
+                    ? "File type or size not allowed"
                     : "Drag & drop files here"}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 or click to select files
               </p>
+              {isDragReject && (
+                <p className="text-xs text-red-500 mt-1">
+                  Max size: {Math.round(maxSize / (1024 * 1024))}MB
+                </p>
+              )}
             </div>
           )}
         </div>

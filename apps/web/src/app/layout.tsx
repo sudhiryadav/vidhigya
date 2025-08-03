@@ -2,6 +2,7 @@
 
 import { AuthGuard } from "@/components/AuthGuard";
 import { LayoutWrapper } from "@/components/LayoutWrapper";
+import { ToastContainer } from "@/components/ui/ToastContainer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FontSizeProvider } from "@/contexts/FontSizeContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
@@ -26,9 +27,11 @@ export default function RootLayout({
           <AuthProvider>
             <SettingsProvider>
               <FontSizeProvider>
-                <AuthGuard>
-                  <LayoutWrapper>{children}</LayoutWrapper>
-                </AuthGuard>
+                <ToastContainer>
+                  <AuthGuard>
+                    <LayoutWrapper>{children}</LayoutWrapper>
+                  </AuthGuard>
+                </ToastContainer>
               </FontSizeProvider>
             </SettingsProvider>
           </AuthProvider>

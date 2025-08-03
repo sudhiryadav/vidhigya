@@ -1,8 +1,8 @@
 "use client";
 
 import { X } from "lucide-react";
-import React, { useEffect } from "react";
-
+import React, { useEffect, useState } from "react";
+import "../../styles/modal.css";
 interface ModalDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -30,21 +30,31 @@ export default function ModalDialog({
   closeOnEscape = false,
   closeOnOverlayClick = false,
 }: ModalDialogProps) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+    } else {
+      setIsVisible(false);
+    }
+  }, [isOpen]);
+
   if (!isOpen) {
     return null;
   }
 
   const maxWidthClasses = {
-    sm: "max-w-sm",
-    md: "max-w-md",
-    lg: "max-w-lg",
-    xl: "max-w-xl",
-    "2xl": "max-w-2xl",
-    "3xl": "max-w-3xl",
-    "4xl": "max-w-4xl",
-    "5xl": "max-w-5xl",
-    "6xl": "max-w-6xl",
-    "7xl": "max-w-7xl",
+    sm: "modal-sm",
+    md: "modal-md",
+    lg: "modal-lg",
+    xl: "modal-xl",
+    "2xl": "modal-2xl",
+    "3xl": "modal-3xl",
+    "4xl": "modal-4xl",
+    "5xl": "modal-5xl",
+    "6xl": "modal-6xl",
+    "7xl": "modal-7xl",
   };
 
   // Handle ESC key press
@@ -69,12 +79,9 @@ export default function ModalDialog({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-      onClick={handleOverlayClick}
-    >
+    <div className="modal-overlay" onClick={handleOverlayClick}>
       <div
-        className={`flex flex-col rounded-lg bg-white dark:bg-gray-800 shadow-xl mx-4 ${maxWidthClasses[maxWidth as keyof typeof maxWidthClasses]} w-full ${className}`}
+        className={`modal-content ${isVisible ? "show" : "hide"} ${maxWidthClasses[maxWidth as keyof typeof maxWidthClasses]} ${className}`}
         style={{
           maxHeight,
           minHeight: 0,
@@ -83,13 +90,11 @@ export default function ModalDialog({
       >
         {/* Header with clear border */}
         {header && (
-          <div className="flex items-center justify-between border-b-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-6 py-4 rounded-t-lg">
-            <div className="flex-1 text-xl font-semibold text-gray-900 dark:text-white">
-              {header}
-            </div>
+          <div className="modal-header">
+            <div className="modal-header-content">{header}</div>
             <button
               onClick={onClose}
-              className="ml-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full p-1"
+              className="modal-close-button"
               aria-label="Close dialog"
             >
               <X className="w-6 h-6" />
@@ -98,16 +103,10 @@ export default function ModalDialog({
         )}
 
         {/* Content (scrollable) with clear separation */}
-        <div className="min-h-0 flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-800">
-          {children}
-        </div>
+        <div className="modal-body">{children}</div>
 
         {/* Footer with clear border */}
-        {footer && (
-          <div className="flex justify-end border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-6 py-4 rounded-b-lg">
-            {footer}
-          </div>
-        )}
+        {footer && <div className="modal-footer">{footer}</div>}
       </div>
     </div>
   );
