@@ -771,7 +771,7 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
         </div>
 
         {/* Context Input */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 hidden">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Context (Optional)
           </label>

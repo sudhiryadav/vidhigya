@@ -220,7 +220,8 @@ class QueryRequest(BaseModel):
 @app.function(
     image=image,
     # gpu="T4",
-    gpu="A10G",
+    # gpu="A10G",
+    gpu="L40S",
     timeout=300,
     memory=4096,
     volumes={"/data": volume},
