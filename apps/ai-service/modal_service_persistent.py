@@ -219,7 +219,8 @@ class QueryRequest(BaseModel):
 # Query endpoint (GPU for LLM) - Updated to use Qdrant
 @app.function(
     image=image,
-    gpu="T4",
+    # gpu="T4",
+    gpu="A10G",
     timeout=300,
     memory=4096,
     volumes={"/data": volume},
@@ -353,7 +354,7 @@ async def query_documents_endpoint(
                 from fastapi.responses import StreamingResponse
 
                 def generate_no_results_stream():
-                    yield f"data: {json.dumps({'response': 'I could not find any relevant information in your documents to answer your question. Please try rephrasing your question or make sure you have uploaded the relevant documents.', 'sources': [], 'done': True})}\n\n"
+                    yield f"data: {json.dumps({'response': 'I could not find any relevant information. Please try rephrasing your question or make sure you have uploaded the relevant documents.', 'sources': [], 'done': True})}\n\n"
 
                 return StreamingResponse(
                     generate_no_results_stream(),

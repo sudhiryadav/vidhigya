@@ -6,7 +6,6 @@ import {
   Bot,
   Cloud,
   Copy,
-  ExternalLink,
   FileText,
   Loader2,
   Send,
@@ -15,7 +14,7 @@ import {
   User,
   X,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 interface QAMessage {
@@ -205,10 +204,20 @@ function DocumentViewer({
     const fetchDocument = async () => {
       try {
         setLoading(true);
-        const document = await apiClient.getDocument(documentId);
-        setDocumentContent(
-          (document as any).content || "Document content not available"
-        );
+        console.log("Fetching document:", documentId);
+        const document = (await apiClient.getDocument(documentId)) as any;
+        console.log("Document received:", {
+          id: document.id,
+          title: document.title,
+          contentLength: document.content?.length || 0,
+          hasContent: !!document.content,
+        });
+
+        if (document.content) {
+          setDocumentContent(document.content);
+        } else {
+          setError("Document content not available");
+        }
       } catch (err) {
         console.error("Error fetching document:", err);
         setError("Failed to load document content");
@@ -240,78 +249,183 @@ function DocumentViewer({
     );
   };
 
+  const handleOpenInNewWindow = async () => {
+    try {
+      // Get the document download URL from the backend
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/documents/${documentId}/download`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch document: ${response.status}`);
+      }
+
+      // Get the blob and create a download link
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      // Create a temporary link and trigger download
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = documentTitle;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the object URL
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      console.error("Error opening document:", error);
+      toast.error("Failed to open document");
+    }
+  };
+
+  const header = (
+    <div className="flex items-center space-x-3">
+      <FileText className="w-5 h-5 text-blue-600" />
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          {documentTitle}
+        </h3>
+        {highlightedText && (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Highlighted: "{highlightedText.substring(0, 50)}..."
+          </p>
+        )}
+      </div>
+    </div>
+  );
+
+  const footer = (
+    <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+      <span>Document ID: {documentId}</span>
+      <span>Preview Mode</span>
+    </div>
+  );
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl h-5/6 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-3">
-            <FileText className="w-5 h-5 text-blue-600" />
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {documentTitle}
-              </h3>
-              {highlightedText && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Highlighted: "{highlightedText.substring(0, 50)}..."
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() =>
-                window.open(`/lawyer/documents/${documentId}`, "_blank")
-              }
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              title="Open full document"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+    <ModalDialog
+      isOpen={true}
+      onClose={onClose}
+      header={header}
+      footer={footer}
+      maxWidth="6xl"
+      maxHeight="90vh"
+      closeOnEscape={true}
+      closeOnOverlayClick={true}
+    >
+      {/* Commenting out the download button for now */}
+      {/* <div className="flex items-center justify-end space-x-2 mb-4">
+        <button
+          onClick={handleOpenInNewWindow}
+          className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          title="Download document"
+        >
+          <Download className="w-4 h-4" />
+        </button>
+      </div> */}
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-              <span className="ml-2 text-gray-600 dark:text-gray-400">
-                Loading document...
-              </span>
-            </div>
-          ) : error ? (
-            <div className="text-center text-red-600 dark:text-red-400">
-              {error}
-            </div>
-          ) : (
-            <div className="prose prose-sm max-w-none dark:prose-invert">
-              <div className="whitespace-pre-wrap text-gray-900 dark:text-white">
-                {highlightText(documentContent, startChar, endChar)}
+      {loading ? (
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+          <span className="ml-2 text-gray-600 dark:text-gray-400">
+            Loading document preview...
+          </span>
+        </div>
+      ) : error ? (
+        <div className="text-center text-red-600 dark:text-red-400">
+          {error}
+        </div>
+      ) : (
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+          <div className="whitespace-pre-wrap text-gray-900 dark:text-white text-sm">
+            {startChar && endChar ? (
+              // Show preview around the highlighted source
+              <div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 mb-4">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                    📍 Source Preview
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-300">
+                    Showing the relevant section from the document
+                  </p>
+                </div>
+
+                {/* Show context before the highlight */}
+                {startChar > 200 && (
+                  <div className="text-gray-500 dark:text-gray-400 mb-2">
+                    <p className="text-xs italic">
+                      ...{" "}
+                      {documentContent.substring(startChar - 200, startChar)}
+                    </p>
+                  </div>
+                )}
+
+                {/* Show the highlighted source */}
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3 mb-3">
+                  {highlightText(documentContent, startChar, endChar)}
+                </div>
+
+                {/* Show context after the highlight */}
+                {endChar < documentContent.length - 200 && (
+                  <div className="text-gray-500 dark:text-gray-400">
+                    <p className="text-xs italic">
+                      {documentContent.substring(endChar, endChar + 200)} ...
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    <strong>Document Info:</strong>{" "}
+                    {documentContent.length.toLocaleString()} characters total
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    <strong>Source Position:</strong> Characters {startChar}-
+                    {endChar}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            ) : (
+              // Fallback: show first 500 characters if no highlighting data
+              <div>
+                <div className="bg-gray-50 dark:bg-gray-800 border-l-4 border-gray-400 p-4 mb-4">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    📄 Document Preview
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Showing first 500 characters (no specific source location
+                    available)
+                  </p>
+                </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-            <span>Document ID: {documentId}</span>
-            {startChar && endChar && (
-              <span>
-                Highlighted text position: {startChar}-{endChar}
-              </span>
+                <div className="whitespace-pre-wrap">
+                  {documentContent.substring(0, 500)}
+                  {documentContent.length > 500 && (
+                    <span className="text-gray-500 dark:text-gray-400">
+                      ...
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    <strong>Document Length:</strong>{" "}
+                    {documentContent.length.toLocaleString()} characters
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         </div>
-      </div>
-    </div>
+      )}
+    </ModalDialog>
   );
 }
 
@@ -326,7 +440,118 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
     documentId: string;
     documentTitle: string;
     fileType: string;
+    highlightedText?: string;
+    startChar?: number;
+    endChar?: number;
   } | null>(null);
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load chat history from localStorage and backend
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      try {
+        // // Load from localStorage first (for immediate display)
+        // const savedMessages = localStorage.getItem("documentQA_messages");
+        // if (savedMessages) {
+        //   const parsedMessages = JSON.parse(savedMessages).map((msg: any) => ({
+        //     ...msg,
+        //     timestamp: new Date(msg.timestamp),
+        //   }));
+        //   setMessages(parsedMessages);
+        // }
+
+        // Load initial batch from backend (first 20 messages)
+        await loadMoreMessages(1);
+      } catch (error) {
+        console.error("Error loading chat history:", error);
+      }
+    };
+
+    loadChatHistory();
+  }, []);
+
+  // Load more messages function
+  const loadMoreMessages = async (page: number = currentPage + 1) => {
+    try {
+      setIsLoadingHistory(true);
+      const response = await apiClient.getDocumentQueryHistory(page, 20);
+      if (response && response.length > 0) {
+        const backendMessages = response
+          .map((query: any) => ({
+            id: query.id,
+            type: "question" as const,
+            content: query.question,
+            timestamp: new Date(query.createdAt),
+            sources: query.sources || undefined,
+          }))
+          .concat(
+            response.map((query: any) => ({
+              id: `${query.id}_answer`,
+              type: "answer" as const,
+              content: query.answer,
+              timestamp: new Date(query.createdAt),
+              question: query.question,
+              sources: query.sources || undefined,
+            }))
+          )
+          .sort(
+            (a: any, b: any) =>
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+
+        if (page === 1) {
+          // First load - replace messages
+          setMessages(backendMessages);
+          setChatHistory(response);
+          localStorage.setItem(
+            "documentQA_messages",
+            JSON.stringify(backendMessages)
+          );
+        } else {
+          // Load more - prepend to existing messages
+          setMessages((prev) => {
+            const newMessages = [...backendMessages, ...prev];
+            localStorage.setItem(
+              "documentQA_messages",
+              JSON.stringify(newMessages)
+            );
+            return newMessages;
+          });
+          setChatHistory((prev) => [...response, ...prev]);
+        }
+
+        setCurrentPage(page);
+        setHasMoreMessages(response.length === 20); // If we got less than 20, no more messages
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch (error) {
+      console.error("Error loading more messages:", error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Load analytics
+  const loadAnalytics = async () => {
+    try {
+      const response = await apiClient.getAIUsageAnalytics();
+      setAnalytics(response);
+    } catch (error) {
+      console.error("Error loading analytics:", error);
+    }
+  };
+
+  // Auto-scroll to bottom when new messages are added
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleAskQuestion = async () => {
     if (!question.trim()) return;
@@ -368,7 +593,15 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
       };
 
       // Add AI response to chat
-      setMessages((prev) => [...prev, aiMessage]);
+      setMessages((prev) => {
+        const newMessages = [...prev, aiMessage];
+        // Save to localStorage
+        localStorage.setItem(
+          "documentQA_messages",
+          JSON.stringify(newMessages)
+        );
+        return newMessages;
+      });
     } catch (err) {
       console.error("Error asking question:", err);
       setError(err instanceof Error ? err.message : "Failed to get answer");
@@ -435,6 +668,9 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
       documentId: source.document_id,
       documentTitle: source.document_title,
       fileType: "document", // Assuming all sources are documents for now
+      highlightedText: source.content,
+      startChar: source.start_char,
+      endChar: source.end_char,
     });
   };
 
@@ -509,6 +745,16 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
           </div>
           <div className="flex items-center space-x-2">
             <button
+              onClick={async () => {
+                await loadAnalytics();
+                setShowAnalytics(true);
+              }}
+              className="flex items-center space-x-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 shadow-md hover:shadow-lg"
+            >
+              <FileText className="w-4 h-4" />
+              <span className="text-sm font-medium">Analytics</span>
+            </button>
+            <button
               onClick={() => setShowWordCloudOverlay(true)}
               className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
             >
@@ -540,6 +786,26 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Load Previous Messages Button */}
+          {hasMoreMessages && (
+            <div className="flex justify-center">
+              <button
+                onClick={() => loadMoreMessages()}
+                disabled={isLoadingHistory}
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoadingHistory ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4" />
+                )}
+                <span className="text-sm font-medium">
+                  {isLoadingHistory ? "Loading..." : "Load Previous Messages"}
+                </span>
+              </button>
+            </div>
+          )}
+
           {messages.length === 0 ? (
             <div className="text-center text-gray-500 dark:text-gray-400 py-8">
               <Bot className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -598,7 +864,38 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
                                           </p>
                                         )}
                                         <p className="text-gray-600 dark:text-gray-300 mt-1">
-                                          {source.content.substring(0, 100)}...
+                                          {source.content ? (
+                                            source.start_char &&
+                                            source.end_char ? (
+                                              <>
+                                                {source.content.substring(
+                                                  0,
+                                                  source.start_char
+                                                )}
+                                                <mark className="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">
+                                                  {source.content.substring(
+                                                    source.start_char,
+                                                    source.end_char
+                                                  )}
+                                                </mark>
+                                                {source.content.substring(
+                                                  source.end_char,
+                                                  Math.min(
+                                                    source.end_char + 50,
+                                                    source.content.length
+                                                  )
+                                                )}
+                                                {source.content.length >
+                                                source.end_char + 50
+                                                  ? "..."
+                                                  : ""}
+                                              </>
+                                            ) : (
+                                              `${source.content.substring(0, 100)}...`
+                                            )
+                                          ) : (
+                                            "Content not available"
+                                          )}
                                         </p>
                                       </div>
                                       <FileText className="w-3 h-3 text-gray-400 ml-2" />
@@ -663,6 +960,9 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
               </div>
             </div>
           )}
+
+          {/* Scroll to bottom reference */}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}
@@ -702,11 +1002,129 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
         <DocumentViewer
           documentId={selectedDocument.documentId}
           documentTitle={selectedDocument.documentTitle}
-          highlightedText={undefined} // No highlighted text in this context
-          startChar={undefined}
-          endChar={undefined}
+          highlightedText={selectedDocument.highlightedText}
+          startChar={selectedDocument.startChar}
+          endChar={selectedDocument.endChar}
           onClose={() => setSelectedDocument(null)}
         />
+      )}
+
+      {/* Analytics Modal */}
+      {showAnalytics && (
+        <ModalDialog
+          isOpen={showAnalytics}
+          onClose={() => setShowAnalytics(false)}
+          header={
+            <div className="flex items-center space-x-2">
+              <FileText className="w-5 h-5 text-green-600" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                AI Assistant Analytics
+              </h3>
+            </div>
+          }
+          maxWidth="4xl"
+          maxHeight="80vh"
+        >
+          <div className="space-y-6">
+            {analytics ? (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      Total Queries
+                    </h4>
+                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                      {analytics.totalQueries}
+                    </p>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-green-800 dark:text-green-200">
+                      Avg Response Time
+                    </h4>
+                    <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+                      {analytics.avgResponseTime}ms
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                      Query Types
+                    </h4>
+                    <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                      {analytics.queriesByType?.length || 0}
+                    </p>
+                  </div>
+                  <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                      Daily Usage
+                    </h4>
+                    <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
+                      {analytics.dailyUsage?.length || 0}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Query Types Breakdown */}
+                {analytics.queriesByType &&
+                  analytics.queriesByType.length > 0 && (
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
+                      <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                        Query Types
+                      </h4>
+                      <div className="space-y-2">
+                        {analytics.queriesByType.map(
+                          (type: any, index: number) => (
+                            <div
+                              key={index}
+                              className="flex justify-between items-center"
+                            >
+                              <span className="text-sm text-gray-600 dark:text-gray-300 capitalize">
+                                {type.type.replace(/_/g, " ").toLowerCase()}
+                              </span>
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {type.count}
+                              </span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Recent Activity */}
+                {chatHistory && chatHistory.length > 0 && (
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                      Recent Queries
+                    </h4>
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {chatHistory.slice(0, 10).map((query: any) => (
+                        <div
+                          key={query.id}
+                          className="border-l-4 border-blue-500 pl-4"
+                        >
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {query.question}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {new Date(query.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+                <p className="text-gray-600 dark:text-gray-400">
+                  Loading analytics...
+                </p>
+              </div>
+            )}
+          </div>
+        </ModalDialog>
       )}
 
       {/* Word Cloud Overlay */}

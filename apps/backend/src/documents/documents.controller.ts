@@ -19,6 +19,7 @@ import { DocumentCategory, DocumentStatus } from '@prisma/client';
 import { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AIService } from '../config/ai.service';
 import { QdrantService } from '../config/qdrant.service';
 import { S3Service } from '../config/s3.config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -71,6 +72,7 @@ export class DocumentsController {
     private readonly s3Service: S3Service,
     private readonly configService: ConfigService,
     private readonly qdrantService: QdrantService,
+    private readonly aiService: AIService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -252,123 +254,152 @@ export class DocumentsController {
       }
 
       if (mode === 'qa') {
-        // Q&A mode - use Modal.com API for AI generation
-        const modalServiceUrl = this.configService.get<string>(
-          'MODAL_QUERY_DOCUMENTS_URL',
-        );
-        const modalApiKey = this.configService.get<string>(
-          'MODAL_DOT_COM_X_API_KEY',
-        );
-
-        if (!modalServiceUrl || !modalApiKey) {
-          throw new BadRequestException('Modal service not configured');
-        }
-
-        console.log('Calling Modal.com API for Q&A:', {
-          url: modalServiceUrl,
-          hasApiKey: !!modalApiKey,
-        });
-
-        // Prepare headers
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          'x-api-key': modalApiKey,
-        };
-
-        const requestBody = {
-          query: query,
-          user_id: req.user.sub,
-          history: context ? [{ role: 'user', content: context }] : [],
-        };
-
-        const modalResponse = await fetch(modalServiceUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(requestBody),
-        });
-
-        if (!modalResponse.ok) {
-          const errorText = await modalResponse.text();
-          console.error('Modal API error:', {
-            status: modalResponse.status,
-            statusText: modalResponse.statusText,
-            errorText,
-          });
-          throw new BadRequestException(
-            `Failed to generate AI answer: ${modalResponse.status} - ${errorText}`,
-          );
-        }
-
-        // Modal returns streaming response, so we need to process it
-        const reader = modalResponse.body?.getReader();
-        if (!reader) {
-          throw new BadRequestException('No response body from Modal API');
-        }
-
-        const decoder = new TextDecoder();
-        let fullResponse = '';
-        let sources: any[] = [];
-        const isDone = false;
+        // AI Assistant mode - use Mistral 7B for sophisticated AI responses
+        console.log('Using Mistral 7B for AI Assistant mode');
 
         try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+          // Use the AIService to generate sophisticated AI responses
+          const aiResponse = await this.aiService.generateAIResponse(
+            query,
+            req.user.sub,
+            context,
+          );
 
-            const chunk = decoder.decode(value);
+          // Map filenames to actual document IDs
+          const documentMap = new Map();
+          const documents = await this.prisma.legalDocument.findMany({
+            where: { uploadedById: req.user.sub },
+            select: { id: true, originalFilename: true, title: true },
+          });
 
-            // Parse SSE format
-            const lines = chunk.split('\n');
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const jsonStr = line.slice(6); // Remove 'data: ' prefix
-                  const data = JSON.parse(jsonStr) as {
-                    response?: string;
-                    sources?: any[];
-                    done?: boolean;
-                  };
-
-                  if (data.response) {
-                    fullResponse += data.response;
-                  }
-                  if (data.sources) {
-                    sources = data.sources;
-                  }
-                  if (data.done) {
-                    // Stream is complete
-                  }
-                } catch {
-                  // Ignore JSON parsing errors for non-JSON lines
-                }
-              }
+          documents.forEach((doc) => {
+            if (doc.originalFilename) {
+              documentMap.set(doc.originalFilename, {
+                id: doc.id,
+                title: (doc.title || doc.originalFilename) as string,
+              });
             }
+          });
+
+          const result = {
+            question: query,
+            answer: aiResponse.response,
+            sources: aiResponse.sources.map((source) => {
+              const filename = source.document || 'Unknown Document';
+              const documentInfo = documentMap.get(filename) as
+                | { id: string; title: string }
+                | undefined;
+
+              return {
+                document_id: documentInfo?.id || 'unknown',
+                document_title: documentInfo?.title || filename,
+                content: filename,
+                score: source.similarity,
+                page_number: undefined,
+                start_char: undefined,
+                end_char: undefined,
+              };
+            }),
+            confidence: 0.8, // High confidence for AI-generated responses
+            generated_at: new Date().toISOString(),
+          };
+
+          // Log the AI query
+          await this.documentsService.logDocumentQuery(
+            req.user.sub,
+            query,
+            aiResponse.response,
+            undefined,
+            aiResponse.sources,
+            undefined,
+            undefined,
+            QueryType.GENERAL,
+          );
+
+          return result;
+        } catch (error) {
+          console.error('AI Service error:', error);
+
+          // Fallback to fast Qdrant-based response if AI service fails
+          console.log('Falling back to Qdrant-based response');
+
+          const searchResults = await this.qdrantService.searchDocuments(
+            query,
+            req.user.sub,
+            limit,
+          );
+
+          if (!searchResults || searchResults.length === 0) {
+            const result = {
+              question: query,
+              answer:
+                'I could not find any relevant information. Please try rephrasing your question or make sure you have uploaded the relevant documents.',
+              sources: [],
+              confidence: 0.0,
+              generated_at: new Date().toISOString(),
+            };
+
+            // Log the Q&A query
+            await this.documentsService.logDocumentQuery(
+              req.user.sub,
+              query,
+              result.answer,
+              undefined,
+              [],
+              undefined,
+              undefined,
+              QueryType.GENERAL,
+            );
+
+            return result;
           }
-        } finally {
-          reader.releaseLock();
+
+          // Generate a comprehensive answer based on the search results
+          let answer = `Based on your documents, here's what I found about "${query}":\n\n`;
+
+          // Add the most relevant information from the top results
+          const topResults = searchResults.slice(0, 3);
+          for (let i = 0; i < topResults.length; i++) {
+            const result = topResults[i];
+            answer += `${i + 1}. ${result.content.substring(0, 300)}${
+              result.content.length > 300 ? '...' : ''
+            }\n\n`;
+          }
+
+          answer += `\nThis answer is based on ${searchResults.length} relevant document sections from your uploaded files.`;
+
+          const fallbackResult = {
+            question: query,
+            answer: answer,
+            sources: searchResults.map((result) => ({
+              document_id: result.document_id,
+              content: result.content,
+              score: result.score,
+              page_number: result.page_number,
+              start_char: result.start_char,
+              end_char: result.end_char,
+            })),
+            confidence: Math.min(
+              0.9,
+              Math.max(0.3, searchResults[0]?.score || 0.3),
+            ),
+            generated_at: new Date().toISOString(),
+          };
+
+          // Log the Q&A query
+          await this.documentsService.logDocumentQuery(
+            req.user.sub,
+            query,
+            answer,
+            undefined,
+            searchResults,
+            undefined,
+            undefined,
+            QueryType.GENERAL,
+          );
+
+          return fallbackResult;
         }
-
-        const result = {
-          question: query,
-          answer: fullResponse || 'No answer generated',
-          sources: sources,
-          confidence: 0.8, // Default confidence for Modal responses
-          generated_at: new Date().toISOString(),
-        };
-
-        // Log the Q&A query
-        await this.documentsService.logDocumentQuery(
-          req.user.sub,
-          query,
-          fullResponse || 'No answer generated',
-          undefined,
-          sources,
-          undefined,
-          undefined,
-          QueryType.GENERAL,
-        );
-
-        return result;
       } else {
         // Search mode
         const searchResults = await this.qdrantService.searchDocuments(
@@ -410,6 +441,26 @@ export class DocumentsController {
   @Get()
   findAll(@Request() req: AuthenticatedRequest, @Query() query: DocumentQuery) {
     return this.documentsService.findAll(req.user.sub, query);
+  }
+
+  @Get('query-history')
+  async getQueryHistory(
+    @Request() req: AuthenticatedRequest,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20',
+  ) {
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const queries = await this.prisma.documentQuery.findMany({
+      where: { userId: req.user.sub },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limitNum,
+    });
+
+    return queries;
   }
 
   @Get(':id')
@@ -538,7 +589,7 @@ export class DocumentsController {
       res.setHeader('Content-Type', contentType);
 
       // Use original filename from database or fallback to document title
-      const originalFilename = document.originalFilename;
+      const originalFilename = document.originalFilename as string | null;
       const filename =
         originalFilename || `${document.title || 'document'}.${fileExtension}`;
 

@@ -536,6 +536,16 @@ class ApiClient {
     return this.request(`/reports/ai-usage?${params.toString()}`);
   }
 
+  async getDocumentQueryHistory(
+    page: number = 1,
+    limit: number = 20
+  ): Promise<any> {
+    const params = new URLSearchParams();
+    params.append("page", page.toString());
+    params.append("limit", limit.toString());
+    return this.request(`/documents/query-history?${params.toString()}`);
+  }
+
   async getFeedbackAnalytics(
     startDate?: string,
     endDate?: string
