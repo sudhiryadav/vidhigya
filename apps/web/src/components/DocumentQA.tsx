@@ -331,36 +331,44 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
   const handleAskQuestion = async () => {
     if (!question.trim()) return;
 
+    // Add user message immediately
+    const userMessage: QAMessage = {
+      id: Date.now().toString(),
+      type: "question",
+      content: question,
+      timestamp: new Date(),
+    };
+
+    // Add user message to chat immediately
+    setMessages((prev) => [...prev, userMessage]);
+
+    // Clear the input immediately
+    const currentQuestion = question;
+    setQuestion("");
+    setContext("");
+
     setIsLoading(true);
     setError(null);
 
     try {
       const response = await apiClient.queryDocuments(
-        question,
+        currentQuestion,
         "qa",
         context,
         10
       );
-
-      const newMessage: QAMessage = {
-        id: Date.now().toString(),
-        type: "question",
-        content: question,
-        timestamp: new Date(),
-      };
 
       const aiMessage: QAMessage = {
         id: (Date.now() + 1).toString(),
         type: "answer",
         content: response.answer,
         timestamp: new Date(),
-        question: question, // Store the question for feedback
+        question: currentQuestion, // Store the question for feedback
         sources: response.sources,
       };
 
-      setMessages((prev) => [...prev, newMessage, aiMessage]);
-      setQuestion("");
-      setContext("");
+      // Add AI response to chat
+      setMessages((prev) => [...prev, aiMessage]);
     } catch (err) {
       console.error("Error asking question:", err);
       setError(err instanceof Error ? err.message : "Failed to get answer");
@@ -434,10 +442,7 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
     // Close the overlay
     setShowWordCloudOverlay(false);
 
-    // Set the question in the input
-    setQuestion(suggestion);
-
-    // Create the question message
+    // Create the question message and add it immediately
     const questionMessage: QAMessage = {
       id: Date.now().toString(),
       type: "question",
@@ -445,6 +450,7 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
       timestamp: new Date(),
     };
 
+    // Add user message to chat immediately
     setMessages((prev) => [...prev, questionMessage]);
     setIsLoading(true);
 
@@ -460,6 +466,7 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
         sources: response.sources,
       };
 
+      // Add AI response to chat
       setMessages((prev) => [...prev, answerMessage]);
       // Show success message
       console.log("Answer generated successfully!");
