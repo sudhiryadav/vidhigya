@@ -1,6 +1,7 @@
 "use client";
 
 import ModalDialog from "@/components/ui/ModalDialog";
+import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
@@ -260,18 +261,27 @@ export default function ClientsPage() {
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="all">All Clients</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
+                  <CustomSelect
+                    label="Status"
+                    options={[
+                      { value: "all", label: "All Clients" },
+                      { value: "active", label: "Active" },
+                      { value: "inactive", label: "Inactive" },
+                    ]}
+                    value={{
+                      value: statusFilter,
+                      label:
+                        statusFilter === "all"
+                          ? "All Clients"
+                          : statusFilter === "active"
+                            ? "Active"
+                            : "Inactive",
+                    }}
+                    onChange={(option) =>
+                      setStatusFilter(option?.value || "all")
+                    }
+                    placeholder="Select status"
+                  />
                 </div>
               </div>
             </div>

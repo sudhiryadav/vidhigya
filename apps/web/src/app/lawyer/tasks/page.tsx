@@ -14,7 +14,6 @@ import {
   Plus,
   Search,
   Trash2,
-  X,
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -502,26 +501,33 @@ export default function TasksPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <select
-                          value={task.status}
-                          onChange={(e) =>
-                            handleStatusChange(task.id, e.target.value)
+                        <CustomSelect
+                          value={{
+                            value: task.status,
+                            label:
+                              task.status === "PENDING"
+                                ? "Pending"
+                                : task.status === "IN_PROGRESS"
+                                  ? "In Progress"
+                                  : task.status === "COMPLETED"
+                                    ? "Completed"
+                                    : "Cancelled",
+                          }}
+                          onChange={(option) =>
+                            handleStatusChange(
+                              task.id,
+                              option?.value || "PENDING"
+                            )
                           }
-                          className={`text-sm rounded-full px-2 py-1 font-medium border-0 focus:ring-2 focus:ring-blue-500 ${
-                            task.status === "PENDING"
-                              ? "bg-gray-100 text-gray-800"
-                              : task.status === "IN_PROGRESS"
-                                ? "bg-blue-100 text-blue-800"
-                                : task.status === "COMPLETED"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          <option value="PENDING">Pending</option>
-                          <option value="IN_PROGRESS">In Progress</option>
-                          <option value="COMPLETED">Completed</option>
-                          <option value="CANCELLED">Cancelled</option>
-                        </select>
+                          options={[
+                            { value: "PENDING", label: "Pending" },
+                            { value: "IN_PROGRESS", label: "In Progress" },
+                            { value: "COMPLETED", label: "Completed" },
+                            { value: "CANCELLED", label: "Cancelled" },
+                          ]}
+                          placeholder="Select status..."
+                          className="w-32"
+                        />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getPriorityBadge(task.priority)}
@@ -956,166 +962,153 @@ export default function TasksPage() {
       </ModalDialog>
 
       {/* View Task Modal */}
-      {showViewModal && selectedTask && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Task Details: {selectedTask.title}
-              </h2>
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
+      <ModalDialog
+        isOpen={showViewModal && !!selectedTask}
+        onClose={() => setShowViewModal(false)}
+        header={`Task Details: ${selectedTask?.title || ""}`}
+        maxWidth="2xl"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        {selectedTask && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Title:
+                </p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {selectedTask.title}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Status:
+                </p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {selectedTask.status}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Priority:
+                </p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {selectedTask.priority}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Due Date:
+                </p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {selectedTask.dueDate
+                    ? formatDate(selectedTask.dueDate)
+                    : "No due date"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Assigned To:
+                </p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {selectedTask.assignedTo?.name || "Unassigned"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Created By:
+                </p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {selectedTask.createdBy.name} ({selectedTask.createdBy.email})
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Created At:
+                </p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {formatDate(selectedTask.createdAt)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Completed At:
+                </p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {selectedTask.completedAt
+                    ? formatDate(selectedTask.completedAt)
+                    : "Not completed"}
+                </p>
+              </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Title:
-                  </p>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {selectedTask.title}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Status:
-                  </p>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {selectedTask.status}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Priority:
-                  </p>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {selectedTask.priority}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Due Date:
-                  </p>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {selectedTask.dueDate
-                      ? formatDate(selectedTask.dueDate)
-                      : "No due date"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Assigned To:
-                  </p>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {selectedTask.assignedTo?.name || "Unassigned"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Created By:
-                  </p>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {selectedTask.createdBy.name} (
-                    {selectedTask.createdBy.email})
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Created At:
-                  </p>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {formatDate(selectedTask.createdAt)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Completed At:
-                  </p>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {selectedTask.completedAt
-                      ? formatDate(selectedTask.completedAt)
-                      : "Not completed"}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  Description:
-                </p>
-                <p className="text-gray-500 dark:text-gray-400">
-                  {selectedTask.description || "No description available."}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  Case:
-                </p>
-                <p className="text-gray-500 dark:text-gray-400">
-                  {selectedTask.case ? (
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white">
-                        {selectedTask.case.caseNumber}
-                      </div>
-                      <div className="text-xs">{selectedTask.case.title}</div>
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                Description:
+              </p>
+              <p className="text-gray-500 dark:text-gray-400">
+                {selectedTask.description || "No description available."}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                Case:
+              </p>
+              <p className="text-gray-500 dark:text-gray-400">
+                {selectedTask.case ? (
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">
+                      {selectedTask.case.caseNumber}
                     </div>
-                  ) : (
-                    "No case"
-                  )}
-                </p>
-              </div>
+                    <div className="text-xs">{selectedTask.case.title}</div>
+                  </div>
+                ) : (
+                  "No case"
+                )}
+              </p>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalDialog>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && selectedTask && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Confirm Deletion
-              </h2>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="p-6 text-center">
-              <Trash2 className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                Are you sure you want to delete this task?
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                This action cannot be undone. This will permanently delete the
-                task "{selectedTask.title}" and remove it from your tasks list.
-              </p>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteTask}
-                  className="btn-danger"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
+      <ModalDialog
+        isOpen={showDeleteConfirm && !!selectedTask}
+        onClose={() => setShowDeleteConfirm(false)}
+        header="Confirm Deletion"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteTask}
+              className="btn-danger"
+            >
+              Delete
+            </button>
           </div>
+        }
+        maxWidth="md"
+        closeOnEscape={true}
+        closeOnOverlayClick={true}
+      >
+        <div className="text-center">
+          <Trash2 className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            Are you sure you want to delete this task?
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            This action cannot be undone. This will permanently delete the task
+            "{selectedTask?.title}" and remove it from your tasks list.
+          </p>
         </div>
-      )}
+      </ModalDialog>
     </div>
   );
 }

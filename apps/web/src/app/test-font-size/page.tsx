@@ -1,6 +1,7 @@
 "use client";
 
 import FontSizeSelector from "@/components/FontSizeSelector";
+import CustomSelect from "@/components/ui/select";
 import { useFontSize } from "@/contexts/FontSizeContext";
 
 export default function TestFontSizePage() {
@@ -91,11 +92,17 @@ export default function TestFontSizePage() {
                     placeholder="Input field text"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
-                  <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
-                    <option>Select option text</option>
-                    <option>Option 1</option>
-                    <option>Option 2</option>
-                  </select>
+                  <CustomSelect
+                    value={{ value: "option1", label: "Select option text" }}
+                    onChange={(option) => console.log("Selected:", option)}
+                    options={[
+                      { value: "option1", label: "Select option text" },
+                      { value: "option2", label: "Option 1" },
+                      { value: "option3", label: "Option 2" },
+                    ]}
+                    placeholder="Select an option..."
+                    className="w-full"
+                  />
                   <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                     Button text
                   </button>

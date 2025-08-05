@@ -1,5 +1,6 @@
 "use client";
 
+import CustomSelect from "@/components/ui/select";
 import { useTheme } from "@/contexts/ThemeContext";
 
 export default function TestThemePage() {
@@ -94,11 +95,17 @@ export default function TestThemePage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Select Field
               </label>
-              <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
-                <option>Option 1</option>
-                <option>Option 2</option>
-                <option>Option 3</option>
-              </select>
+              <CustomSelect
+                value={{ value: "option1", label: "Option 1" }}
+                onChange={(option) => console.log("Selected:", option)}
+                options={[
+                  { value: "option1", label: "Option 1" },
+                  { value: "option2", label: "Option 2" },
+                  { value: "option3", label: "Option 3" },
+                ]}
+                placeholder="Select an option..."
+                className="w-full"
+              />
             </div>
           </div>
         </div>

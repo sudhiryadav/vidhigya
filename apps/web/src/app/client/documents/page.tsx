@@ -1,9 +1,9 @@
 "use client";
 
+import CustomSelect from "@/components/ui/select";
 import {
   AlertCircle,
   Calendar,
-  ChevronDown,
   Download,
   Eye,
   File,
@@ -228,38 +228,54 @@ export default function ClientDocuments() {
 
             {/* Category Filter */}
             <div className="relative">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="all">All Categories</option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category
+              <CustomSelect
+                value={{
+                  value: selectedCategory,
+                  label:
+                    selectedCategory === "all"
+                      ? "All Categories"
+                      : selectedCategory
+                          .replace(/_/g, " ")
+                          .replace(/\b\w/g, (l) => l.toUpperCase()),
+                }}
+                onChange={(option) =>
+                  setSelectedCategory(option?.value || "all")
+                }
+                options={[
+                  { value: "all", label: "All Categories" },
+                  ...categories.map((category) => ({
+                    value: category,
+                    label: category
                       .replace(/_/g, " ")
-                      .replace(/\b\w/g, (l) => l.toUpperCase())}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+                      .replace(/\b\w/g, (l) => l.toUpperCase()),
+                  })),
+                ]}
+                placeholder="Select category..."
+                className="w-full"
+              />
             </div>
 
             {/* Status Filter */}
             <div className="relative">
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="all">All Statuses</option>
-                {statuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status.replace(/\b\w/g, (l) => l.toUpperCase())}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+              <CustomSelect
+                value={{
+                  value: selectedStatus,
+                  label:
+                    selectedStatus === "all"
+                      ? "All Statuses"
+                      : selectedStatus.replace(/\b\w/g, (l) => l.toUpperCase()),
+                }}
+                onChange={(option) => setSelectedStatus(option?.value || "all")}
+                options={[
+                  { value: "all", label: "All Statuses" },
+                  ...statuses.map((status) => ({
+                    value: status,
+                    label: status.replace(/\b\w/g, (l) => l.toUpperCase()),
+                  })),
+                ]}
+                placeholder="Select status..."
+                className="w-full"
+              />
             </div>
 
             {/* Results Count */}

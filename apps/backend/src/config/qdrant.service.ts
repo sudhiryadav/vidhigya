@@ -1,46 +1,93 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { QdrantClient } from '@qdrant/js-client-rest';
 
 @Injectable()
 export class QdrantService {
   private aiServiceUrl: string;
   private aiServiceApiKey: string;
+  private qdrantClient: QdrantClient;
+  private qdrantUrl: string;
+  private qdrantApiKey: string;
+  private qdrantCollection: string;
 
   constructor(private configService: ConfigService) {
     this.aiServiceUrl = this.configService.get<string>('AI_SERVICE_URL');
     this.aiServiceApiKey = this.configService.get<string>('AI_SERVICE_API_KEY');
+    this.qdrantUrl = this.configService.get<string>('QDRANT_URL');
+    this.qdrantApiKey = this.configService.get<string>('QDRANT_API_KEY');
+    this.qdrantCollection = this.configService.get<string>('QDRANT_COLLECTION');
+
+    // Initialize Qdrant client
+    this.initializeQdrantClient();
+
+    // Log configuration on startup
+    console.log('QdrantService initialized with:');
+    console.log(`- AI Service URL: ${this.aiServiceUrl}`);
+    console.log(`- AI Service API Key configured: ${!!this.aiServiceApiKey}`);
+    console.log(`- Qdrant URL: ${this.qdrantUrl}`);
+    console.log(`- Qdrant API Key configured: ${!!this.qdrantApiKey}`);
+    console.log(`- Qdrant Collection: ${this.qdrantCollection}`);
+  }
+
+  private initializeQdrantClient() {
+    if (!this.qdrantUrl) {
+      console.error('QDRANT_URL not configured');
+      return;
+    }
+
+    try {
+      this.qdrantClient = new QdrantClient({
+        url: this.qdrantUrl,
+        apiKey: this.qdrantApiKey,
+      });
+      console.log('Qdrant client initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize Qdrant client:', error);
+    }
   }
 
   async deleteDocumentEmbeddings(documentId: string): Promise<boolean> {
     try {
-      if (!this.aiServiceUrl || !this.aiServiceApiKey) {
-        console.error('AI service URL or API key not configured');
+      console.log(
+        `Attempting to delete embeddings for document: ${documentId}`,
+      );
+      console.log(`Qdrant URL: ${this.qdrantUrl}`);
+      console.log(`Qdrant Collection: ${this.qdrantCollection}`);
+
+      if (!this.qdrantClient) {
+        console.error('Qdrant client not initialized');
         return false;
       }
 
-      const response = await fetch(
-        `${this.aiServiceUrl}/api/v1/admin/documents/${documentId}`,
+      if (!this.qdrantCollection) {
+        console.error('Qdrant collection not configured');
+        return false;
+      }
+
+      console.log(
+        `Deleting embeddings from Qdrant collection: ${this.qdrantCollection}`,
+      );
+
+      // Delete embeddings from Qdrant using document_id filter
+      const deleteResult = await this.qdrantClient.delete(
+        this.qdrantCollection,
         {
-          method: 'DELETE',
-          headers: {
-            'X-API-Key': this.aiServiceApiKey,
+          filter: {
+            must: [
+              {
+                key: 'document_id',
+                match: {
+                  value: documentId,
+                },
+              },
+            ],
           },
         },
       );
 
-      if (!response.ok) {
-        console.error(
-          `Failed to delete embeddings for document ${documentId}: ${response.statusText}`,
-        );
-        return false;
-      }
-
-      const result = (await response.json()) as {
-        success: boolean;
-        message: string;
-      };
       console.log(
-        `Successfully deleted embeddings for document ${documentId}: ${JSON.stringify(result)}`,
+        `Successfully deleted embeddings for document ${documentId}: ${JSON.stringify(deleteResult)}`,
       );
       return true;
     } catch (error) {

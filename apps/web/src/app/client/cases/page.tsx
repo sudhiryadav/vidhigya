@@ -1,5 +1,6 @@
 "use client";
 
+import CustomSelect from "@/components/ui/select";
 import {
   AlertCircle,
   ArrowRight,
@@ -215,37 +216,60 @@ export default function ClientCasesPage() {
           </div>
 
           {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">All Status</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
-            <option value="closed">Closed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+          <CustomSelect
+            value={{
+              value: statusFilter,
+              label:
+                statusFilter === "all"
+                  ? "All Status"
+                  : statusFilter
+                      .replace("_", " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase()),
+            }}
+            onChange={(option) => setStatusFilter(option?.value || "all")}
+            options={[
+              { value: "all", label: "All Status" },
+              { value: "open", label: "Open" },
+              { value: "in_progress", label: "In Progress" },
+              { value: "pending", label: "Pending" },
+              { value: "completed", label: "Completed" },
+              { value: "closed", label: "Closed" },
+              { value: "cancelled", label: "Cancelled" },
+            ]}
+            placeholder="Select status..."
+            className="w-40"
+          />
 
           {/* Category Filter */}
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">All Categories</option>
-            <option value="civil">Civil</option>
-            <option value="criminal">Criminal</option>
-            <option value="family">Family</option>
-            <option value="corporate">Corporate</option>
-            <option value="property">Property</option>
-            <option value="employment">Employment</option>
-            <option value="intellectual_property">Intellectual Property</option>
-            <option value="tax">Tax</option>
-            <option value="other">Other</option>
-          </select>
+          <CustomSelect
+            value={{
+              value: categoryFilter,
+              label:
+                categoryFilter === "all"
+                  ? "All Categories"
+                  : categoryFilter
+                      .replace("_", " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase()),
+            }}
+            onChange={(option) => setCategoryFilter(option?.value || "all")}
+            options={[
+              { value: "all", label: "All Categories" },
+              { value: "civil", label: "Civil" },
+              { value: "criminal", label: "Criminal" },
+              { value: "family", label: "Family" },
+              { value: "corporate", label: "Corporate" },
+              { value: "property", label: "Property" },
+              { value: "employment", label: "Employment" },
+              {
+                value: "intellectual_property",
+                label: "Intellectual Property",
+              },
+              { value: "tax", label: "Tax" },
+              { value: "other", label: "Other" },
+            ]}
+            placeholder="Select category..."
+            className="w-48"
+          />
         </div>
       </div>
 

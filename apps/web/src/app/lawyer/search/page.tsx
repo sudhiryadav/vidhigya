@@ -1,6 +1,7 @@
 "use client";
 
 import DocumentQA from "@/components/DocumentQA";
+import CustomSelect from "@/components/ui/select";
 import { apiClient } from "@/services/api";
 import {
   Bot,
@@ -445,33 +446,57 @@ export default function LawyerSearchPage() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Category
                         </label>
-                        <select
-                          value={categoryFilter}
-                          onChange={(e) => setCategoryFilter(e.target.value)}
-                          className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 dark:bg-gray-700 dark:text-white"
-                        >
-                          <option value="all">All Categories</option>
-                          <option value="CONTRACT">Contracts</option>
-                          <option value="PETITION">Petitions</option>
-                          <option value="AFFIDAVIT">Affidavits</option>
-                          <option value="NOTICE">Notices</option>
-                          <option value="ORDER">Orders</option>
-                        </select>
+                        <CustomSelect
+                          value={{
+                            value: categoryFilter,
+                            label:
+                              categoryFilter === "all"
+                                ? "All Categories"
+                                : categoryFilter,
+                          }}
+                          onChange={(option) =>
+                            setCategoryFilter(option?.value || "all")
+                          }
+                          options={[
+                            { value: "all", label: "All Categories" },
+                            { value: "CONTRACT", label: "Contracts" },
+                            { value: "PETITION", label: "Petitions" },
+                            { value: "AFFIDAVIT", label: "Affidavits" },
+                            { value: "NOTICE", label: "Notices" },
+                            { value: "ORDER", label: "Orders" },
+                          ]}
+                          placeholder="Select category..."
+                          className="w-full"
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Date Range
                         </label>
-                        <select
-                          value={dateFilter}
-                          onChange={(e) => setDateFilter(e.target.value)}
-                          className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 dark:bg-gray-700 dark:text-white"
-                        >
-                          <option value="all">All Time</option>
-                          <option value="week">Last Week</option>
-                          <option value="month">Last Month</option>
-                          <option value="year">Last Year</option>
-                        </select>
+                        <CustomSelect
+                          value={{
+                            value: dateFilter,
+                            label:
+                              dateFilter === "all"
+                                ? "All Time"
+                                : dateFilter === "week"
+                                  ? "Last Week"
+                                  : dateFilter === "month"
+                                    ? "Last Month"
+                                    : "Last Year",
+                          }}
+                          onChange={(option) =>
+                            setDateFilter(option?.value || "all")
+                          }
+                          options={[
+                            { value: "all", label: "All Time" },
+                            { value: "week", label: "Last Week" },
+                            { value: "month", label: "Last Month" },
+                            { value: "year", label: "Last Year" },
+                          ]}
+                          placeholder="Select date range..."
+                          className="w-full"
+                        />
                       </div>
                     </div>
                   )}

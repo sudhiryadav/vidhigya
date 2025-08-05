@@ -37,7 +37,6 @@ model User {
   assignedCases      LegalCase[]         @relation("AssignedLawyer")
   clientCases        LegalCase[]         @relation("Client")
   uploadedDocuments  LegalDocument[]
-  documentVersions   DocumentVersion[]   // Added relation for document versions
   chatMessagesSent   ChatMessage[]       @relation("MessageSender")
   chatMessagesReceived ChatMessage[]     @relation("MessageReceiver")
   caseNotes          CaseNote[]
@@ -124,14 +123,14 @@ model LegalDocument {
   id           String              @id @default(cuid())
   title        String
   description  String?
-  fileUrl      String              // Current version S3 key
+  fileUrl      String              // S3 key
+  originalFilename String?         // Original filename when uploaded
   fileType     String
   fileSize     Int
   category     DocumentCategory
   status       DocumentStatus      @default(DRAFT)
   caseId       String?
   uploadedById String
-  version      Int                 @default(1) // Current version number
   // AI Service fields
   aiDocumentId String?             // Document ID from AI service
   aiChunks     Int?                // Number of chunks processed by AI service
@@ -140,30 +139,13 @@ model LegalDocument {
   updatedAt    DateTime            @updatedAt
   signatures   DocumentSignature[]
   fileShares   FileShare[]
-  versions     DocumentVersion[]   // All versions of this document
   case         LegalCase?          @relation(fields: [caseId], references: [id])
   uploadedBy   User                @relation(fields: [uploadedById], references: [id])
 
   @@map("legal_documents")
 }
 
-model DocumentVersion {
-  id           String              @id @default(cuid())
-  documentId   String
-  version      Int                 // Version number
-  fileUrl      String              // S3 key for this version
-  fileType     String
-  fileSize     Int
-  uploadedById String
-  changeReason String?             // Reason for this version
-  aiDocumentId String?             // Document ID from AI service for this version
-  createdAt    DateTime            @default(now())
-  document     LegalDocument       @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  uploadedBy   User                @relation(fields: [uploadedById], references: [id])
 
-  @@unique([documentId, version])
-  @@map("document_versions")
-}
 
 model CaseNote {
   id        String    @id @default(cuid())

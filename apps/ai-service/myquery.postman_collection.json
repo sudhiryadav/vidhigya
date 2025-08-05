@@ -49,27 +49,6 @@
                         },
                         "description": "Query documents - supports both search and Q&A modes."
                     }
-                },
-                {
-                    "name": "Delete Document Embeddings",
-                    "request": {
-                        "method": "DELETE",
-                        "header": [],
-                        "url": {
-                            "raw": "{{base_url}}/api/v1/admin/documents/{document_id}",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "api",
-                                "v1",
-                                "admin",
-                                "documents",
-                                "{document_id}"
-                            ]
-                        },
-                        "description": "Delete document embeddings from Qdrant."
-                    }
                 }
             ]
         }

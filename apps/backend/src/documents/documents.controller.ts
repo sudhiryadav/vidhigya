@@ -17,9 +17,11 @@ import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentCategory, DocumentStatus } from '@prisma/client';
 import { Response } from 'express';
+import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { QdrantService } from '../config/qdrant.service';
 import { S3Service } from '../config/s3.config';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateDocumentDto, DocumentsService } from './documents.service';
 import { QueryType } from './dto/create-document-query.dto';
 
@@ -53,12 +55,6 @@ interface UploadDocumentBody {
   caseId?: string;
 }
 
-interface UploadVersionBody {
-  changeReason?: string;
-  description?: string;
-  category?: string;
-}
-
 interface AIUploadResponse {
   documents: Array<{
     document_id: string;
@@ -75,6 +71,7 @@ export class DocumentsController {
     private readonly s3Service: S3Service,
     private readonly configService: ConfigService,
     private readonly qdrantService: QdrantService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post()
@@ -89,7 +86,7 @@ export class DocumentsController {
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: undefined, // No disk storage, we'll handle the file in memory
+      storage: memoryStorage(), // Use memory storage to get file.buffer
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB limit
       },
@@ -139,6 +136,7 @@ export class DocumentsController {
         title: body.title || '',
         description: body.description || '',
         fileUrl: fileUrl,
+        originalFilename: file.originalname,
         fileType: file.mimetype,
         fileSize: file.size,
         category: (body.category as DocumentCategory) || DocumentCategory.OTHER,
@@ -156,6 +154,25 @@ export class DocumentsController {
 
         if (aiServiceUrl && aiServiceApiKey) {
           const formData = new FormData();
+
+          // Ensure file buffer is not empty
+          if (!file.buffer || file.buffer.length === 0) {
+            console.error('File buffer is empty:', {
+              originalname: file.originalname,
+              size: file.size,
+              mimetype: file.mimetype,
+              bufferLength: file.buffer?.length,
+            });
+            throw new BadRequestException('File content is empty');
+          }
+
+          console.log('Sending file to AI service:', {
+            originalname: file.originalname,
+            size: file.size,
+            mimetype: file.mimetype,
+            bufferLength: file.buffer.length,
+          });
+
           formData.append(
             'files',
             new Blob([file.buffer], { type: file.mimetype }),
@@ -182,8 +199,17 @@ export class DocumentsController {
             // Update the document with AI service information
             if (aiResult.documents && aiResult.documents.length > 0) {
               const aiDocument = aiResult.documents[0];
-              // Note: DocumentsService doesn't have an update method
-              // The AI document ID and chunks are stored in the AI service
+
+              // Update the document with AI service information
+              await this.prisma.legalDocument.update({
+                where: { id: document.id },
+                data: {
+                  aiDocumentId: aiDocument.document_id,
+                  aiChunks: aiDocument.chunks,
+                  content: aiDocument.content,
+                },
+              });
+
               console.log('AI service processed document:', {
                 documentId: document.id,
                 aiDocumentId: aiDocument.document_id,
@@ -282,7 +308,7 @@ export class DocumentsController {
         const decoder = new TextDecoder();
         let fullResponse = '';
         let sources: any[] = [];
-        let isDone = false;
+        const isDone = false;
 
         try {
           while (true) {
@@ -297,7 +323,11 @@ export class DocumentsController {
               if (line.startsWith('data: ')) {
                 try {
                   const jsonStr = line.slice(6); // Remove 'data: ' prefix
-                  const data = JSON.parse(jsonStr);
+                  const data = JSON.parse(jsonStr) as {
+                    response?: string;
+                    sources?: any[];
+                    done?: boolean;
+                  };
 
                   if (data.response) {
                     fullResponse += data.response;
@@ -306,9 +336,9 @@ export class DocumentsController {
                     sources = data.sources;
                   }
                   if (data.done) {
-                    isDone = true;
+                    // Stream is complete
                   }
-                } catch (e) {
+                } catch {
                   // Ignore JSON parsing errors for non-JSON lines
                 }
               }
@@ -377,125 +407,6 @@ export class DocumentsController {
     }
   }
 
-  @Post(':id/upload-version')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: undefined,
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit
-      },
-      fileFilter: (req, file, cb) => {
-        const allowedMimes = [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'text/plain',
-          'image/jpeg',
-          'image/png',
-          'image/gif',
-        ];
-        if (allowedMimes.includes(file.mimetype)) {
-          cb(null, true);
-        } else {
-          cb(new BadRequestException('Invalid file type'), false);
-        }
-      },
-    }),
-  )
-  async uploadNewVersion(
-    @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
-    @Body() body: UploadVersionBody,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
-
-    try {
-      // Generate unique filename for new version
-      const fileName = this.s3Service.generateFileName(
-        file.originalname,
-        req.user.sub,
-      );
-
-      // Upload to S3
-      const fileUrl = await this.s3Service.uploadDocument(
-        file.buffer,
-        fileName,
-        file.mimetype,
-      );
-
-      // Create new version
-      const uploadDto: any = {
-        // Assuming UploadNewVersionDto is removed, using 'any' for now
-        fileUrl: fileUrl,
-        fileType: file.mimetype,
-        fileSize: file.size,
-        changeReason: body.changeReason,
-        uploadedById: req.user.sub,
-      };
-
-      const document = await this.documentsService.uploadNewVersion(
-        id,
-        uploadDto,
-      );
-
-      // Send to AI service for Qdrant processing
-      try {
-        const aiServiceUrl = this.configService.get<string>('AI_SERVICE_URL');
-        const aiServiceApiKey =
-          this.configService.get<string>('AI_SERVICE_API_KEY');
-
-        if (aiServiceUrl && aiServiceApiKey) {
-          const formData = new FormData();
-          formData.append(
-            'files',
-            new Blob([file.buffer], { type: file.mimetype }),
-            file.originalname,
-          );
-          formData.append('userId', req.user.sub);
-          formData.append('description', body.description || '');
-          formData.append('category', body.category || '');
-
-          const aiResponse = await fetch(
-            `${aiServiceUrl}/api/v1/admin/documents/upload`,
-            {
-              method: 'POST',
-              headers: {
-                'X-API-Key': aiServiceApiKey,
-              },
-              body: formData,
-            },
-          );
-
-          if (aiResponse.ok) {
-            const aiResult = (await aiResponse.json()) as AIUploadResponse;
-
-            // Update the document version with AI service information
-            if (aiResult.documents && aiResult.documents.length > 0) {
-              const aiDocument = aiResult.documents[0];
-              // Update the latest version with AI document ID
-              await this.documentsService.updateVersionAiDocumentId(
-                id,
-                document.version,
-                aiDocument.document_id,
-              );
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Failed to send document version to AI service:', error);
-        // Don't fail the upload if AI service is unavailable
-      }
-
-      return document;
-    } catch (error) {
-      console.error('Error uploading new version:', error);
-      throw new BadRequestException('Failed to upload new version');
-    }
-  }
-
   @Get()
   findAll(@Request() req: AuthenticatedRequest, @Query() query: DocumentQuery) {
     return this.documentsService.findAll(req.user.sub, query);
@@ -506,44 +417,51 @@ export class DocumentsController {
     return this.documentsService.findOne(id, req.user.sub);
   }
 
-  @Get(':id/versions')
-  getVersionHistory(
-    @Param('id') id: string,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    return this.documentsService.getVersionHistory(id, req.user.sub);
-  }
-
-  @Get(':id/version/:version')
-  getVersion(
-    @Param('id') id: string,
-    @Param('version') version: string,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    return this.documentsService.getVersion(
-      id,
-      parseInt(version),
-      req.user.sub,
-    );
-  }
-
   @Delete(':id')
   async remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    const document = await this.documentsService.findOne(id, req.user.sub);
+    console.log(
+      `Starting document deletion for ID: ${id} by user: ${req.user.sub}`,
+    );
 
-    // Delete all versions from S3
-    if (document.versions && document.versions.length > 0) {
-      for (const version of document.versions) {
+    const document = await this.documentsService.findOne(id, req.user.sub);
+    console.log('Document found for deletion:', {
+      id: document.id,
+      title: document.title,
+      fileUrl: document.fileUrl,
+    });
+
+    try {
+      // First, delete from database and Qdrant (this is the critical operation)
+      console.log(
+        'Calling documentsService.remove to delete from DB and Qdrant...',
+      );
+      const deletedDocument = await this.documentsService.remove(
+        id,
+        req.user.sub,
+      );
+      console.log('Successfully deleted from database and Qdrant');
+
+      // Then, clean up S3 files (this is less critical, can fail without breaking the operation)
+      console.log('Starting S3 cleanup...');
+
+      // Delete main document file from S3
+      if (document.fileUrl) {
         try {
-          await this.s3Service.deleteDocument(version.fileUrl);
+          console.log(`Deleting main document from S3: ${document.fileUrl}`);
+          await this.s3Service.deleteDocument(document.fileUrl);
+          console.log('Main document deleted from S3 successfully');
         } catch (error) {
-          console.error('Failed to delete version from S3:', error);
+          console.error('Failed to delete main document from S3:', error);
           // Continue with deletion even if S3 cleanup fails
         }
       }
-    }
 
-    return this.documentsService.remove(id, req.user.sub);
+      console.log('Document deletion completed successfully');
+      return deletedDocument;
+    } catch (error) {
+      console.error('Error during document deletion:', error);
+      throw error;
+    }
   }
 
   @Get(':id/download')
@@ -562,16 +480,9 @@ export class DocumentsController {
         id: document.id,
         title: document.title,
         fileUrl: document.fileUrl,
-        hasVersions: document.versions?.length > 0,
-        latestVersion: document.versions?.[0]?.fileUrl,
       });
 
-      // Check if document has a fileUrl or if we need to use the latest version
-      let fileUrl = document.fileUrl;
-      if (!fileUrl && document.versions && document.versions.length > 0) {
-        fileUrl = document.versions[0].fileUrl;
-        console.log(`Using latest version fileUrl: ${fileUrl}`);
-      }
+      const fileUrl = document.fileUrl;
 
       if (!fileUrl) {
         console.error(`No fileUrl found for document ${id}`);
@@ -580,19 +491,79 @@ export class DocumentsController {
         );
       }
 
-      console.log(`Generating signed URL for S3 key: ${fileUrl}`);
+      console.log(`Fetching file from S3: ${fileUrl}`);
 
-      // Generate signed URL for private S3 access
-      const signedUrl = await this.s3Service.getDocumentSignedUrl(
+      // Get the file buffer from S3
+      console.log(`About to fetch file from S3 with key: ${fileUrl}`);
+      const fileBuffer = await this.s3Service.getDocumentAsBuffer(fileUrl);
+      console.log(`File buffer received, size: ${fileBuffer.length} bytes`);
+
+      // Check if the file is empty
+      if (fileBuffer.length === 0) {
+        console.error(`File is empty: ${fileUrl}`);
+        throw new BadRequestException('File is empty or corrupted');
+      }
+
+      // Get the file extension and determine content type
+      const fileExtension = fileUrl.split('.').pop()?.toLowerCase();
+      let contentType = 'application/octet-stream';
+
+      switch (fileExtension) {
+        case 'pdf':
+          contentType = 'application/pdf';
+          break;
+        case 'doc':
+          contentType = 'application/msword';
+          break;
+        case 'docx':
+          contentType =
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          break;
+        case 'txt':
+          contentType = 'text/plain';
+          break;
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'gif':
+          contentType = 'image/gif';
+          break;
+      }
+
+      // Set response headers for file download
+      res.setHeader('Content-Type', contentType);
+
+      // Use original filename from database or fallback to document title
+      const originalFilename = document.originalFilename;
+      const filename =
+        originalFilename || `${document.title || 'document'}.${fileExtension}`;
+
+      console.log('Download filename details:', {
         fileUrl,
-        3600,
-      ); // 1 hour expiry
+        originalFilename,
+        documentTitle: document.title,
+        fileExtension,
+        finalFilename: filename,
+      });
+
+      // Ensure filename is properly encoded for Content-Disposition header
+      const encodedFilename = encodeURIComponent(filename);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${filename}"; filename*=UTF-8''${encodedFilename}`,
+      );
+      res.setHeader('Content-Length', fileBuffer.length);
+      res.setHeader('Cache-Control', 'no-cache');
 
       console.log(
-        `Generated signed URL successfully, redirecting to: ${signedUrl.substring(0, 100)}...`,
+        `Sending file with content type: ${contentType}, size: ${fileBuffer.length} bytes`,
       );
 
-      return res.redirect(signedUrl);
+      return res.send(fileBuffer);
     } catch (error) {
       console.error('Error in downloadDocument:', error);
 
@@ -600,45 +571,15 @@ export class DocumentsController {
         throw error;
       }
 
-      if (error.message?.includes('not found')) {
+      if (error instanceof Error && error.message?.includes('not found')) {
         throw new BadRequestException('Document not found');
       }
 
-      if (error.message?.includes('Access denied')) {
+      if (error instanceof Error && error.message?.includes('Access denied')) {
         throw new BadRequestException('Access denied to this document');
       }
 
       throw new BadRequestException('Error accessing document');
-    }
-  }
-
-  @Get(':id/version/:version/download')
-  async downloadVersion(
-    @Param('id') id: string,
-    @Param('version') version: string,
-    @Request() req: AuthenticatedRequest,
-    @Res() res: Response,
-  ) {
-    const versionRecord = await this.documentsService.getVersion(
-      id,
-      parseInt(version),
-      req.user.sub,
-    );
-
-    if (!versionRecord.fileUrl) {
-      throw new BadRequestException('File not found');
-    }
-
-    try {
-      // Generate signed URL for private S3 access
-      const signedUrl = await this.s3Service.getDocumentSignedUrl(
-        versionRecord.fileUrl,
-        3600,
-      ); // 1 hour expiry
-      return res.redirect(signedUrl);
-    } catch (error) {
-      console.error('Error generating signed URL for document version:', error);
-      throw new BadRequestException('Error accessing document version');
     }
   }
 }

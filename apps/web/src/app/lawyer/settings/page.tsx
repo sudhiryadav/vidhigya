@@ -2,6 +2,7 @@
 
 import FontSizeSelector from "@/components/FontSizeSelector";
 import ProfilePictureUpload from "@/components/ProfilePictureUpload";
+import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import { Bell, Save, Settings, Shield, User } from "lucide-react";
@@ -471,76 +472,148 @@ export default function LawyerSettingsPage() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Language
                         </label>
-                        <select
-                          value={language}
-                          onChange={(e) => setLanguage(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        >
-                          <option value="en">English</option>
-                          <option value="es">Spanish</option>
-                          <option value="fr">French</option>
-                          <option value="de">German</option>
-                        </select>
+                        <CustomSelect
+                          value={{
+                            value: language,
+                            label:
+                              language === "en"
+                                ? "English"
+                                : language === "es"
+                                  ? "Spanish"
+                                  : language === "fr"
+                                    ? "French"
+                                    : "German",
+                          }}
+                          onChange={(option) =>
+                            setLanguage(option?.value || "en")
+                          }
+                          options={[
+                            { value: "en", label: "English" },
+                            { value: "es", label: "Spanish" },
+                            { value: "fr", label: "French" },
+                            { value: "de", label: "German" },
+                          ]}
+                          placeholder="Select language..."
+                          className="w-full"
+                        />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Timezone
                         </label>
-                        <select
-                          value={timezone}
-                          onChange={(e) => setTimezone(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        >
-                          <option value="UTC">UTC</option>
-                          <option value="EST">Eastern Time</option>
-                          <option value="CST">Central Time</option>
-                          <option value="MST">Mountain Time</option>
-                          <option value="PST">Pacific Time</option>
-                        </select>
+                        <CustomSelect
+                          value={{
+                            value: timezone,
+                            label:
+                              timezone === "UTC"
+                                ? "UTC"
+                                : timezone === "EST"
+                                  ? "Eastern Time"
+                                  : timezone === "CST"
+                                    ? "Central Time"
+                                    : timezone === "MST"
+                                      ? "Mountain Time"
+                                      : "Pacific Time",
+                          }}
+                          onChange={(option) =>
+                            setTimezone(option?.value || "UTC")
+                          }
+                          options={[
+                            { value: "UTC", label: "UTC" },
+                            { value: "EST", label: "Eastern Time" },
+                            { value: "CST", label: "Central Time" },
+                            { value: "MST", label: "Mountain Time" },
+                            { value: "PST", label: "Pacific Time" },
+                          ]}
+                          placeholder="Select timezone..."
+                          className="w-full"
+                        />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Date Format
                         </label>
-                        <select
-                          value={dateFormat}
-                          onChange={(e) => setDateFormat(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        >
-                          <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                          <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                          <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                        </select>
+                        <CustomSelect
+                          value={{ value: dateFormat, label: dateFormat }}
+                          onChange={(option) =>
+                            setDateFormat(option?.value || "MM/DD/YYYY")
+                          }
+                          options={[
+                            { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
+                            { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
+                            { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
+                          ]}
+                          placeholder="Select date format..."
+                          className="w-full"
+                        />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Default Currency
                         </label>
-                        <select
-                          value={currency}
-                          onChange={(e) => setCurrency(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        >
-                          <option value="INR">INR (₹)</option>
-                          <option value="USD">USD ($)</option>
-                          <option value="EUR">EUR (€)</option>
-                          <option value="GBP">GBP (£)</option>
-                          <option value="JPY">JPY (¥)</option>
-                          <option value="AUD">AUD (A$)</option>
-                          <option value="CAD">CAD (C$)</option>
-                          <option value="CHF">CHF (CHF)</option>
-                          <option value="CNY">CNY (¥)</option>
-                          <option value="HKD">HKD (HK$)</option>
-                          <option value="NZD">NZD (NZ$)</option>
-                          <option value="SEK">SEK (kr)</option>
-                          <option value="SGD">SGD (S$)</option>
-                          <option value="THB">THB (฿)</option>
-                          <option value="TRY">TRY (₺)</option>
-                          <option value="ZAR">ZAR (R)</option>
-                        </select>
+                        <CustomSelect
+                          value={{
+                            value: currency,
+                            label:
+                              currency === "INR"
+                                ? "INR (₹)"
+                                : currency === "USD"
+                                  ? "USD ($)"
+                                  : currency === "EUR"
+                                    ? "EUR (€)"
+                                    : currency === "GBP"
+                                      ? "GBP (£)"
+                                      : currency === "JPY"
+                                        ? "JPY (¥)"
+                                        : currency === "AUD"
+                                          ? "AUD (A$)"
+                                          : currency === "CAD"
+                                            ? "CAD (C$)"
+                                            : currency === "CHF"
+                                              ? "CHF (CHF)"
+                                              : currency === "CNY"
+                                                ? "CNY (¥)"
+                                                : currency === "HKD"
+                                                  ? "HKD (HK$)"
+                                                  : currency === "NZD"
+                                                    ? "NZD (NZ$)"
+                                                    : currency === "SEK"
+                                                      ? "SEK (kr)"
+                                                      : currency === "SGD"
+                                                        ? "SGD (S$)"
+                                                        : currency === "THB"
+                                                          ? "THB (฿)"
+                                                          : currency === "TRY"
+                                                            ? "TRY (₺)"
+                                                            : "ZAR (R)",
+                          }}
+                          onChange={(option) =>
+                            setCurrency(option?.value || "INR")
+                          }
+                          options={[
+                            { value: "INR", label: "INR (₹)" },
+                            { value: "USD", label: "USD ($)" },
+                            { value: "EUR", label: "EUR (€)" },
+                            { value: "GBP", label: "GBP (£)" },
+                            { value: "JPY", label: "JPY (¥)" },
+                            { value: "AUD", label: "AUD (A$)" },
+                            { value: "CAD", label: "CAD (C$)" },
+                            { value: "CHF", label: "CHF (CHF)" },
+                            { value: "CNY", label: "CNY (¥)" },
+                            { value: "HKD", label: "HKD (HK$)" },
+                            { value: "NZD", label: "NZD (NZ$)" },
+                            { value: "SEK", label: "SEK (kr)" },
+                            { value: "SGD", label: "SGD (S$)" },
+                            { value: "THB", label: "THB (฿)" },
+                            { value: "TRY", label: "TRY (₺)" },
+                            { value: "ZAR", label: "ZAR (R)" },
+                          ]}
+                          placeholder="Select currency..."
+                          className="w-full"
+                        />
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           This will be the default currency for new billing
                           records. Clients can have different currencies per
@@ -552,15 +625,27 @@ export default function LawyerSettingsPage() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Theme
                         </label>
-                        <select
-                          value={theme}
-                          onChange={(e) => setTheme(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        >
-                          <option value="system">System</option>
-                          <option value="light">Light</option>
-                          <option value="dark">Dark</option>
-                        </select>
+                        <CustomSelect
+                          value={{
+                            value: theme,
+                            label:
+                              theme === "system"
+                                ? "System"
+                                : theme === "light"
+                                  ? "Light"
+                                  : "Dark",
+                          }}
+                          onChange={(option) =>
+                            setTheme(option?.value || "system")
+                          }
+                          options={[
+                            { value: "system", label: "System" },
+                            { value: "light", label: "Light" },
+                            { value: "dark", label: "Dark" },
+                          ]}
+                          placeholder="Select theme..."
+                          className="w-full"
+                        />
                       </div>
                     </div>
                   </div>

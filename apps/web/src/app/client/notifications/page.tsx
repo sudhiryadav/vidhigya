@@ -1,6 +1,7 @@
 "use client";
 
 import ConfirmDialog from "@/components/ConfirmDialog";
+import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { apiClient } from "@/services/api";
@@ -35,6 +36,7 @@ export default function ClientNotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [readStatusFilter, setReadStatusFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<
     string | null
@@ -308,29 +310,51 @@ export default function ClientNotificationsPage() {
 
             {/* Filters */}
             <div className="flex items-center space-x-4">
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              >
-                <option value="all">All Types</option>
-                <option value="CASE_UPDATE">Case Updates</option>
-                <option value="EVENT_REMINDER">Event Reminders</option>
-                <option value="DOCUMENT_UPLOADED">Documents</option>
-                <option value="BILL_DUE">Payment Due</option>
-                <option value="BILL_OVERDUE">Payment Overdue</option>
-                <option value="VIDEO_CALL">Video Calls</option>
-              </select>
+              <CustomSelect
+                value={{
+                  value: typeFilter,
+                  label:
+                    typeFilter === "all"
+                      ? "All Types"
+                      : typeFilter
+                          .replace(/_/g, " ")
+                          .replace(/\b\w/g, (l) => l.toUpperCase()),
+                }}
+                onChange={(option) => setTypeFilter(option?.value || "all")}
+                options={[
+                  { value: "all", label: "All Types" },
+                  { value: "CASE_UPDATE", label: "Case Updates" },
+                  { value: "EVENT_REMINDER", label: "Event Reminders" },
+                  { value: "DOCUMENT_UPLOADED", label: "Documents" },
+                  { value: "BILL_DUE", label: "Payment Due" },
+                  { value: "BILL_OVERDUE", label: "Payment Overdue" },
+                  { value: "VIDEO_CALL", label: "Video Calls" },
+                ]}
+                placeholder="Select type..."
+                className="w-48"
+              />
 
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              >
-                <option value="all">All</option>
-                <option value="unread">Unread</option>
-                <option value="read">Read</option>
-              </select>
+              <CustomSelect
+                value={{
+                  value: readStatusFilter,
+                  label:
+                    readStatusFilter === "all"
+                      ? "All"
+                      : readStatusFilter === "unread"
+                        ? "Unread"
+                        : "Read",
+                }}
+                onChange={(option) =>
+                  setReadStatusFilter(option?.value || "all")
+                }
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "unread", label: "Unread" },
+                  { value: "read", label: "Read" },
+                ]}
+                placeholder="Select status..."
+                className="w-32"
+              />
             </div>
           </div>
         </div>

@@ -340,76 +340,99 @@ def process_file(
         # The backend is responsible for user management
 
         if file_extension.lower() == ".pdf":
-            doc = fitz.open(stream=file_content, filetype="pdf")
-            for page in doc:
-                # Extract selectable text first
-                page_text = page.get_text()
-                text_content += page_text
+            doc = None
+            try:
+                doc = fitz.open(stream=file_content, filetype="pdf")
+            except fitz.FileDataError as e:
+                log_to_backend(
+                    "error", f"Failed to open PDF file '{original_filename}': {str(e)}"
+                )
+                raise ValueError(
+                    f"PDF file '{original_filename}' appears to be corrupted or broken. Please try uploading a valid PDF file."
+                )
+            except Exception as e:
+                log_to_backend(
+                    "error",
+                    f"Unexpected error opening PDF file '{original_filename}': {str(e)}",
+                )
+                raise ValueError(
+                    f"Failed to process PDF file '{original_filename}': {str(e)}"
+                )
 
-                # If no text was extracted, the page might be scanned/image-based
-                if not page_text.strip() and OCR_ENABLED:
-                    log_to_backend(
-                        "info",
-                        f"Page {page.number + 1} appears to be image-based, running OCR...",
-                    )
-                    try:
-                        # Render page as image for OCR
-                        pix = page.get_pixmap(dpi=OCR_DPI)  # Use configured DPI
-                        img = Image.frombytes(
-                            "RGB", [pix.width, pix.height], pix.samples
-                        )
+            try:
+                for page in doc:
+                    # Extract selectable text first
+                    page_text = page.get_text()
+                    text_content += page_text
 
-                        # Run OCR on the page image
-                        ocr_text = pytesseract.image_to_string(
-                            img, lang=OCR_LANGUAGE, config=OCR_CONFIG
-                        )
-                        if ocr_text.strip():
-                            text_content += (
-                                f"\n[OCR Page {page.number + 1}]:\n{ocr_text}\n"
-                            )
-                            log_to_backend(
-                                "info",
-                                f"OCR extracted {len(ocr_text)} characters from page {page.number + 1}",
-                            )
-                        else:
-                            log_to_backend(
-                                "warning",
-                                f"No text found via OCR on page {page.number + 1}",
-                            )
-                    except Exception as e:
+                    # If no text was extracted, the page might be scanned/image-based
+                    if not page_text.strip() and OCR_ENABLED:
                         log_to_backend(
-                            "error", f"OCR failed on page {page.number + 1}: {str(e)}"
+                            "info",
+                            f"Page {page.number + 1} appears to be image-based, running OCR...",
                         )
-                elif not page_text.strip() and not OCR_ENABLED:
-                    log_to_backend(
-                        "warning",
-                        f"Page {page.number + 1} appears to be image-based but OCR is disabled",
-                    )
+                        try:
+                            # Render page as image for OCR
+                            pix = page.get_pixmap(dpi=OCR_DPI)  # Use configured DPI
+                            img = Image.frombytes(
+                                "RGB", [pix.width, pix.height], pix.samples
+                            )
 
-                # Also extract text from embedded images in the page
-                if OCR_ENABLED:
-                    try:
-                        for img_index, img in enumerate(page.get_images(full=True)):
-                            xref = img[0]
-                            base_image = doc.extract_image(xref)
-                            image_bytes = base_image["image"]
-                            image = Image.open(io.BytesIO(image_bytes))
-
-                            # Run OCR on embedded image
+                            # Run OCR on the page image
                             ocr_text = pytesseract.image_to_string(
-                                image, lang=OCR_LANGUAGE, config=OCR_CONFIG
+                                img, lang=OCR_LANGUAGE, config=OCR_CONFIG
                             )
                             if ocr_text.strip():
-                                text_content += f"\n[OCR Page {page.number + 1} Image {img_index + 1}]:\n{ocr_text}\n"
+                                text_content += (
+                                    f"\n[OCR Page {page.number + 1}]:\n{ocr_text}\n"
+                                )
                                 log_to_backend(
                                     "info",
-                                    f"OCR extracted {len(ocr_text)} characters from image {img_index + 1} on page {page.number + 1}",
+                                    f"OCR extracted {len(ocr_text)} characters from page {page.number + 1}",
                                 )
-                    except Exception as e:
+                            else:
+                                log_to_backend(
+                                    "warning",
+                                    f"No text found via OCR on page {page.number + 1}",
+                                )
+                        except Exception as e:
+                            log_to_backend(
+                                "error",
+                                f"OCR failed on page {page.number + 1}: {str(e)}",
+                            )
+                    elif not page_text.strip() and not OCR_ENABLED:
                         log_to_backend(
                             "warning",
-                            f"Failed to process embedded images on page {page.number + 1}: {str(e)}",
+                            f"Page {page.number + 1} appears to be image-based but OCR is disabled",
                         )
+
+                    # Also extract text from embedded images in the page
+                    if OCR_ENABLED:
+                        try:
+                            for img_index, img in enumerate(page.get_images(full=True)):
+                                xref = img[0]
+                                base_image = doc.extract_image(xref)
+                                image_bytes = base_image["image"]
+                                image = Image.open(io.BytesIO(image_bytes))
+
+                                # Run OCR on embedded image
+                                ocr_text = pytesseract.image_to_string(
+                                    image, lang=OCR_LANGUAGE, config=OCR_CONFIG
+                                )
+                                if ocr_text.strip():
+                                    text_content += f"\n[OCR Page {page.number + 1} Image {img_index + 1}]:\n{ocr_text}\n"
+                                    log_to_backend(
+                                        "info",
+                                        f"OCR extracted {len(ocr_text)} characters from image {img_index + 1} on page {page.number + 1}",
+                                    )
+                        except Exception as e:
+                            log_to_backend(
+                                "warning",
+                                f"Failed to process embedded images on page {page.number + 1}: {str(e)}",
+                            )
+            finally:
+                if doc:
+                    doc.close()
         elif file_extension.lower() in [".docx", ".doc"]:
             # Create a BytesIO object from the file content
             doc_stream = io.BytesIO(file_content)
@@ -701,8 +724,48 @@ async def upload_files(
             # Read file content
             content = await file.read()
 
+            # Debug logging
+            log_to_backend(
+                "info",
+                f"File details: filename={file.filename}, size={file.size}, content_length={len(content) if content else 0}",
+            )
+
+            if not content:
+                log_to_backend("error", f"File content is empty for {file.filename}")
+                raise HTTPException(
+                    status_code=400, detail=f"File '{file.filename}' content is empty"
+                )
+
+            # Validate file content
+            if not content or len(content) == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File '{file.filename}' is empty or could not be read",
+                )
+
+            # Check file size limit (50MB)
+            if len(content) > 50 * 1024 * 1024:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File '{file.filename}' is too large. Maximum file size is 50MB.",
+                )
+
             # Get file extension
             _, ext = os.path.splitext(file.filename)
+
+            # Validate PDF files have proper header
+            if ext.lower() == ".pdf":
+                if not content.startswith(b"%PDF"):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File '{file.filename}' does not appear to be a valid PDF file",
+                    )
+                # Check for minimum PDF size (PDF files should be at least 100 bytes)
+                if len(content) < 100:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File '{file.filename}' appears to be too small to be a valid PDF file",
+                    )
 
             try:
                 # Process the document (no database operations)
@@ -720,10 +783,17 @@ async def upload_files(
                     "info",
                     f"Processed {document_info.get('chunks')} chunks from {file.filename}",
                 )
+            except ValueError as e:
+                # Handle specific validation errors (like corrupted PDFs)
+                error_msg = f"Error processing file {file.filename}: {str(e)}"
+                log_to_backend("error", error_msg)
+                raise HTTPException(status_code=400, detail=str(e))
             except Exception as e:
                 error_msg = f"Error processing file {file.filename}"
                 log_to_backend("error", error_msg, error=e)
-                raise HTTPException(status_code=500, detail="Error processing document")
+                raise HTTPException(
+                    status_code=500, detail=f"Error processing document: {str(e)}"
+                )
 
         return {
             "message": f"Successfully processed {len(files)} files",
@@ -848,72 +918,3 @@ async def query_documents(
             status_code=500,
             detail="An unexpected error occurred while processing your query",
         )
-
-
-@router.delete("/{document_id}")
-async def delete_document_embeddings(
-    document_id: str,
-    api_key: str = Header(..., alias="X-API-Key"),
-    db: Session = Depends(get_db),
-):
-    """Delete document embeddings from Qdrant."""
-    try:
-        # Verify API key
-        if api_key != settings.BACKEND_API_KEY:
-            raise HTTPException(status_code=401, detail="Invalid API key")
-
-        if not qdrant_client:
-            raise HTTPException(status_code=500, detail="Qdrant client not available")
-
-        # Delete embeddings from Qdrant
-        try:
-            from qdrant_client.models import FieldCondition, Filter, MatchValue
-
-            # Create proper filter for Qdrant
-            filter_condition = Filter(
-                must=[
-                    FieldCondition(
-                        key="document_id", match=MatchValue(value=document_id)
-                    )
-                ]
-            )
-
-            qdrant_client.delete(
-                collection_name=qdrant_collection,
-                points_selector=filter_condition,
-            )
-
-            log_to_backend(
-                level="info",
-                message=f"Successfully deleted embeddings for document {document_id}",
-                meta={"document_id": document_id, "action": "qdrant_cleanup"},
-            )
-
-            return {
-                "success": True,
-                "message": f"Deleted embeddings for document {document_id}",
-            }
-
-        except Exception as e:
-            log_to_backend(
-                level="error",
-                message=f"Failed to delete embeddings for document {document_id}",
-                meta={
-                    "document_id": document_id,
-                    "error": str(e),
-                    "action": "qdrant_cleanup",
-                },
-            )
-            raise HTTPException(
-                status_code=500, detail=f"Failed to delete embeddings: {str(e)}"
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        log_to_backend(
-            level="error",
-            message=f"Unexpected error in delete_document_embeddings",
-            meta={"document_id": document_id, "error": str(e)},
-        )
-        raise HTTPException(status_code=500, detail="Internal server error")

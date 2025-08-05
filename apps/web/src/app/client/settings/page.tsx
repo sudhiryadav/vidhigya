@@ -2,6 +2,7 @@
 
 import FontSizeSelector from "@/components/FontSizeSelector";
 import ProfilePictureUpload from "@/components/ProfilePictureUpload";
+import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import { Bell, Save, Settings, Shield, User } from "lucide-react";
@@ -468,63 +469,109 @@ export default function ClientSettingsPage() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Language
                         </label>
-                        <select
-                          value={language}
-                          onChange={(e) => setLanguage(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        >
-                          <option value="en">English</option>
-                          <option value="es">Spanish</option>
-                          <option value="fr">French</option>
-                          <option value="de">German</option>
-                        </select>
+                        <CustomSelect
+                          value={{
+                            value: language,
+                            label:
+                              language === "en"
+                                ? "English"
+                                : language === "es"
+                                  ? "Spanish"
+                                  : language === "fr"
+                                    ? "French"
+                                    : "German",
+                          }}
+                          onChange={(option) =>
+                            setLanguage(option?.value || "en")
+                          }
+                          options={[
+                            { value: "en", label: "English" },
+                            { value: "es", label: "Spanish" },
+                            { value: "fr", label: "French" },
+                            { value: "de", label: "German" },
+                          ]}
+                          placeholder="Select language..."
+                          className="w-full"
+                        />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Timezone
                         </label>
-                        <select
-                          value={timezone}
-                          onChange={(e) => setTimezone(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        >
-                          <option value="UTC">UTC</option>
-                          <option value="EST">Eastern Time</option>
-                          <option value="CST">Central Time</option>
-                          <option value="MST">Mountain Time</option>
-                          <option value="PST">Pacific Time</option>
-                        </select>
+                        <CustomSelect
+                          value={{
+                            value: timezone,
+                            label:
+                              timezone === "UTC"
+                                ? "UTC"
+                                : timezone === "EST"
+                                  ? "Eastern Time"
+                                  : timezone === "CST"
+                                    ? "Central Time"
+                                    : timezone === "MST"
+                                      ? "Mountain Time"
+                                      : "Pacific Time",
+                          }}
+                          onChange={(option) =>
+                            setTimezone(option?.value || "UTC")
+                          }
+                          options={[
+                            { value: "UTC", label: "UTC" },
+                            { value: "EST", label: "Eastern Time" },
+                            { value: "CST", label: "Central Time" },
+                            { value: "MST", label: "Mountain Time" },
+                            { value: "PST", label: "Pacific Time" },
+                          ]}
+                          placeholder="Select timezone..."
+                          className="w-full"
+                        />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Date Format
                         </label>
-                        <select
-                          value={dateFormat}
-                          onChange={(e) => setDateFormat(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        >
-                          <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                          <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                          <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                        </select>
+                        <CustomSelect
+                          value={{ value: dateFormat, label: dateFormat }}
+                          onChange={(option) =>
+                            setDateFormat(option?.value || "MM/DD/YYYY")
+                          }
+                          options={[
+                            { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
+                            { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
+                            { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
+                          ]}
+                          placeholder="Select date format..."
+                          className="w-full"
+                        />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Theme
                         </label>
-                        <select
-                          value={theme}
-                          onChange={(e) => setTheme(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        >
-                          <option value="system">System</option>
-                          <option value="light">Light</option>
-                          <option value="dark">Dark</option>
-                        </select>
+                        <CustomSelect
+                          value={{
+                            value: theme,
+                            label:
+                              theme === "system"
+                                ? "System"
+                                : theme === "light"
+                                  ? "Light"
+                                  : "Dark",
+                          }}
+                          onChange={(option) =>
+                            setTheme(option?.value || "system")
+                          }
+                          options={[
+                            { value: "system", label: "System" },
+                            { value: "light", label: "Light" },
+                            { value: "dark", label: "Dark" },
+                          ]}
+                          placeholder="Select theme..."
+                          className="w-full"
+                        />
                       </div>
                     </div>
                   </div>

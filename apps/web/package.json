@@ -11,14 +11,17 @@
   "dependencies": {
     "@headlessui/react": "^2.2.7",
     "@heroicons/react": "^2.2.0",
+    "@hookform/resolvers": "^5.2.1",
     "lucide-react": "^0.534.0",
     "next": "^15.4.5",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-dropzone": "^14.3.8",
+    "react-hook-form": "^7.62.0",
     "react-hot-toast": "^2.5.2",
     "react-select": "^5.10.2",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "yup": "^1.7.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

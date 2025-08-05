@@ -1,9 +1,10 @@
 "use client";
 
+import ModalDialog from "@/components/ui/ModalDialog";
+import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { apiClient } from "@/services/api";
-import ModalDialog from "@/components/ui/ModalDialog";
 import { formatCurrency, getCurrencySymbol } from "@/utils/currency";
 import {
   AlertTriangle,
@@ -17,7 +18,6 @@ import {
   Plus,
   Search,
   Trash2,
-  X,
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -298,39 +298,50 @@ export default function BillingPage() {
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="PENDING">Pending</option>
-                    <option value="PAID">Paid</option>
-                    <option value="OVERDUE">Overdue</option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
+                  <CustomSelect
+                    label="Status"
+                    options={[
+                      { value: "all", label: "All Status" },
+                      { value: "PENDING", label: "Pending" },
+                      { value: "PAID", label: "Paid" },
+                      { value: "OVERDUE", label: "Overdue" },
+                      { value: "CANCELLED", label: "Cancelled" },
+                    ]}
+                    value={{
+                      value: statusFilter,
+                      label:
+                        statusFilter === "all" ? "All Status" : statusFilter,
+                    }}
+                    onChange={(option) =>
+                      setStatusFilter(option?.value || "all")
+                    }
+                    placeholder="Select status"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Bill Type
-                  </label>
-                  <select
-                    value={billTypeFilter}
-                    onChange={(e) => setBillTypeFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="all">All Types</option>
-                    <option value="CONSULTATION">Consultation</option>
-                    <option value="COURT_FILING">Court Filing</option>
-                    <option value="DOCUMENT_PREPARATION">
-                      Document Preparation
-                    </option>
-                    <option value="REPRESENTATION">Representation</option>
-                    <option value="OTHER">Other</option>
-                  </select>
+                  <CustomSelect
+                    label="Bill Type"
+                    options={[
+                      { value: "all", label: "All Types" },
+                      { value: "CONSULTATION", label: "Consultation" },
+                      { value: "COURT_FILING", label: "Court Filing" },
+                      {
+                        value: "DOCUMENT_PREPARATION",
+                        label: "Document Preparation",
+                      },
+                      { value: "REPRESENTATION", label: "Representation" },
+                      { value: "OTHER", label: "Other" },
+                    ]}
+                    value={{
+                      value: billTypeFilter,
+                      label:
+                        billTypeFilter === "all" ? "All Types" : billTypeFilter,
+                    }}
+                    onChange={(option) =>
+                      setBillTypeFilter(option?.value || "all")
+                    }
+                    placeholder="Select bill type"
+                  />
                 </div>
               </div>
             </div>
@@ -472,7 +483,11 @@ export default function BillingPage() {
             >
               Cancel
             </button>
-            <button type="submit" form="create-bill-form" className="btn-primary">
+            <button
+              type="submit"
+              form="create-bill-form"
+              className="btn-primary"
+            >
               Create Bill
             </button>
           </div>
@@ -481,141 +496,161 @@ export default function BillingPage() {
         closeOnEscape={true}
         closeOnOverlayClick={true}
       >
-        <form id="create-bill-form" onSubmit={handleCreateBill} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Amount *
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                      {getCurrencySymbol(userCurrency)}
-                    </span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      required
-                      value={createFormData.amount}
-                      onChange={(e) =>
-                        setCreateFormData({
-                          ...createFormData,
-                          amount: e.target.value,
-                        })
-                      }
-                      className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Bill Type *
-                  </label>
-                  <select
-                    required
-                    value={createFormData.billType}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        billType: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="CONSULTATION">Consultation</option>
-                    <option value="COURT_FILING">Court Filing</option>
-                    <option value="DOCUMENT_PREPARATION">
-                      Document Preparation
-                    </option>
-                    <option value="REPRESENTATION">Representation</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Due Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={createFormData.dueDate}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        dueDate: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Client *
-                  </label>
-                  <select
-                    required
-                    value={createFormData.clientId}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        clientId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select a client</option>
-                    {cases.map((caseItem) => (
-                      <option
-                        key={caseItem.client.id}
-                        value={caseItem.client.id}
-                      >
-                        {caseItem.client.name} ({caseItem.client.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Related Case
-                  </label>
-                  <select
-                    value={createFormData.caseId}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        caseId: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select case (optional)</option>
-                    {cases.map((caseItem) => (
-                      <option key={caseItem.id} value={caseItem.id}>
-                        {caseItem.caseNumber} - {caseItem.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description *
-                </label>
-                <textarea
+        <form
+          id="create-bill-form"
+          onSubmit={handleCreateBill}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Amount *
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                  {getCurrencySymbol(userCurrency)}
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
                   required
-                  value={createFormData.description}
+                  value={createFormData.amount}
                   onChange={(e) =>
                     setCreateFormData({
                       ...createFormData,
-                      description: e.target.value,
+                      amount: e.target.value,
                     })
                   }
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter bill description"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  placeholder="0.00"
                 />
               </div>
+            </div>
+            <div>
+              <CustomSelect
+                label="Bill Type"
+                required
+                options={[
+                  { value: "CONSULTATION", label: "Consultation" },
+                  { value: "COURT_FILING", label: "Court Filing" },
+                  {
+                    value: "DOCUMENT_PREPARATION",
+                    label: "Document Preparation",
+                  },
+                  { value: "REPRESENTATION", label: "Representation" },
+                  { value: "OTHER", label: "Other" },
+                ]}
+                value={{
+                  value: createFormData.billType,
+                  label: createFormData.billType,
+                }}
+                onChange={(option) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    billType: option?.value || "CONSULTATION",
+                  })
+                }
+                placeholder="Select bill type"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Due Date *
+              </label>
+              <input
+                type="date"
+                required
+                value={createFormData.dueDate}
+                onChange={(e) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    dueDate: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <CustomSelect
+                label="Client"
+                required
+                options={[
+                  { value: "", label: "Select a client" },
+                  ...cases.map((caseItem) => ({
+                    value: caseItem.client.id,
+                    label: `${caseItem.client.name} (${caseItem.client.email})`,
+                  })),
+                ]}
+                value={
+                  createFormData.clientId
+                    ? {
+                        value: createFormData.clientId,
+                        label: cases.find(
+                          (c) => c.client.id === createFormData.clientId
+                        )
+                          ? `${cases.find((c) => c.client.id === createFormData.clientId)?.client.name} (${cases.find((c) => c.client.id === createFormData.clientId)?.client.email})`
+                          : "Select a client",
+                      }
+                    : { value: "", label: "Select a client" }
+                }
+                onChange={(option) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    clientId: option?.value || "",
+                  })
+                }
+                placeholder="Select a client"
+              />
+            </div>
+            <div>
+              <CustomSelect
+                label="Related Case"
+                options={[
+                  { value: "", label: "Select case (optional)" },
+                  ...cases.map((caseItem) => ({
+                    value: caseItem.id,
+                    label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                  })),
+                ]}
+                value={
+                  createFormData.caseId
+                    ? {
+                        value: createFormData.caseId,
+                        label: cases.find((c) => c.id === createFormData.caseId)
+                          ? `${cases.find((c) => c.id === createFormData.caseId)?.caseNumber} - ${cases.find((c) => c.id === createFormData.caseId)?.title}`
+                          : "Select case (optional)",
+                      }
+                    : { value: "", label: "Select case (optional)" }
+                }
+                onChange={(option) =>
+                  setCreateFormData({
+                    ...createFormData,
+                    caseId: option?.value || "",
+                  })
+                }
+                placeholder="Select case (optional)"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description *
+            </label>
+            <textarea
+              required
+              value={createFormData.description}
+              onChange={(e) =>
+                setCreateFormData({
+                  ...createFormData,
+                  description: e.target.value,
+                })
+              }
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter bill description"
+            />
+          </div>
         </form>
       </ModalDialog>
     </div>

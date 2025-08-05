@@ -40,10 +40,6 @@ export default function ModalDialog({
     }
   }, [isOpen]);
 
-  if (!isOpen) {
-    return null;
-  }
-
   const maxWidthClasses = {
     sm: "modal-sm",
     md: "modal-md",
@@ -60,15 +56,13 @@ export default function ModalDialog({
   // Handle ESC key press
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && closeOnEscape) {
+      if (event.key === "Escape" && closeOnEscape && isOpen) {
         onClose();
       }
     };
 
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      return () => document.removeEventListener("keydown", handleEscape);
-    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, closeOnEscape, onClose]);
 
   // Handle overlay click
@@ -77,6 +71,10 @@ export default function ModalDialog({
       onClose();
     }
   };
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>

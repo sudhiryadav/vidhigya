@@ -4,8 +4,15 @@ import DocumentUpload from "@/components/DocumentUpload";
 import DocumentViewer from "@/components/DocumentViewer";
 import Overlay from "@/components/Overlay";
 import ModalDialog from "@/components/ui/ModalDialog";
+import CustomSelect from "@/components/ui/select";
+import {
+  FormFieldWrapper,
+  ValidatedInput,
+} from "@/components/ui/ValidationMessage";
 import { useAuth } from "@/contexts/AuthContext";
+import { documentUploadSchema } from "@/lib/validation";
 import { apiClient } from "@/services/api";
+import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Briefcase,
   Calendar,
@@ -22,6 +29,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Resolver, useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 
 interface Document {
@@ -52,20 +60,36 @@ interface Case {
   title: string;
 }
 
+interface SearchResult {
+  document_id: string;
+  document_title: string;
+  filename: string;
+  page_number: number;
+  document_category: string;
+  content: string;
+  score: number;
+  uploaded_by: string;
+  uploaded_at: string;
+}
+
+interface UploadFormData {
+  title: string;
+  description: string;
+  category: string;
+  status: string;
+  caseId: string;
+}
+
 export default function DocumentsPage() {
   const { user } = useAuth();
 
-  // Ensure all state is properly initialized
-  if (!user) {
-    return null;
-  }
   const [documents, setDocuments] = useState<Document[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [searching, setSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -76,20 +100,43 @@ export default function DocumentsPage() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(
     null
   );
-  const [uploadFormData, setUploadFormData] = useState({
-    title: "",
-    description: "",
-    category: "PETITION",
-    status: "DRAFT",
-    caseId: "",
-    file: null as File | null,
-  });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
+  const resolver = yupResolver(documentUploadSchema) as unknown as Resolver<
+    UploadFormData,
+    any
+  >;
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+    reset,
+    setValue,
+    watch,
+  } = useForm<UploadFormData>({
+    resolver,
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "PETITION",
+      status: "DRAFT",
+      caseId: "",
+    },
+    mode: "onSubmit",
+  });
+
   useEffect(() => {
-    fetchDocuments();
-    fetchCases();
-  }, [searchTerm, categoryFilter, statusFilter]);
+    if (user) {
+      fetchDocuments();
+      fetchCases();
+    }
+  }, [user, searchTerm, categoryFilter, statusFilter]);
+
+  // Ensure all state is properly initialized
+  if (!user) {
+    return null;
+  }
 
   const fetchDocuments = async () => {
     try {
@@ -112,42 +159,32 @@ export default function DocumentsPage() {
     }
   };
 
-  const handleUploadDocument = async (files: File[]) => {
+  const handleUploadDocument = async (
+    files: File[],
+    formData: UploadFormData
+  ) => {
     if (files.length === 0) return;
-
-    // Validate required fields
-    if (!uploadFormData.title.trim()) {
-      toast.error("Please enter a document title");
-      return;
-    }
 
     try {
       setUploading(true);
 
       // Upload each file
       for (const file of files) {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("title", uploadFormData.title);
-        formData.append("description", uploadFormData.description);
-        formData.append("category", uploadFormData.category);
-        formData.append("status", uploadFormData.status);
-        if (uploadFormData.caseId) {
-          formData.append("caseId", uploadFormData.caseId);
+        const uploadFormData = new FormData();
+        uploadFormData.append("file", file);
+        uploadFormData.append("title", formData.title);
+        uploadFormData.append("description", formData.description);
+        uploadFormData.append("category", formData.category);
+        uploadFormData.append("status", formData.status);
+        if (formData.caseId) {
+          uploadFormData.append("caseId", formData.caseId);
         }
 
-        await apiClient.uploadDocument(formData);
+        await apiClient.uploadDocument(uploadFormData);
       }
 
       setShowUploadModal(false);
-      setUploadFormData({
-        title: "",
-        description: "",
-        category: "PETITION",
-        status: "DRAFT",
-        caseId: "",
-        file: null,
-      });
+      reset();
       setSelectedFiles([]);
       fetchDocuments();
       toast.success(`${files.length} document(s) uploaded successfully`);
@@ -159,19 +196,13 @@ export default function DocumentsPage() {
     }
   };
 
-  const handleSaveDocuments = async () => {
+  const onSubmit = async (data: UploadFormData) => {
     if (selectedFiles.length === 0) {
       toast.error("Please select at least one file to upload");
       return;
     }
 
-    // Validate required fields
-    if (!uploadFormData.title.trim()) {
-      toast.error("Please enter a document title");
-      return;
-    }
-
-    await handleUploadDocument(selectedFiles);
+    await handleUploadDocument(selectedFiles, data);
   };
 
   const handleViewClick = (document: Document) => {
@@ -213,8 +244,8 @@ export default function DocumentsPage() {
 
   const handleDownloadDocument = async (doc: Document) => {
     try {
-      // Use the openDocumentDownload method which handles the redirect properly
-      apiClient.openDocumentDownload(doc.id);
+      // Use the reliable download method with debugging
+      apiClient.downloadDocumentReliable(doc.id);
     } catch (error) {
       console.error("Error downloading document:", error);
       toast.error("Failed to download document");
@@ -435,38 +466,50 @@ export default function DocumentsPage() {
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="all">All Categories</option>
-                    <option value="PETITION">Petition</option>
-                    <option value="EVIDENCE">Evidence</option>
-                    <option value="CONTRACT">Contract</option>
-                    <option value="AGREEMENT">Agreement</option>
-                    <option value="REPORT">Report</option>
-                  </select>
+                  <CustomSelect
+                    label="Category"
+                    options={[
+                      { value: "all", label: "All Categories" },
+                      { value: "PETITION", label: "Petition" },
+                      { value: "EVIDENCE", label: "Evidence" },
+                      { value: "CONTRACT", label: "Contract" },
+                      { value: "AGREEMENT", label: "Agreement" },
+                      { value: "REPORT", label: "Report" },
+                    ]}
+                    value={{
+                      value: categoryFilter,
+                      label:
+                        categoryFilter === "all"
+                          ? "All Categories"
+                          : categoryFilter,
+                    }}
+                    onChange={(option) =>
+                      setCategoryFilter(option?.value || "all")
+                    }
+                    placeholder="Select category"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="DRAFT">Draft</option>
-                    <option value="FILED">Filed</option>
-                    <option value="APPROVED">Approved</option>
-                    <option value="REJECTED">Rejected</option>
-                    <option value="ARCHIVED">Archived</option>
-                  </select>
+                  <CustomSelect
+                    label="Status"
+                    options={[
+                      { value: "all", label: "All Status" },
+                      { value: "DRAFT", label: "Draft" },
+                      { value: "FILED", label: "Filed" },
+                      { value: "APPROVED", label: "Approved" },
+                      { value: "REJECTED", label: "Rejected" },
+                      { value: "ARCHIVED", label: "Archived" },
+                    ]}
+                    value={{
+                      value: statusFilter,
+                      label:
+                        statusFilter === "all" ? "All Status" : statusFilter,
+                    }}
+                    onChange={(option) =>
+                      setStatusFilter(option?.value || "all")
+                    }
+                    placeholder="Select status"
+                  />
                 </div>
               </div>
             </div>
@@ -600,14 +643,7 @@ export default function DocumentsPage() {
           onClose={() => {
             setShowUploadModal(false);
             setSelectedFiles([]);
-            setUploadFormData({
-              title: "",
-              description: "",
-              category: "PETITION",
-              status: "DRAFT",
-              caseId: "",
-              file: null,
-            });
+            reset();
           }}
           header={
             <div>
@@ -626,22 +662,15 @@ export default function DocumentsPage() {
                 onClick={() => {
                   setShowUploadModal(false);
                   setSelectedFiles([]);
-                  setUploadFormData({
-                    title: "",
-                    description: "",
-                    category: "PETITION",
-                    status: "DRAFT",
-                    caseId: "",
-                    file: null,
-                  });
+                  reset();
                 }}
                 className="btn-secondary"
               >
                 Cancel
               </button>
               <button
-                type="button"
-                onClick={handleSaveDocuments}
+                type="submit"
+                form="upload-form"
                 disabled={uploading || selectedFiles.length === 0}
                 className="btn-primary"
               >
@@ -653,115 +682,126 @@ export default function DocumentsPage() {
           closeOnEscape={true}
           closeOnOverlayClick={true}
         >
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Document Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={uploadFormData.title}
-                  onChange={(e) =>
-                    setUploadFormData({
-                      ...uploadFormData,
-                      title: e.target.value,
-                    })
+          <form
+            id="upload-form"
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-3"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <ValidatedInput
+                label="Document Title"
+                required
+                error={errors.title}
+                register={register}
+                name="title"
+                placeholder="Enter document title"
+              />
+              <FormFieldWrapper
+                label="Category"
+                required
+                error={errors.category}
+              >
+                <CustomSelect
+                  value={{
+                    value: watch("category"),
+                    label:
+                      watch("category") === "PETITION"
+                        ? "Petition"
+                        : watch("category") === "EVIDENCE"
+                          ? "Evidence"
+                          : watch("category") === "CONTRACT"
+                            ? "Contract"
+                            : watch("category") === "AGREEMENT"
+                              ? "Agreement"
+                              : "Report",
+                  }}
+                  onChange={(option) =>
+                    setValue("category", option?.value || "PETITION")
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter document title"
+                  options={[
+                    { value: "PETITION", label: "Petition" },
+                    { value: "EVIDENCE", label: "Evidence" },
+                    { value: "CONTRACT", label: "Contract" },
+                    { value: "AGREEMENT", label: "Agreement" },
+                    { value: "REPORT", label: "Report" },
+                  ]}
+                  placeholder="Select category"
+                  className={errors.category ? "border-red-500" : ""}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Category <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={uploadFormData.category}
-                  onChange={(e) =>
-                    setUploadFormData({
-                      ...uploadFormData,
-                      category: e.target.value,
-                    })
+              </FormFieldWrapper>
+              <FormFieldWrapper label="Status" required error={errors.status}>
+                <CustomSelect
+                  value={{
+                    value: watch("status"),
+                    label:
+                      watch("status") === "DRAFT"
+                        ? "Draft"
+                        : watch("status") === "FILED"
+                          ? "Filed"
+                          : watch("status") === "APPROVED"
+                            ? "Approved"
+                            : watch("status") === "REJECTED"
+                              ? "Rejected"
+                              : "Archived",
+                  }}
+                  onChange={(option) =>
+                    setValue("status", option?.value || "DRAFT")
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="PETITION">Petition</option>
-                  <option value="EVIDENCE">Evidence</option>
-                  <option value="CONTRACT">Contract</option>
-                  <option value="AGREEMENT">Agreement</option>
-                  <option value="REPORT">Report</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Status <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={uploadFormData.status}
-                  onChange={(e) =>
-                    setUploadFormData({
-                      ...uploadFormData,
-                      status: e.target.value,
-                    })
+                  options={[
+                    { value: "DRAFT", label: "Draft" },
+                    { value: "FILED", label: "Filed" },
+                    { value: "APPROVED", label: "Approved" },
+                    { value: "REJECTED", label: "Rejected" },
+                    { value: "ARCHIVED", label: "Archived" },
+                  ]}
+                  placeholder="Select status"
+                  className={errors.status ? "border-red-500" : ""}
+                />
+              </FormFieldWrapper>
+              <FormFieldWrapper
+                label="Related Case"
+                required
+                error={errors.caseId}
+              >
+                <CustomSelect
+                  value={
+                    watch("caseId")
+                      ? {
+                          value: watch("caseId"),
+                          label: cases.find((c) => c.id === watch("caseId"))
+                            ? `${cases.find((c) => c.id === watch("caseId"))?.caseNumber} - ${cases.find((c) => c.id === watch("caseId"))?.title}`
+                            : "Select case",
+                        }
+                      : { value: "", label: "Select case" }
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="DRAFT">Draft</option>
-                  <option value="FILED">Filed</option>
-                  <option value="APPROVED">Approved</option>
-                  <option value="REJECTED">Rejected</option>
-                  <option value="ARCHIVED">Archived</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Related Case
-                </label>
-                <select
-                  value={uploadFormData.caseId}
-                  onChange={(e) =>
-                    setUploadFormData({
-                      ...uploadFormData,
-                      caseId: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="">Select case (optional)</option>
-                  {cases.map((caseItem) => (
-                    <option key={caseItem.id} value={caseItem.id}>
-                      {caseItem.caseNumber} - {caseItem.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  onChange={(option) => setValue("caseId", option?.value || "")}
+                  options={[
+                    { value: "", label: "Select case" },
+                    ...cases.map((caseItem) => ({
+                      value: caseItem.id,
+                      label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                    })),
+                  ]}
+                  placeholder="Select case"
+                  className={errors.caseId ? "border-red-500" : ""}
+                />
+              </FormFieldWrapper>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Description
-              </label>
-              <textarea
-                value={uploadFormData.description}
-                onChange={(e) =>
-                  setUploadFormData({
-                    ...uploadFormData,
-                    description: e.target.value,
-                  })
-                }
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                placeholder="Enter document description"
-              />
-            </div>
+            <ValidatedInput
+              label="Description"
+              required
+              error={errors.description}
+              register={register}
+              name="description"
+              type="textarea"
+              rows={4}
+              placeholder="Enter document description"
+            />
 
             {/* Drag and Drop Upload Area */}
             <DocumentUpload
-              onUpload={handleUploadDocument}
+              onUpload={(files) => handleUploadDocument(files, watch())}
               onFilesSelected={setSelectedFiles}
               maxFiles={5}
               maxSize={10 * 1024 * 1024} // 10MB
@@ -769,7 +809,7 @@ export default function DocumentsPage() {
               showPreview={false}
               autoUpload={false}
             />
-          </div>
+          </form>
         </ModalDialog>
       )}
 

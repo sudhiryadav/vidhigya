@@ -1,6 +1,7 @@
 "use client";
 
 import ConfirmDialog from "@/components/ConfirmDialog";
+import CustomSelect from "@/components/ui/select";
 import { apiClient } from "@/services/api";
 import {
   Bell,
@@ -302,30 +303,48 @@ export default function NotificationsPage() {
           </div>
 
           {/* Type Filter */}
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">All Types</option>
-            <option value="TASK_ASSIGNED">Tasks</option>
-            <option value="EVENT_REMINDER">Events</option>
-            <option value="DOCUMENT_UPLOADED">Documents</option>
-            <option value="BILL_OVERDUE">Billing</option>
-            <option value="VIDEO_CALL_SCHEDULED">Video Calls</option>
-            <option value="CASE_UPDATE">Cases</option>
-          </select>
+          <CustomSelect
+            options={[
+              { value: "all", label: "All Types" },
+              { value: "TASK_ASSIGNED", label: "Tasks" },
+              { value: "EVENT_REMINDER", label: "Events" },
+              { value: "DOCUMENT_UPLOADED", label: "Documents" },
+              { value: "BILL_OVERDUE", label: "Billing" },
+              { value: "VIDEO_CALL_SCHEDULED", label: "Video Calls" },
+              { value: "CASE_UPDATE", label: "Cases" },
+            ]}
+            value={{
+              value: filterType,
+              label:
+                filterType === "all"
+                  ? "All Types"
+                  : filterType
+                      .replace(/_/g, " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase()),
+            }}
+            onChange={(option) => setFilterType(option?.value || "all")}
+            placeholder="Select type"
+          />
 
           {/* Read Status Filter */}
-          <select
-            value={filterRead}
-            onChange={(e) => setFilterRead(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">All Status</option>
-            <option value="unread">Unread</option>
-            <option value="read">Read</option>
-          </select>
+          <CustomSelect
+            options={[
+              { value: "all", label: "All Status" },
+              { value: "unread", label: "Unread" },
+              { value: "read", label: "Read" },
+            ]}
+            value={{
+              value: filterRead,
+              label:
+                filterRead === "all"
+                  ? "All Status"
+                  : filterRead === "unread"
+                    ? "Unread"
+                    : "Read",
+            }}
+            onChange={(option) => setFilterRead(option?.value || "all")}
+            placeholder="Select status"
+          />
         </div>
       </div>
 

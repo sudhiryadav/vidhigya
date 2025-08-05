@@ -1,7 +1,10 @@
 "use client";
 
+import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
+import { courtFormSchema } from "@/lib/validation";
 import { apiClient } from "@/services/api";
+import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Building2,
   Edit,
@@ -16,7 +19,9 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Resolver, useForm } from "react-hook-form";
 import toast from "react-hot-toast";
+import * as yup from "yup";
 
 interface Court {
   id: string;
@@ -48,6 +53,8 @@ interface CourtType {
   value: string;
   label: string;
 }
+
+type CourtFormData = yup.InferType<typeof courtFormSchema>;
 
 const courtTypes: CourtType[] = [
   { value: "SUPREME_COURT", label: "Supreme Court" },
@@ -222,31 +229,33 @@ export default function CourtsManagementPage() {
 
         {showFilters && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Court Types</option>
-              {courtTypes.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              value={{
+                value: selectedType,
+                label: selectedType
+                  ? courtTypes.find((type) => type.value === selectedType)
+                      ?.label || selectedType
+                  : "All Court Types",
+              }}
+              onChange={(option) => setSelectedType(option?.value || "")}
+              options={[{ value: "", label: "All Court Types" }, ...courtTypes]}
+              placeholder="Select court type..."
+              className="w-full"
+            />
 
-            <select
-              value={selectedState}
-              onChange={(e) => setSelectedState(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All States</option>
-              {states.map((state) => (
-                <option key={state} value={state}>
-                  {state}
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              value={{
+                value: selectedState,
+                label: selectedState || "All States",
+              }}
+              onChange={(option) => setSelectedState(option?.value || "")}
+              options={[
+                { value: "", label: "All States" },
+                ...states.map((state) => ({ value: state, label: state })),
+              ]}
+              placeholder="Select state..."
+              className="w-full"
+            />
 
             <button
               onClick={handleSearch}
@@ -436,33 +445,49 @@ function CourtModal({
   onClose: () => void;
   onSave: () => void;
 }) {
-  const [formData, setFormData] = useState({
-    name: court.name || "",
-    type: court.type || "",
-    address: court.address || "",
-    city: court.city || "",
-    state: court.state || "",
-    country: court.country || "India",
-    pincode: court.pincode || "",
-    phone: court.phone || "",
-    email: court.email || "",
-    website: court.website || "",
-    jurisdiction: court.jurisdiction || "",
-    isActive: court.isActive !== undefined ? court.isActive : true,
-  });
   const [loading, setLoading] = useState(false);
   const isEditing = !!court.id;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const resolver = yupResolver(courtFormSchema) as unknown as Resolver<
+    CourtFormData,
+    any
+  >;
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid, isDirty },
+    reset,
+    setValue,
+    watch,
+  } = useForm<CourtFormData>({
+    resolver,
+    defaultValues: {
+      name: court.name || undefined,
+      type: court.type || undefined,
+      address: court.address || undefined,
+      city: court.city || undefined,
+      state: court.state || undefined,
+      country: court.country || "India",
+      pincode: court.pincode || undefined,
+      phone: court.phone || undefined,
+      email: court.email || undefined,
+      website: court.website || undefined,
+      jurisdiction: court.jurisdiction || undefined,
+      isActive: court.isActive !== undefined ? court.isActive : true,
+    },
+    mode: "onSubmit",
+  });
+
+  const onSubmit = async (data: CourtFormData) => {
     setLoading(true);
 
     try {
       if (isEditing) {
-        await apiClient.updateCourt(court.id, formData);
+        await apiClient.updateCourt(court.id, data);
         toast.success("Court updated successfully");
       } else {
-        await apiClient.createCourt(formData);
+        await apiClient.createCourt(data);
         toast.success("Court created successfully");
       }
       onSave();
@@ -491,200 +516,235 @@ function CourtModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Court Name *
+                Court Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                required
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("name")}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.name ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter court name"
               />
+              {errors.name && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.name.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Court Type *
+                Court Type <span className="text-red-500">*</span>
               </label>
-              <select
-                required
-                value={formData.type}
-                onChange={(e) =>
-                  setFormData({ ...formData, type: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select Court Type</option>
-                {courtTypes.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+              <CustomSelect
+                value={{
+                  value: watch("type"),
+                  label: watch("type")
+                    ? courtTypes.find((type) => type.value === watch("type"))
+                        ?.label || watch("type")
+                    : "",
+                }}
+                onChange={(option) => setValue("type", option?.value || "")}
+                options={courtTypes}
+                placeholder="Select court type..."
+                className={errors.type ? "border-red-500" : ""}
+              />
+              {errors.type && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.type.message}
+                </p>
+              )}
             </div>
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Address *
+                Address <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                required
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("address")}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.address ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter complete address"
               />
+              {errors.address && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.address.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                City *
+                City <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                required
-                value={formData.city}
-                onChange={(e) =>
-                  setFormData({ ...formData, city: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("city")}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.city ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter city name"
               />
+              {errors.city && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.city.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                State *
+                State <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                required
-                value={formData.state}
-                onChange={(e) =>
-                  setFormData({ ...formData, state: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("state")}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.state ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter state name"
               />
+              {errors.state && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.state.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Country
+                Country <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={formData.country}
-                onChange={(e) =>
-                  setFormData({ ...formData, country: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("country")}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.country ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter country name"
               />
+              {errors.country && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.country.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Pincode
+                Pincode <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={formData.pincode}
-                onChange={(e) =>
-                  setFormData({ ...formData, pincode: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("pincode")}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.pincode ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter 6-digit pincode"
               />
+              {errors.pincode && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.pincode.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone
+                Phone <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("phone")}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.phone ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter phone number"
               />
+              {errors.phone && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.phone.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+                Email <span className="text-red-500">*</span>
               </label>
               <input
                 type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("email")}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.email ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter email address"
               />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Website
+                Website <span className="text-red-500">*</span>
               </label>
               <input
                 type="url"
-                value={formData.website}
-                onChange={(e) =>
-                  setFormData({ ...formData, website: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("website")}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.website ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter website URL"
               />
+              {errors.website && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.website.message}
+                </p>
+              )}
             </div>
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Jurisdiction
+                Jurisdiction <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={formData.jurisdiction}
-                onChange={(e) =>
-                  setFormData({ ...formData, jurisdiction: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("jurisdiction")}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.jurisdiction ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter jurisdiction"
               />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={(e) =>
-                    setFormData({ ...formData, isActive: e.target.checked })
-                  }
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Active</span>
-              </label>
+              {errors.jurisdiction && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.jurisdiction.message}
+                </p>
+              )}
             </div>
           </div>
-
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex justify-end mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="mr-3 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {loading
                 ? "Saving..."
@@ -699,7 +759,7 @@ function CourtModal({
   );
 }
 
-// Delete Confirmation Modal
+// Delete Modal Component
 function DeleteModal({
   court,
   onClose,
@@ -712,31 +772,21 @@ function DeleteModal({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-red-600">Delete Court</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-
-        <p className="text-gray-600 mb-4">
-          Are you sure you want to delete <strong>{court.name}</strong>? This
-          action cannot be undone.
+        <h2 className="text-lg font-semibold mb-4">Delete Court</h2>
+        <p className="mb-6">
+          Are you sure you want to delete{" "}
+          <span className="font-bold">{court.name}</span>?
         </p>
-
-        <div className="flex justify-end space-x-3">
+        <div className="flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            className="mr-3 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
             Delete
           </button>

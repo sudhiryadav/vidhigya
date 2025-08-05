@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
+import Link from "next/link";
 import { useEffect } from "react";
 
 export default function Error({
@@ -58,8 +59,8 @@ export default function Error({
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
           <div className="text-sm text-gray-600 dark:text-gray-400">
             <p>
-              Don't worry, this is usually a temporary issue. Try refreshing the
-              page or going back home.
+              Don&apos;t worry, this is usually a temporary issue. Try
+              refreshing the page or going back home.
             </p>
           </div>
         </div>
@@ -74,13 +75,13 @@ export default function Error({
             <span>Try Again</span>
           </button>
 
-          <a
+          <Link
             href="/"
             className="w-full bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 flex items-center justify-center space-x-2"
           >
             <Home className="w-5 h-5" />
             <span>Go Home</span>
-          </a>
+          </Link>
         </div>
 
         {/* Help Text */}

@@ -686,22 +686,208 @@ class ApiClient {
       typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const url = `${API_BASE_URL}/documents/${id}/download`;
 
-    // Create a temporary link and click it to trigger the download
-    const link = document.createElement("a");
-    link.href = url;
-    link.target = "_blank";
-
     if (token) {
-      // For authenticated requests, we need to handle this differently
-      // since we can't add headers to a simple link
+      // For authenticated requests, fetch the file and trigger download
       fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
         .then((response) => {
-          if (response.ok && response.redirected) {
-            window.open(response.url, "_blank");
+          console.log("Download response status:", response.status);
+          console.log(
+            "Download response headers:",
+            Object.fromEntries(response.headers.entries())
+          );
+
+          if (response.ok) {
+            // Get filename from Content-Disposition header
+            const contentDisposition = response.headers.get(
+              "Content-Disposition"
+            );
+            console.log("Content-Disposition header:", contentDisposition);
+
+            let filename = "document";
+            if (contentDisposition) {
+              // Try multiple patterns to extract filename
+              let filenameMatch =
+                contentDisposition.match(/filename="([^"]+)"/);
+              if (!filenameMatch) {
+                filenameMatch = contentDisposition.match(/filename=([^;]+)/);
+              }
+              if (!filenameMatch) {
+                filenameMatch = contentDisposition.match(
+                  /filename\*=UTF-8''([^;]+)/
+                );
+              }
+              if (!filenameMatch) {
+                // Try without quotes
+                filenameMatch = contentDisposition.match(/filename=([^;]+)/);
+              }
+
+              if (filenameMatch) {
+                filename = decodeURIComponent(filenameMatch[1]);
+                console.log("Extracted filename:", filename);
+              } else {
+                console.log(
+                  "Could not extract filename from:",
+                  contentDisposition
+                );
+                // Fallback: try to get filename from URL or use a default
+                const urlParts = response.url.split("/");
+                const lastPart = urlParts[urlParts.length - 1];
+                if (lastPart && lastPart.includes(".")) {
+                  filename = lastPart;
+                }
+              }
+            } else {
+              console.log("No Content-Disposition header found");
+            }
+
+            // Convert response to blob and download
+            return response.blob().then((blob) => {
+              console.log("Downloading file with filename:", filename);
+              console.log("Blob size:", blob.size);
+              console.log("Blob type:", blob.type);
+
+              const url = window.URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = filename;
+              link.style.display = "none";
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              window.URL.revokeObjectURL(url);
+
+              console.log("Download initiated for:", filename);
+            });
+          } else {
+            console.error("Download failed with status:", response.status);
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+        })
+        .catch((error) => {
+          console.error("Error downloading document:", error);
+          throw error;
+        });
+    } else {
+      // For unauthenticated requests, create a temporary link
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.click();
+    }
+  }
+
+  // Alternative download method that opens the URL directly
+  downloadDocumentDirect(id: string) {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const url = `${API_BASE_URL}/documents/${id}/download`;
+
+    if (token) {
+      // Create a temporary link with the download URL
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = ""; // Let the server set the filename
+      link.target = "_blank";
+
+      // Add authorization header via a custom approach
+      // This will open the URL in a new tab, and the browser will handle the download
+      const downloadUrl = `${url}?token=${encodeURIComponent(token)}`;
+      link.href = downloadUrl;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // For unauthenticated requests, just open the URL
+      window.open(url, "_blank");
+    }
+  }
+
+  // Simple download method that should work better
+  downloadDocumentSimple(id: string) {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const url = `${API_BASE_URL}/documents/${id}/download`;
+
+    // Create a form to submit the download request
+    const form = document.createElement("form");
+    form.method = "GET";
+    form.action = url;
+    form.target = "_blank";
+
+    if (token) {
+      const tokenInput = document.createElement("input");
+      tokenInput.type = "hidden";
+      tokenInput.name = "token";
+      tokenInput.value = token;
+      form.appendChild(tokenInput);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  }
+
+  // Most reliable download method - direct link approach
+  downloadDocumentReliable(id: string) {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const url = `${API_BASE_URL}/documents/${id}/download`;
+
+    if (token) {
+      // Use fetch to get the file with proper headers, then trigger download
+      fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+        .then((response) => {
+          if (response.ok) {
+            // Get filename from Content-Disposition header
+            const contentDisposition = response.headers.get(
+              "Content-Disposition"
+            );
+            console.log("Content-Disposition header:", contentDisposition);
+            let filename = "document";
+
+            if (contentDisposition) {
+              const filenameMatch =
+                contentDisposition.match(/filename="([^"]+)"/);
+              console.log("Filename match:", filenameMatch);
+              if (filenameMatch) {
+                filename = decodeURIComponent(filenameMatch[1]);
+                console.log("Extracted filename:", filename);
+              } else {
+                console.log("No filename match found in Content-Disposition");
+              }
+            } else {
+              console.log("No Content-Disposition header found");
+            }
+
+            // Convert to blob and download
+            return response.blob().then((blob) => {
+              console.log("Blob created, size:", blob.size, "type:", blob.type);
+              console.log("Setting download filename to:", filename);
+
+              // Create a blob with the correct filename
+              const file = new File([blob], filename, { type: blob.type });
+              const url = window.URL.createObjectURL(file);
+
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = filename;
+              link.style.display = "none";
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              window.URL.revokeObjectURL(url);
+
+              console.log("Download link clicked with filename:", filename);
+            });
           } else {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
@@ -711,8 +897,58 @@ class ApiClient {
           throw error;
         });
     } else {
-      // For unauthenticated requests, just open the link
-      link.click();
+      // For unauthenticated requests, just open the URL
+      window.open(url, "_blank");
+    }
+  }
+
+  // Alternative method that should work better with filename preservation
+  downloadDocumentWithFilename(id: string) {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const url = `${API_BASE_URL}/documents/${id}/download`;
+
+    if (token) {
+      // Create a temporary iframe to handle the download
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.src = url;
+
+      // Add authorization header via a custom approach
+      const downloadUrl = `${url}?token=${encodeURIComponent(token)}`;
+      iframe.src = downloadUrl;
+
+      document.body.appendChild(iframe);
+
+      // Remove the iframe after a short delay
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    } else {
+      // For unauthenticated requests, just open the URL
+      window.open(url, "_blank");
+    }
+  }
+
+  // Direct download method that opens URL in new tab
+  downloadDocumentDirectTab(id: string) {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const url = `${API_BASE_URL}/documents/${id}/download`;
+
+    if (token) {
+      // For authenticated requests, we need to handle this differently
+      // Let's try opening in a new tab which should preserve the filename
+      const newWindow = window.open(url, "_blank");
+
+      // If the window doesn't open (due to popup blocker), fall back to fetch method
+      if (!newWindow) {
+        console.log("Popup blocked, falling back to fetch method");
+        this.downloadDocumentReliable(id);
+      }
+    } else {
+      // For unauthenticated requests, just open the URL
+      window.open(url, "_blank");
     }
   }
 

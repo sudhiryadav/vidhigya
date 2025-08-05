@@ -1,6 +1,7 @@
 "use client";
 
 import ModalDialog from "@/components/ui/ModalDialog";
+import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
@@ -679,17 +680,24 @@ export default function VideoCallsPage() {
 
                   {/* Status Filter */}
                   <div className="relative">
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      <option value="all">All Status</option>
-                      <option value="SCHEDULED">Scheduled</option>
-                      <option value="IN_PROGRESS">In Progress</option>
-                      <option value="COMPLETED">Completed</option>
-                      <option value="CANCELLED">Cancelled</option>
-                    </select>
+                    <CustomSelect
+                      options={[
+                        { value: "all", label: "All Status" },
+                        { value: "SCHEDULED", label: "Scheduled" },
+                        { value: "IN_PROGRESS", label: "In Progress" },
+                        { value: "COMPLETED", label: "Completed" },
+                        { value: "CANCELLED", label: "Cancelled" },
+                      ]}
+                      value={{
+                        value: statusFilter,
+                        label:
+                          statusFilter === "all" ? "All Status" : statusFilter,
+                      }}
+                      onChange={(option) =>
+                        setStatusFilter(option?.value || "all")
+                      }
+                      placeholder="Select status"
+                    />
                   </div>
                 </div>
               </div>
@@ -874,26 +882,33 @@ export default function VideoCallsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Case (Optional)
-            </label>
-            <select
-              value={createFormData.caseId}
-              onChange={(e) =>
+            <CustomSelect
+              label="Case (Optional)"
+              options={[
+                { value: "", label: "Select a case" },
+                ...cases.map((caseItem) => ({
+                  value: caseItem.id,
+                  label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                })),
+              ]}
+              value={
+                createFormData.caseId
+                  ? {
+                      value: createFormData.caseId,
+                      label: cases.find((c) => c.id === createFormData.caseId)
+                        ? `${cases.find((c) => c.id === createFormData.caseId)?.caseNumber} - ${cases.find((c) => c.id === createFormData.caseId)?.title}`
+                        : "Select a case",
+                    }
+                  : { value: "", label: "Select a case" }
+              }
+              onChange={(option) =>
                 setCreateFormData({
                   ...createFormData,
-                  caseId: e.target.value,
+                  caseId: option?.value || "",
                 })
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            >
-              <option value="">Select a case</option>
-              {cases.map((caseItem) => (
-                <option key={caseItem.id} value={caseItem.id}>
-                  {caseItem.caseNumber} - {caseItem.title}
-                </option>
-              ))}
-            </select>
+              placeholder="Select a case"
+            />
           </div>
         </form>
       </ModalDialog>
@@ -1003,26 +1018,33 @@ export default function VideoCallsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Case (Optional)
-            </label>
-            <select
-              value={scheduleFormData.caseId}
-              onChange={(e) =>
+            <CustomSelect
+              label="Case (Optional)"
+              options={[
+                { value: "", label: "Select a case" },
+                ...cases.map((caseItem) => ({
+                  value: caseItem.id,
+                  label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                })),
+              ]}
+              value={
+                scheduleFormData.caseId
+                  ? {
+                      value: scheduleFormData.caseId,
+                      label: cases.find((c) => c.id === scheduleFormData.caseId)
+                        ? `${cases.find((c) => c.id === scheduleFormData.caseId)?.caseNumber} - ${cases.find((c) => c.id === scheduleFormData.caseId)?.title}`
+                        : "Select a case",
+                    }
+                  : { value: "", label: "Select a case" }
+              }
+              onChange={(option) =>
                 setScheduleFormData({
                   ...scheduleFormData,
-                  caseId: e.target.value,
+                  caseId: option?.value || "",
                 })
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            >
-              <option value="">Select a case</option>
-              {cases.map((caseItem) => (
-                <option key={caseItem.id} value={caseItem.id}>
-                  {caseItem.caseNumber} - {caseItem.title}
-                </option>
-              ))}
-            </select>
+              placeholder="Select a case"
+            />
           </div>
         </form>
       </ModalDialog>
@@ -1130,24 +1152,23 @@ export default function VideoCallsPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Status
-            </label>
-            <select
-              value={editFormData.status}
-              onChange={(e) =>
+            <CustomSelect
+              label="Status"
+              options={[
+                { value: "SCHEDULED", label: "Scheduled" },
+                { value: "IN_PROGRESS", label: "In Progress" },
+                { value: "COMPLETED", label: "Completed" },
+                { value: "CANCELLED", label: "Cancelled" },
+              ]}
+              value={{ value: editFormData.status, label: editFormData.status }}
+              onChange={(option) =>
                 setEditFormData({
                   ...editFormData,
-                  status: e.target.value,
+                  status: option?.value || "SCHEDULED",
                 })
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            >
-              <option value="SCHEDULED">Scheduled</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
+              placeholder="Select status"
+            />
           </div>
         </form>
       </ModalDialog>

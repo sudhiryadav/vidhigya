@@ -1,10 +1,10 @@
 "use client";
 
+import CustomSelect from "@/components/ui/select";
 import { formatCurrency } from "@/utils/currency";
 import {
   AlertCircle,
   CheckCircle,
-  ChevronDown,
   Clock,
   CreditCard,
   DollarSign,
@@ -301,38 +301,50 @@ export default function ClientBilling() {
 
             {/* Type Filter */}
             <div className="relative">
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="all">All Types</option>
-                {billTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type
+              <CustomSelect
+                options={[
+                  { value: "all", label: "All Types" },
+                  ...billTypes.map((type) => ({
+                    value: type,
+                    label: type
                       .replace(/_/g, " ")
-                      .replace(/\b\w/g, (l) => l.toUpperCase())}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+                      .replace(/\b\w/g, (l) => l.toUpperCase()),
+                  })),
+                ]}
+                value={{
+                  value: selectedType,
+                  label:
+                    selectedType === "all"
+                      ? "All Types"
+                      : selectedType
+                          .replace(/_/g, " ")
+                          .replace(/\b\w/g, (l) => l.toUpperCase()),
+                }}
+                onChange={(option) => setSelectedType(option?.value || "all")}
+                placeholder="Select type"
+              />
             </div>
 
             {/* Status Filter */}
             <div className="relative">
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="all">All Statuses</option>
-                {statuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status.replace(/\b\w/g, (l) => l.toUpperCase())}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+              <CustomSelect
+                options={[
+                  { value: "all", label: "All Statuses" },
+                  ...statuses.map((status) => ({
+                    value: status,
+                    label: status.replace(/\b\w/g, (l) => l.toUpperCase()),
+                  })),
+                ]}
+                value={{
+                  value: selectedStatus,
+                  label:
+                    selectedStatus === "all"
+                      ? "All Statuses"
+                      : selectedStatus.replace(/\b\w/g, (l) => l.toUpperCase()),
+                }}
+                onChange={(option) => setSelectedStatus(option?.value || "all")}
+                placeholder="Select status"
+              />
             </div>
 
             {/* Results Count */}

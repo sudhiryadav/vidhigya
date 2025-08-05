@@ -49,6 +49,10 @@ export class S3Service {
       throw new Error('AWS credentials not configured');
     }
 
+    if (!this.bucket) {
+      throw new Error('AWS S3 bucket not configured');
+    }
+
     this.s3Client = new S3Client({
       region: this.region,
       credentials: {
@@ -111,6 +115,16 @@ export class S3Service {
     expiresIn: number = 3600,
   ): Promise<string> {
     this.ensureInitialized();
+
+    if (!bucket) {
+      throw new Error('Bucket parameter is required');
+    }
+
+    if (!key) {
+      throw new Error('Key parameter is required');
+    }
+
+    console.log(`Creating GetObjectCommand for bucket: ${bucket}, key: ${key}`);
     const command = new GetObjectCommand({
       Bucket: bucket,
       Key: key,
@@ -123,6 +137,15 @@ export class S3Service {
     s3Key: string,
     expiresIn: number = 3600,
   ): Promise<string> {
+    this.ensureInitialized();
+
+    if (!this.bucket) {
+      throw new Error('S3 bucket not configured');
+    }
+
+    console.log(
+      `Generating signed URL for bucket: ${this.bucket}, key: ${s3Key}`,
+    );
     return this.getSignedUrl(this.bucket, s3Key, expiresIn);
   }
 
@@ -167,18 +190,107 @@ export class S3Service {
     }
   }
 
+  async getDocumentAsBuffer(s3Key: string): Promise<Buffer> {
+    this.ensureInitialized();
+
+    if (!this.bucket) {
+      throw new Error('S3 bucket not configured');
+    }
+
+    console.log(
+      `Getting document from S3: bucket=${this.bucket}, key=${s3Key}`,
+    );
+
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: s3Key,
+    });
+
+    try {
+      const response = await this.s3Client.send(command);
+      console.log(`S3 response received:`, {
+        statusCode: response.$metadata?.httpStatusCode,
+        contentLength: response.ContentLength,
+        contentType: response.ContentType,
+        hasBody: !!response.Body,
+      });
+
+      if (!response.Body) {
+        throw new Error('No body in S3 response');
+      }
+
+      // Use traditional stream handling which is more reliable
+      const stream = response.Body as any;
+      const chunks: Uint8Array[] = [];
+
+      return new Promise((resolve, reject) => {
+        let totalSize = 0;
+
+        stream.on('data', (chunk: Uint8Array) => {
+          chunks.push(chunk);
+          totalSize += chunk.length;
+          console.log(
+            `Received chunk: ${chunk.length} bytes, total: ${totalSize} bytes`,
+          );
+        });
+
+        stream.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          console.log(
+            `Stream ended, final buffer size: ${buffer.length} bytes`,
+          );
+          resolve(buffer);
+        });
+
+        stream.on('error', (error: any) => {
+          console.error('Stream error:', error);
+          reject(error);
+        });
+      });
+    } catch (error) {
+      console.error(`Error getting document from S3: ${error}`);
+      throw error;
+    }
+  }
+
   async deleteFile(bucket: string, key: string): Promise<void> {
     this.ensureInitialized();
+
+    if (!bucket) {
+      throw new Error('Bucket parameter is required for delete');
+    }
+
+    if (!key) {
+      throw new Error('Key parameter is required for delete');
+    }
+
+    console.log(
+      `Creating DeleteObjectCommand for bucket: ${bucket}, key: ${key}`,
+    );
     const command = new DeleteObjectCommand({
       Bucket: bucket,
       Key: key,
     });
 
-    await this.s3Client.send(command);
+    try {
+      const response = await this.s3Client.send(command);
+      console.log(`Delete response:`, {
+        statusCode: response.$metadata?.httpStatusCode,
+        deleteMarker: response.DeleteMarker,
+        versionId: response.VersionId,
+      });
+    } catch (error) {
+      console.error(`Error deleting file from S3: ${error}`);
+      throw error;
+    }
   }
 
   async deleteDocument(s3Key: string): Promise<void> {
+    console.log(
+      `Deleting document from S3: bucket=${this.bucket}, key=${s3Key}`,
+    );
     await this.deleteFile(this.bucket, s3Key);
+    console.log(`Document deleted from S3 successfully: ${s3Key}`);
   }
 
   async deleteAvatar(s3Key: string): Promise<void> {
@@ -189,6 +301,8 @@ export class S3Service {
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
     const extension = originalName.split('.').pop();
-    return `${userId}_${timestamp}_${randomString}.${extension}`;
+    const baseName = originalName.substring(0, originalName.lastIndexOf('.'));
+    // Preserve original filename with timestamp and random string for uniqueness
+    return `${userId}_${timestamp}_${randomString}_${baseName}.${extension}`;
   }
 }

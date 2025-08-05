@@ -52,7 +52,8 @@
       "sourceMaps": true,
       "outFiles": [
         "${workspaceFolder}/apps/backend/dist/**/*.js"
-      ]
+      ],
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "name": "Debug Web (Next.js)",
@@ -71,7 +72,8 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "sourceMaps": true
+      "sourceMaps": true,
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "name": "Debug AI Service (FastAPI)",
@@ -87,7 +89,8 @@
       "cwd": "${workspaceFolder}/apps/ai-service",
       "console": "integratedTerminal",
       "justMyCode": false,
-      "python": "${workspaceFolder}/apps/ai-service/.venv/bin/python"
+      "python": "${workspaceFolder}/apps/ai-service/.venv/bin/python",
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "name": "Debug Mobile (React Native)",
@@ -109,7 +112,8 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "sourceMaps": true
+      "sourceMaps": true,
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "name": "Debug All Services",
@@ -128,7 +132,8 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "sourceMaps": true
+      "sourceMaps": true,
+      "internalConsoleOptions": "neverOpen"
     }
   ]
 } 

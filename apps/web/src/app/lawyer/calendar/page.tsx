@@ -557,63 +557,80 @@ export default function CalendarPage() {
                   <div className="absolute top-full left-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-4 min-w-[280px]">
                     <div className="grid grid-cols-3 gap-2 mb-4">
                       {/* Month Picker */}
-                      <select
-                        value={currentDate.getMonth()}
-                        onChange={(e) => {
-                          const newDate = new Date(currentDate);
-                          newDate.setMonth(parseInt(e.target.value));
-                          setCurrentDate(newDate);
-                          setSelectedDate(newDate);
+                      <CustomSelect
+                        value={{
+                          value: currentDate.getMonth().toString(),
+                          label: new Date(
+                            2024,
+                            currentDate.getMonth()
+                          ).toLocaleDateString("en-US", {
+                            month: "long",
+                          }),
                         }}
-                        className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      >
-                        {Array.from({ length: 12 }, (_, i) => (
-                          <option key={i} value={i}>
-                            {new Date(2024, i).toLocaleDateString("en-US", {
-                              month: "long",
-                            })}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(option) => {
+                          if (option?.value) {
+                            const newDate = new Date(currentDate);
+                            newDate.setMonth(parseInt(option.value));
+                            setCurrentDate(newDate);
+                            setSelectedDate(newDate);
+                          }
+                        }}
+                        options={Array.from({ length: 12 }, (_, i) => ({
+                          value: i.toString(),
+                          label: new Date(2024, i).toLocaleDateString("en-US", {
+                            month: "long",
+                          }),
+                        }))}
+                        placeholder="Select month..."
+                        className="w-full"
+                      />
 
                       {/* Day Picker */}
-                      <select
-                        value={currentDate.getDate()}
-                        onChange={(e) => {
-                          const newDate = new Date(currentDate);
-                          newDate.setDate(parseInt(e.target.value));
-                          setCurrentDate(newDate);
-                          setSelectedDate(newDate);
+                      <CustomSelect
+                        value={{
+                          value: currentDate.getDate().toString(),
+                          label: currentDate.getDate().toString(),
                         }}
-                        className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      >
-                        {Array.from({ length: 31 }, (_, i) => (
-                          <option key={i + 1} value={i + 1}>
-                            {i + 1}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(option) => {
+                          if (option?.value) {
+                            const newDate = new Date(currentDate);
+                            newDate.setDate(parseInt(option.value));
+                            setCurrentDate(newDate);
+                            setSelectedDate(newDate);
+                          }
+                        }}
+                        options={Array.from({ length: 31 }, (_, i) => ({
+                          value: (i + 1).toString(),
+                          label: (i + 1).toString(),
+                        }))}
+                        placeholder="Select day..."
+                        className="w-full"
+                      />
 
                       {/* Year Picker */}
-                      <select
-                        value={currentDate.getFullYear()}
-                        onChange={(e) => {
-                          const newDate = new Date(currentDate);
-                          newDate.setFullYear(parseInt(e.target.value));
-                          setCurrentDate(newDate);
-                          setSelectedDate(newDate);
+                      <CustomSelect
+                        value={{
+                          value: currentDate.getFullYear().toString(),
+                          label: currentDate.getFullYear().toString(),
                         }}
-                        className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      >
-                        {Array.from({ length: 10 }, (_, i) => {
+                        onChange={(option) => {
+                          if (option?.value) {
+                            const newDate = new Date(currentDate);
+                            newDate.setFullYear(parseInt(option.value));
+                            setCurrentDate(newDate);
+                            setSelectedDate(newDate);
+                          }
+                        }}
+                        options={Array.from({ length: 10 }, (_, i) => {
                           const year = new Date().getFullYear() - 5 + i;
-                          return (
-                            <option key={year} value={year}>
-                              {year}
-                            </option>
-                          );
+                          return {
+                            value: year.toString(),
+                            label: year.toString(),
+                          };
                         })}
-                      </select>
+                        placeholder="Select year..."
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Quick Navigation Buttons */}

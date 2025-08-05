@@ -1,8 +1,15 @@
 "use client";
 
 import ConfirmDialog from "@/components/ConfirmDialog";
+import CustomSelect from "@/components/ui/select";
+import {
+  FormFieldWrapper,
+  ValidatedInput,
+} from "@/components/ui/ValidationMessage";
 import { useAuth } from "@/contexts/AuthContext";
+import { userProfileSchema } from "@/lib/validation";
 import { apiClient } from "@/services/api";
+import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Calendar,
   Edit,
@@ -14,6 +21,7 @@ import {
   User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Resolver, useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 
 interface Lawyer {
@@ -26,6 +34,13 @@ interface Lawyer {
   updatedAt: string;
 }
 
+interface LawyerFormData {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+}
+
 export default function LawyersManagement() {
   const { user } = useAuth();
   const [lawyers, setLawyers] = useState<Lawyer[]>([]);
@@ -35,11 +50,28 @@ export default function LawyersManagement() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedLawyer, setSelectedLawyer] = useState<Lawyer | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    role: "LAWYER",
+
+  const resolver = yupResolver(userProfileSchema) as unknown as Resolver<
+    LawyerFormData,
+    any
+  >;
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid, isDirty },
+    reset,
+    setValue,
+    watch,
+  } = useForm<LawyerFormData>({
+    resolver,
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      role: "LAWYER",
+    },
+    mode: "onSubmit",
   });
 
   useEffect(() => {
@@ -57,33 +89,33 @@ export default function LawyersManagement() {
     }
   };
 
-  const handleCreateLawyer = async () => {
+  const handleCreateLawyer = async (data: LawyerFormData) => {
     try {
       await apiClient.createLawyer({
-        ...formData,
+        ...data,
         password: "defaultPassword123", // This should be handled properly in a real app
-        role: formData.role as "LAWYER" | "ASSOCIATE" | "PARALEGAL",
+        role: data.role as "LAWYER" | "ASSOCIATE" | "PARALEGAL",
       });
       toast.success("Lawyer created successfully");
       setShowCreateModal(false);
-      setFormData({ name: "", email: "", phone: "", role: "LAWYER" });
+      reset();
       fetchLawyers();
     } catch (error) {
       toast.error("Failed to create lawyer");
     }
   };
 
-  const handleUpdateLawyer = async () => {
+  const handleUpdateLawyer = async (data: LawyerFormData) => {
     if (!selectedLawyer) return;
     try {
       await apiClient.updateLawyer(selectedLawyer.id, {
-        ...formData,
-        role: formData.role as "LAWYER" | "ASSOCIATE" | "PARALEGAL",
+        ...data,
+        role: data.role as "LAWYER" | "ASSOCIATE" | "PARALEGAL",
       });
       toast.success("Lawyer updated successfully");
       setShowEditModal(false);
       setSelectedLawyer(null);
-      setFormData({ name: "", email: "", phone: "", role: "LAWYER" });
+      reset();
       fetchLawyers();
     } catch (error) {
       toast.error("Failed to update lawyer");
@@ -105,7 +137,7 @@ export default function LawyersManagement() {
 
   const openEditModal = (lawyer: Lawyer) => {
     setSelectedLawyer(lawyer);
-    setFormData({
+    reset({
       name: lawyer.name,
       email: lawyer.email,
       phone: lawyer.phone,
@@ -274,77 +306,79 @@ export default function LawyersManagement() {
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Add New Lawyer
               </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
+              <form
+                onSubmit={handleSubmit(handleCreateLawyer)}
+                className="space-y-3"
+              >
+                <ValidatedInput
+                  label="Name"
+                  required
+                  error={errors.name}
+                  register={register}
+                  name="name"
+                  placeholder="Enter lawyer name"
+                />
+                <ValidatedInput
+                  label="Email"
+                  required
+                  error={errors.email}
+                  register={register}
+                  name="email"
+                  type="email"
+                  placeholder="Enter email address"
+                />
+                <ValidatedInput
+                  label="Phone"
+                  required
+                  error={errors.phone}
+                  register={register}
+                  name="phone"
+                  type="tel"
+                  placeholder="Enter phone number"
+                />
+                <FormFieldWrapper label="Role" required error={errors.role}>
+                  <CustomSelect
+                    value={{
+                      value: watch("role"),
+                      label:
+                        watch("role") === "LAWYER"
+                          ? "Lawyer"
+                          : watch("role") === "ASSOCIATE"
+                            ? "Associate"
+                            : "Paralegal",
+                    }}
+                    onChange={(option) =>
+                      setValue("role", option?.value || "LAWYER")
                     }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    options={[
+                      { value: "LAWYER", label: "Lawyer" },
+                      { value: "ASSOCIATE", label: "Associate" },
+                      { value: "PARALEGAL", label: "Paralegal" },
+                    ]}
+                    placeholder="Select role..."
+                    className={errors.role ? "border-red-500" : ""}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Phone
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Role
-                  </label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) =>
-                      setFormData({ ...formData, role: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                </FormFieldWrapper>
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      reset();
+                    }}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                   >
-                    <option value="LAWYER">Lawyer</option>
-                    <option value="ASSOCIATE">Associate</option>
-                    <option value="PARALEGAL">Paralegal</option>
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={false}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Create
+                  </button>
                 </div>
-              </div>
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateLawyer}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Create
-                </button>
-              </div>
+              </form>
             </div>
           </div>
         )}
@@ -356,77 +390,122 @@ export default function LawyersManagement() {
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Edit Lawyer
               </h3>
-              <div className="space-y-4">
+              <form
+                onSubmit={handleSubmit(handleUpdateLawyer)}
+                className="space-y-3"
+              >
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Name
+                    Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    {...register("name")}
+                    className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.name
+                        ? "border-red-500"
+                        : "border-gray-300 dark:border-gray-600"
+                    }`}
+                    placeholder="Enter lawyer name"
                   />
+                  {errors.name && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.name.message}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Email
+                    Email <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    {...register("email")}
+                    className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.email
+                        ? "border-red-500"
+                        : "border-gray-300 dark:border-gray-600"
+                    }`}
+                    placeholder="Enter email address"
                   />
+                  {errors.email && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.email.message}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Phone
+                    Phone <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    {...register("phone")}
+                    className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.phone
+                        ? "border-red-500"
+                        : "border-gray-300 dark:border-gray-600"
+                    }`}
+                    placeholder="Enter phone number"
                   />
+                  {errors.phone && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.phone.message}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Role
+                    Role <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) =>
-                      setFormData({ ...formData, role: e.target.value })
+                  <CustomSelect
+                    value={{
+                      value: watch("role"),
+                      label:
+                        watch("role") === "LAWYER"
+                          ? "Lawyer"
+                          : watch("role") === "ASSOCIATE"
+                            ? "Associate"
+                            : "Paralegal",
+                    }}
+                    onChange={(option) =>
+                      setValue("role", option?.value || "LAWYER")
                     }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="LAWYER">Lawyer</option>
-                    <option value="ASSOCIATE">Associate</option>
-                    <option value="PARALEGAL">Paralegal</option>
-                  </select>
+                    options={[
+                      { value: "LAWYER", label: "Lawyer" },
+                      { value: "ASSOCIATE", label: "Associate" },
+                      { value: "PARALEGAL", label: "Paralegal" },
+                    ]}
+                    placeholder="Select role..."
+                    className={errors.role ? "border-red-500" : ""}
+                  />
+                  {errors.role && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.role.message}
+                    </p>
+                  )}
                 </div>
-              </div>
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleUpdateLawyer}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Update
-                </button>
-              </div>
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setSelectedLawyer(null);
+                      reset();
+                    }}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={false}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Update
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
