@@ -477,7 +477,7 @@ class ApiClient {
 
   async queryDocuments(
     query: string,
-    mode: "search" | "qa" = "search",
+    mode: "qa" = "qa",
     context?: string,
     limit: number = 10
   ): Promise<any> {

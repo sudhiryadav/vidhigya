@@ -41,8 +41,8 @@ export default function ProfilePictureUpload({
       // Validate file using ImageOptimizer
       const validationError = ImageOptimizer.validateFile(
         file,
-        5 * 1024 * 1024
-      ); // 5MB limit
+        parseInt(process.env.NEXT_PUBLIC_MAX_AVATAR_SIZE || "5242880") // 5MB from env
+      );
       if (validationError) {
         toast.error(validationError);
         return;

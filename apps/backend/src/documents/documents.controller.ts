@@ -19,7 +19,7 @@ import { DocumentCategory, DocumentStatus } from '@prisma/client';
 import { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AIService } from '../config/ai.service';
+import { DocumentProcessorService } from '../config/document-processor.service';
 import { QdrantService } from '../config/qdrant.service';
 import { S3Service } from '../config/s3.config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -56,14 +56,6 @@ interface UploadDocumentBody {
   caseId?: string;
 }
 
-interface AIUploadResponse {
-  documents: Array<{
-    document_id: string;
-    chunks: number;
-    content: string;
-  }>;
-}
-
 @Controller('documents')
 @UseGuards(JwtAuthGuard)
 export class DocumentsController {
@@ -72,7 +64,7 @@ export class DocumentsController {
     private readonly s3Service: S3Service,
     private readonly configService: ConfigService,
     private readonly qdrantService: QdrantService,
-    private readonly aiService: AIService,
+    private readonly documentProcessorService: DocumentProcessorService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -85,12 +77,18 @@ export class DocumentsController {
     return this.documentsService.create(createDocumentDto);
   }
 
+  private getMaxDocumentSize(): number {
+    return parseInt(
+      this.configService.get<string>('MAX_DOCUMENT_SIZE') || '20971520',
+    );
+  }
+
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(), // Use memory storage to get file.buffer
       limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit
+        fileSize: 20 * 1024 * 1024, // 20MB limit
       },
       fileFilter: (req, file, cb) => {
         const allowedMimes = [
@@ -119,6 +117,17 @@ export class DocumentsController {
       throw new BadRequestException('No file uploaded');
     }
 
+    // Validate file size
+    const maxSize = this.getMaxDocumentSize();
+    if (file.size > maxSize) {
+      throw new BadRequestException(
+        `File size ${file.size} bytes exceeds maximum allowed size of ${maxSize} bytes (${Math.round(maxSize / 1024 / 1024)}MB)`,
+      );
+    }
+
+    let uploadedFileUrl: string | null = null;
+    let createdDocument: any = null;
+
     try {
       // Generate unique filename
       const fileName = this.s3Service.generateFileName(
@@ -127,17 +136,23 @@ export class DocumentsController {
       );
 
       // Upload to S3
-      const fileUrl = await this.s3Service.uploadDocument(
+      uploadedFileUrl = await this.s3Service.uploadDocument(
         file.buffer,
         fileName,
         file.mimetype,
       );
 
+      console.log('File uploaded to S3:', {
+        fileName,
+        fileUrl: uploadedFileUrl,
+        size: file.size,
+      });
+
       // Create document record
       const createDocumentDto: CreateDocumentDto = {
         title: body.title || '',
         description: body.description || '',
-        fileUrl: fileUrl,
+        fileUrl: uploadedFileUrl,
         originalFilename: file.originalname,
         fileType: file.mimetype,
         fileSize: file.size,
@@ -146,88 +161,88 @@ export class DocumentsController {
         uploadedById: req.user.sub,
       };
 
-      const document = await this.documentsService.create(createDocumentDto);
+      createdDocument = await this.documentsService.create(createDocumentDto);
 
-      // Send to AI service for Qdrant processing
+      console.log('Document record created:', {
+        documentId: createdDocument.id,
+        title: createdDocument.title,
+      });
+
+      // Process document locally using NestJS
       try {
-        const aiServiceUrl = this.configService.get<string>('AI_SERVICE_URL');
-        const aiServiceApiKey =
-          this.configService.get<string>('AI_SERVICE_API_KEY');
-
-        if (aiServiceUrl && aiServiceApiKey) {
-          const formData = new FormData();
-
-          // Ensure file buffer is not empty
-          if (!file.buffer || file.buffer.length === 0) {
-            console.error('File buffer is empty:', {
-              originalname: file.originalname,
-              size: file.size,
-              mimetype: file.mimetype,
-              bufferLength: file.buffer?.length,
-            });
-            throw new BadRequestException('File content is empty');
-          }
-
-          console.log('Sending file to AI service:', {
-            originalname: file.originalname,
-            size: file.size,
-            mimetype: file.mimetype,
-            bufferLength: file.buffer.length,
-          });
-
-          formData.append(
-            'files',
-            new Blob([file.buffer], { type: file.mimetype }),
+        const processedDocument =
+          await this.documentProcessorService.processDocument(
+            file.buffer,
             file.originalname,
-          );
-          formData.append('userId', req.user.sub);
-          formData.append('description', body.description || '');
-          formData.append('category', body.category || '');
-
-          const aiResponse = await fetch(
-            `${aiServiceUrl}/api/v1/admin/documents/upload`,
-            {
-              method: 'POST',
-              headers: {
-                'X-API-Key': aiServiceApiKey,
-              },
-              body: formData,
-            },
+            req.user.sub,
           );
 
-          if (aiResponse.ok) {
-            const aiResult = (await aiResponse.json()) as AIUploadResponse;
+        console.log('Document processed:', {
+          documentId: processedDocument.document_id,
+          chunks: processedDocument.chunks.length,
+          contentLength: processedDocument.content.length,
+        });
 
-            // Update the document with AI service information
-            if (aiResult.documents && aiResult.documents.length > 0) {
-              const aiDocument = aiResult.documents[0];
+        // Store chunks in Qdrant directly
+        if (this.qdrantService && processedDocument.chunks.length > 0) {
+          const qdrantSuccess = await this.qdrantService.storeDocumentChunks(
+            processedDocument.document_id,
+            req.user.sub,
+            processedDocument.chunks,
+            processedDocument.filename,
+            processedDocument.file_type,
+          );
 
-              // Update the document with AI service information
-              await this.prisma.legalDocument.update({
-                where: { id: document.id },
-                data: {
-                  aiDocumentId: aiDocument.document_id,
-                  aiChunks: aiDocument.chunks,
-                  content: aiDocument.content,
-                },
-              });
-
-              console.log('AI service processed document:', {
-                documentId: document.id,
-                aiDocumentId: aiDocument.document_id,
-                chunks: aiDocument.chunks,
-              });
-            }
+          if (!qdrantSuccess) {
+            console.error('Failed to store document chunks in Qdrant');
+            // Continue anyway, but log the failure
           }
         }
+
+        // Update the document with processing information
+        await this.prisma.legalDocument.update({
+          where: { id: createdDocument.id },
+          data: {
+            aiDocumentId: processedDocument.document_id,
+            aiChunks: processedDocument.chunks.length,
+            content: processedDocument.content,
+          },
+        });
+
+        console.log('Document processing completed successfully:', {
+          documentId: createdDocument.id,
+          chunks: processedDocument.chunks.length,
+          contentLength: processedDocument.content.length,
+        });
       } catch (error) {
-        console.error('Failed to send document to AI service:', error);
-        // Don't fail the upload if AI service is unavailable
+        console.error('Error processing document:', error);
+        // Don't fail the upload if processing fails, but log it
+        // The document will still be available for download
       }
 
-      return document;
+      return createdDocument;
     } catch (error) {
       console.error('Error uploading document:', error);
+
+      // Rollback: Clean up any created resources
+      if (createdDocument) {
+        try {
+          console.log('Rolling back: Deleting document record');
+          await this.documentsService.remove(createdDocument.id, req.user.sub);
+        } catch (rollbackError) {
+          console.error('Failed to rollback document record:', rollbackError);
+        }
+      }
+
+      if (uploadedFileUrl) {
+        try {
+          console.log('Rolling back: Deleting file from S3');
+          await this.s3Service.deleteDocument(uploadedFileUrl);
+        } catch (rollbackError) {
+          console.error('Failed to rollback S3 file:', rollbackError);
+        }
+      }
+
       throw new BadRequestException('Failed to upload document');
     }
   }
@@ -258,14 +273,13 @@ export class DocumentsController {
         console.log('Using Mistral 7B for AI Assistant mode');
 
         try {
-          // Use the AIService to generate sophisticated AI responses
-          const aiResponse = await this.aiService.generateAIResponse(
+          // Use the QdrantService to generate responses
+          const qaResponse = await this.qdrantService.queryDocuments(
             query,
             req.user.sub,
-            context,
           );
 
-          // Map filenames to actual document IDs
+          // Map document IDs to actual document information
           const documentMap = new Map();
           const documents = await this.prisma.legalDocument.findMany({
             where: { uploadedById: req.user.sub },
@@ -273,44 +287,40 @@ export class DocumentsController {
           });
 
           documents.forEach((doc) => {
-            if (doc.originalFilename) {
-              documentMap.set(doc.originalFilename, {
-                id: doc.id,
-                title: (doc.title || doc.originalFilename) as string,
-              });
-            }
+            documentMap.set(doc.id, {
+              title: (doc.title || doc.originalFilename) as string,
+            });
           });
 
           const result = {
             question: query,
-            answer: aiResponse.response,
-            sources: aiResponse.sources.map((source) => {
-              const filename = source.document || 'Unknown Document';
-              const documentInfo = documentMap.get(filename) as
-                | { id: string; title: string }
+            answer: qaResponse.answer,
+            sources: qaResponse.sources.map((source) => {
+              const documentInfo = documentMap.get(source.document_id) as
+                | { title: string }
                 | undefined;
 
               return {
-                document_id: documentInfo?.id || 'unknown',
-                document_title: documentInfo?.title || filename,
-                content: filename,
-                score: source.similarity,
-                page_number: undefined,
-                start_char: undefined,
-                end_char: undefined,
+                document_id: source.document_id,
+                document_title: documentInfo?.title || 'Unknown Document',
+                content: source.content,
+                score: source.score,
+                page_number: source.page_number,
+                start_char: source.start_char,
+                end_char: source.end_char,
               };
             }),
-            confidence: 0.8, // High confidence for AI-generated responses
+            confidence: qaResponse.confidence,
             generated_at: new Date().toISOString(),
           };
 
-          // Log the AI query
+          // Log the Q&A query
           await this.documentsService.logDocumentQuery(
             req.user.sub,
             query,
-            aiResponse.response,
+            qaResponse.answer,
             undefined,
-            aiResponse.sources,
+            qaResponse.sources,
             undefined,
             undefined,
             QueryType.GENERAL,

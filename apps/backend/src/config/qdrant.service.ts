@@ -1,19 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { QdrantClient } from '@qdrant/js-client-rest';
+import { v4 as uuidv4 } from 'uuid';
+import { EmbeddingService } from './embedding.service';
 
 @Injectable()
 export class QdrantService {
-  private aiServiceUrl: string;
-  private aiServiceApiKey: string;
   private qdrantClient: QdrantClient;
   private qdrantUrl: string;
   private qdrantApiKey: string;
   private qdrantCollection: string;
 
-  constructor(private configService: ConfigService) {
-    this.aiServiceUrl = this.configService.get<string>('AI_SERVICE_URL');
-    this.aiServiceApiKey = this.configService.get<string>('AI_SERVICE_API_KEY');
+  constructor(
+    private configService: ConfigService,
+    private embeddingService: EmbeddingService,
+  ) {
     this.qdrantUrl = this.configService.get<string>('QDRANT_URL');
     this.qdrantApiKey = this.configService.get<string>('QDRANT_API_KEY');
     this.qdrantCollection = this.configService.get<string>('QDRANT_COLLECTION');
@@ -21,13 +22,19 @@ export class QdrantService {
     // Initialize Qdrant client
     this.initializeQdrantClient();
 
+    // Initialize embedding service
+    this.embeddingService.initialize();
+
     // Log configuration on startup
     console.log('QdrantService initialized with:');
-    console.log(`- AI Service URL: ${this.aiServiceUrl}`);
-    console.log(`- AI Service API Key configured: ${!!this.aiServiceApiKey}`);
     console.log(`- Qdrant URL: ${this.qdrantUrl}`);
     console.log(`- Qdrant API Key configured: ${!!this.qdrantApiKey}`);
     console.log(`- Qdrant Collection: ${this.qdrantCollection}`);
+  }
+
+  async initialize() {
+    // Ensure collection exists
+    await this.ensureCollectionExists();
   }
 
   private initializeQdrantClient() {
@@ -44,6 +51,93 @@ export class QdrantService {
       console.log('Qdrant client initialized successfully');
     } catch (error) {
       console.error('Failed to initialize Qdrant client:', error);
+    }
+  }
+
+  private async ensureCollectionExists(): Promise<void> {
+    if (!this.qdrantClient || !this.qdrantCollection) {
+      console.error('Qdrant client or collection not configured');
+      return;
+    }
+
+    try {
+      // Check if collection exists
+      const collections = await this.qdrantClient.getCollections();
+      const collectionExists = collections.collections.some(
+        (collection) => collection.name === this.qdrantCollection,
+      );
+
+      if (!collectionExists) {
+        console.log(`Creating Qdrant collection: ${this.qdrantCollection}`);
+
+        // Create collection with proper configuration for embeddings
+        await this.qdrantClient.createCollection(this.qdrantCollection, {
+          vectors: {
+            size: 384, // Match the embedding dimension
+            distance: 'Cosine', // Use cosine distance for similarity
+          },
+        });
+
+        // Create indexes for filtering and deletion operations
+        await this.qdrantClient.createPayloadIndex(this.qdrantCollection, {
+          field_name: 'document_id',
+          field_schema: 'keyword',
+        });
+
+        await this.qdrantClient.createPayloadIndex(this.qdrantCollection, {
+          field_name: 'user_id',
+          field_schema: 'keyword',
+        });
+
+        console.log(
+          `Successfully created Qdrant collection: ${this.qdrantCollection}`,
+        );
+      } else {
+        console.log(
+          `Qdrant collection already exists: ${this.qdrantCollection}`,
+        );
+
+        // Ensure indexes exist for existing collections
+        await this.ensureIndexesExist();
+      }
+    } catch (error) {
+      console.error(`Error ensuring collection exists: ${error}`);
+      // Don't throw error, just log it
+    }
+  }
+
+  private async ensureIndexesExist(): Promise<void> {
+    if (!this.qdrantClient || !this.qdrantCollection) {
+      return;
+    }
+
+    try {
+      // Try to create document_id index (will fail silently if it already exists)
+      try {
+        await this.qdrantClient.createPayloadIndex(this.qdrantCollection, {
+          field_name: 'document_id',
+          field_schema: 'keyword',
+        });
+        console.log('Created document_id index for existing collection');
+      } catch {
+        // Index might already exist, which is fine
+        console.log('document_id index already exists or creation failed');
+      }
+
+      // Try to create user_id index (will fail silently if it already exists)
+      try {
+        await this.qdrantClient.createPayloadIndex(this.qdrantCollection, {
+          field_name: 'user_id',
+          field_schema: 'keyword',
+        });
+        console.log('Created user_id index for existing collection');
+      } catch {
+        // Index might already exist, which is fine
+        console.log('user_id index already exists or creation failed');
+      }
+    } catch (error) {
+      console.error('Error ensuring indexes exist:', error);
+      // Don't throw error, just log it
     }
   }
 
@@ -114,56 +208,40 @@ export class QdrantService {
     }>
   > {
     try {
-      if (!this.aiServiceUrl || !this.aiServiceApiKey) {
-        console.error('AI service URL or API key not configured');
+      if (!this.qdrantClient) {
+        console.error('Qdrant client not available');
         return [];
       }
 
-      const formData = new FormData();
-      formData.append('query', query);
-      formData.append('userId', userId);
-      formData.append('limit', limit.toString());
-      formData.append('mode', 'search');
+      // Generate embedding for the query using the same model as FastAPI
+      const queryEmbedding = await this.generateEmbedding(query);
 
-      const response = await fetch(
-        `${this.aiServiceUrl}/api/v1/admin/documents/query`,
+      // Search in Qdrant directly
+      const searchResults = await this.qdrantClient.search(
+        this.qdrantCollection,
         {
-          method: 'POST',
-          headers: {
-            'X-API-Key': this.aiServiceApiKey,
+          vector: queryEmbedding,
+          limit: limit,
+          filter: {
+            must: [
+              {
+                key: 'user_id',
+                match: { value: userId },
+              },
+            ],
           },
-          body: formData,
+          with_payload: true,
+          with_vector: false,
         },
       );
 
-      if (!response.ok) {
-        console.error(`Failed to search documents: ${response.statusText}`);
-        return [];
-      }
-
-      const result = (await response.json()) as {
-        query: string;
-        results: Array<{
-          score: number;
-          content: string;
-          filename: string;
-          page_number?: number;
-          chunk_index?: number;
-          document_id: string;
-          file_type?: string;
-          start_char?: number;
-          end_char?: number;
-        }>;
-        total_results: number;
-      };
-
-      return result.results.map((item) => ({
-        document_id: item.document_id,
-        content: item.content,
-        score: item.score,
-        page_number: item.page_number,
-        start_char: item.start_char,
-        end_char: item.end_char,
+      return searchResults.map((result) => ({
+        document_id: (result.payload?.document_id as string) || '',
+        content: (result.payload?.content as string) || '',
+        score: result.score,
+        page_number: result.payload?.page_number as number | undefined,
+        start_char: result.payload?.start_char as number | undefined,
+        end_char: result.payload?.end_char as number | undefined,
       }));
     } catch (error) {
       console.error('Error searching documents:', error);
@@ -171,10 +249,21 @@ export class QdrantService {
     }
   }
 
+  private async generateEmbedding(text: string): Promise<number[]> {
+    try {
+      // Use local embedding service directly
+      return await this.embeddingService.generateEmbedding(text);
+    } catch (error) {
+      console.error('Error generating embedding:', error);
+      // Fallback: return a zero vector
+      return new Array(384).fill(0) as number[];
+    }
+  }
+
   async queryDocuments(
     question: string,
     userId: string,
-    context?: string,
+    // context?: string, // Removed unused parameter
   ): Promise<{
     question: string;
     answer: string;
@@ -189,60 +278,36 @@ export class QdrantService {
     confidence: number;
   }> {
     try {
-      if (!this.aiServiceUrl || !this.aiServiceApiKey) {
-        console.error('AI service URL or API key not configured');
+      // Search for relevant documents using local embedding
+      const searchResults = await this.searchDocuments(question, userId, 5);
+
+      if (!searchResults || searchResults.length === 0) {
         return {
           question,
-          answer: 'AI service not available',
+          answer:
+            "I couldn't find any relevant documents to answer your question. Please make sure you have uploaded documents and try asking a different question.",
           sources: [],
           confidence: 0.0,
         };
       }
 
-      const formData = new FormData();
-      formData.append('query', question);
-      formData.append('userId', userId);
-      formData.append('mode', 'qa');
-      if (context) {
-        formData.append('context', context);
-      }
+      // Generate a simple answer based on search results
+      const answer = this.generateSimpleAnswer(question, searchResults);
+      const confidence = Math.min(0.8, searchResults[0]?.score || 0.0);
 
-      const response = await fetch(
-        `${this.aiServiceUrl}/api/v1/admin/documents/query`,
-        {
-          method: 'POST',
-          headers: {
-            'X-API-Key': this.aiServiceApiKey,
-          },
-          body: formData,
-        },
-      );
-
-      if (!response.ok) {
-        console.error(`Failed to query documents: ${response.statusText}`);
-        return {
-          question,
-          answer: 'Failed to process your question',
-          sources: [],
-          confidence: 0.0,
-        };
-      }
-
-      const result = (await response.json()) as {
-        question: string;
-        answer: string;
-        sources: Array<{
-          document_id: string;
-          content: string;
-          score: number;
-          page_number?: number;
-          start_char?: number;
-          end_char?: number;
-        }>;
-        confidence: number;
+      return {
+        question,
+        answer,
+        sources: searchResults.map((result) => ({
+          document_id: result.document_id,
+          content: result.content,
+          score: result.score,
+          page_number: result.page_number,
+          start_char: result.start_char,
+          end_char: result.end_char,
+        })),
+        confidence,
       };
-
-      return result;
     } catch (error) {
       console.error('Error querying documents:', error);
       return {
@@ -254,15 +319,121 @@ export class QdrantService {
     }
   }
 
-  deleteUserEmbeddings(userId: string): Promise<boolean> {
+  private generateSimpleAnswer(
+    question: string,
+    searchResults: Array<{
+      document_id: string;
+      content: string;
+      score: number;
+      page_number?: number;
+      start_char?: number;
+      end_char?: number;
+    }>,
+  ): string {
+    // Generate a contextual answer based on search results
+    let answer = `Based on your documents, here's what I found about "${question}":\n\n`;
+
+    // Add the most relevant content
+    const topResult = searchResults[0];
+    if (topResult && topResult.score > 0.5) {
+      answer += `**Most relevant information:**\n${topResult.content.substring(0, 300)}`;
+      if (topResult.content.length > 300) {
+        answer += '...';
+      }
+      answer += '\n\n';
+    }
+
+    // Add additional context if available
+    if (searchResults.length > 1) {
+      answer += `**Additional relevant information:**\n`;
+      for (let i = 1; i < Math.min(3, searchResults.length); i++) {
+        const result = searchResults[i];
+        if (result.score > 0.3) {
+          answer += `• ${result.content.substring(0, 150)}...\n`;
+        }
+      }
+    }
+
+    answer += `\n*This response is based on ${searchResults.length} relevant document sections found in your uploaded files.*`;
+
+    return answer;
+  }
+
+  async storeDocumentChunks(
+    documentId: string,
+    userId: string,
+    chunks: Array<{
+      text: string;
+      page_number?: number;
+      start_char?: number;
+      end_char?: number;
+    }>,
+    filename: string,
+    fileType: string,
+  ): Promise<boolean> {
     try {
-      if (!this.aiServiceUrl || !this.aiServiceApiKey) {
-        console.error('AI service URL or API key not configured');
-        return Promise.resolve(false);
+      if (!this.qdrantClient) {
+        console.error('Qdrant client not available');
+        return false;
       }
 
-      // Note: This would require a separate endpoint in the AI service
-      // For now, we'll return false as this functionality isn't implemented yet
+      // Ensure collection exists before storing data
+      await this.ensureCollectionExists();
+
+      const points: Array<{
+        id: string;
+        vector: number[];
+        payload: {
+          document_id: string;
+          user_id: string;
+          content: string;
+          filename: string;
+          chunk_index: number;
+          page_number?: number;
+          start_char?: number;
+          end_char?: number;
+          file_type: string;
+        };
+      }> = [];
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+
+        // Generate embedding for the chunk
+        const embedding = await this.generateEmbedding(chunk.text);
+
+        points.push({
+          id: uuidv4(),
+          vector: embedding,
+          payload: {
+            document_id: documentId,
+            user_id: userId,
+            content: chunk.text,
+            filename: filename,
+            chunk_index: i,
+            page_number: chunk.page_number,
+            start_char: chunk.start_char,
+            end_char: chunk.end_char,
+            file_type: fileType,
+          },
+        });
+      }
+
+      // Upsert points to Qdrant
+      await this.qdrantClient.upsert(this.qdrantCollection, {
+        points: points,
+      });
+
+      console.log(`Stored ${points.length} chunks for document ${documentId}`);
+      return true;
+    } catch (error) {
+      console.error('Error storing document chunks:', error);
+      return false;
+    }
+  }
+
+  deleteUserEmbeddings(userId: string): Promise<boolean> {
+    try {
+      // This functionality is not implemented yet
       console.warn('Delete user embeddings not implemented yet');
       return Promise.resolve(false);
     } catch (error) {

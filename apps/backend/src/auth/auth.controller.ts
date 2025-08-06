@@ -291,7 +291,9 @@ export class AuthController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
+          new MaxFileSizeValidator({
+            maxSize: 5 * 1024 * 1024, // 5MB limit
+          }),
         ],
       }),
     )
@@ -309,6 +311,16 @@ export class AuthController {
     if (!isValidMimeType && !isValidExtension) {
       throw new BadRequestException(
         `Invalid file type. Allowed types: ${allowedMimeTypes.join(', ')}`,
+      );
+    }
+
+    // Validate file size using environment variable
+    const maxSize = parseInt(
+      this.configService.get<string>('MAX_AVATAR_SIZE') || '5242880',
+    );
+    if (file.size > maxSize) {
+      throw new BadRequestException(
+        `File size ${file.size} bytes exceeds maximum allowed size of ${maxSize} bytes (${Math.round(maxSize / 1024 / 1024)}MB)`,
       );
     }
 

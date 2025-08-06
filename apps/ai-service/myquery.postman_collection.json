@@ -30,6 +30,28 @@
                     }
                 },
                 {
+                    "name": "Generate Embedding",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/admin/documents/embeddings/generate",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "admin",
+                                "documents",
+                                "embeddings",
+                                "generate"
+                            ]
+                        },
+                        "description": "Generate embedding for text using the same model as document processing."
+                    }
+                },
+                {
                     "name": "Query Documents",
                     "request": {
                         "method": "POST",
@@ -47,7 +69,7 @@
                                 "query"
                             ]
                         },
-                        "description": "Query documents - supports both search and Q&A modes."
+                        "description": "Query documents - AI Assistant mode for sophisticated Q&A responses."
                     }
                 }
             ]

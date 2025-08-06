@@ -21,7 +21,7 @@ export default function DocumentUpload({
   onUpload,
   onFilesSelected,
   maxFiles = 5,
-  maxSize = 10 * 1024 * 1024, // 10MB default
+  maxSize = parseInt(process.env.NEXT_PUBLIC_MAX_DOCUMENT_SIZE || "20971520"), // 20MB from env
   accept = {
     "application/pdf": [".pdf"],
     "application/msword": [".doc"],

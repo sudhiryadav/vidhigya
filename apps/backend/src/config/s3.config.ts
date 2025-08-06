@@ -286,14 +286,27 @@ export class S3Service {
   }
 
   async deleteDocument(s3Key: string): Promise<void> {
+    this.ensureInitialized();
+
     console.log(
       `Deleting document from S3: bucket=${this.bucket}, key=${s3Key}`,
     );
+
+    if (!this.bucket) {
+      throw new Error('S3 bucket not initialized');
+    }
+
     await this.deleteFile(this.bucket, s3Key);
     console.log(`Document deleted from S3 successfully: ${s3Key}`);
   }
 
   async deleteAvatar(s3Key: string): Promise<void> {
+    this.ensureInitialized();
+
+    if (!this.bucket) {
+      throw new Error('S3 bucket not initialized');
+    }
+
     await this.deleteFile(this.bucket, s3Key);
   }
 

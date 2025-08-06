@@ -122,12 +122,7 @@ export default function LawyerSearchPage() {
 
     setSearching(true);
     try {
-      const results = await apiClient.queryDocuments(
-        searchTerm,
-        "search",
-        undefined,
-        10
-      );
+      const results = await apiClient.searchDocuments(searchTerm, 10);
       setSearchResults(results.results || []);
     } catch (error) {
       console.error("Error searching documents:", error);
@@ -355,7 +350,7 @@ export default function LawyerSearchPage() {
                         Upload Documents
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Add new documents
+                        Add new documents 1
                       </p>
                     </div>
                     <Plus className="w-5 h-5 text-gray-600" />
@@ -608,7 +603,7 @@ export default function LawyerSearchPage() {
 
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Quick Actions
+                  Quick Actions 1
                 </h3>
                 <div className="space-y-3">
                   <button
@@ -635,7 +630,7 @@ export default function LawyerSearchPage() {
                         Upload Documents
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Add new documents
+                        Add new documents 2
                       </p>
                     </div>
                     <Plus className="w-5 h-5 text-gray-600" />

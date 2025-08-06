@@ -815,17 +815,49 @@ async def upload_files(
         )
 
 
+@router.post("/embeddings/generate")
+async def generate_embedding(
+    text: str = Form(...),
+    api_key: str = Header(..., alias="X-API-Key"),
+):
+    """Generate embedding for text using the same model as document processing."""
+    try:
+        # Validate API key
+        if api_key != settings.BACKEND_API_KEY:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+
+        if not embedding_model:
+            raise HTTPException(status_code=500, detail="Embedding model not available")
+
+        # Generate embedding
+        embedding = get_cached_embedding(text)
+
+        return {
+            "text": text,
+            "embedding": embedding,
+            "dimensions": len(embedding),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_to_backend("error", "Unexpected error in generate_embedding", error=e)
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while generating embedding",
+        )
+
+
 @router.post("/query")
 async def query_documents(
     query: str = Form(...),
     userId: Optional[str] = Form(None),
     limit: int = Form(10),
-    mode: Optional[str] = Form("search"),  # "search" or "qa"
     context: Optional[str] = Form(None),
     api_key: str = Header(..., alias="X-API-Key"),
     db: Session = Depends(get_db),
 ):
-    """Query documents - supports both search and Q&A modes."""
+    """Query documents - AI Assistant mode for sophisticated Q&A responses."""
     try:
         # Validate API key
         if api_key != settings.BACKEND_API_KEY:
@@ -851,19 +883,12 @@ async def query_documents(
         )
 
         if not search_results:
-            if mode == "qa":
-                return {
-                    "question": query,
-                    "answer": "I couldn't find any relevant documents to answer your question. Please make sure you have uploaded documents and try asking a different question.",
-                    "sources": [],
-                    "confidence": 0.0,
-                }
-            else:
-                return {
-                    "query": query,
-                    "results": [],
-                    "total_results": 0,
-                }
+            return {
+                "question": query,
+                "answer": "I couldn't find any relevant documents to answer your question. Please make sure you have uploaded documents and try asking a different question.",
+                "sources": [],
+                "confidence": 0.0,
+            }
 
         # Format results with page numbers and file information
         formatted_results = []
@@ -883,32 +908,23 @@ async def query_documents(
                 }
             )
 
-        # If mode is "qa", generate an answer
-        if mode == "qa":
-            # Create a simple answer based on search results
-            answer = f"Based on the documents I found, here's what I can tell you about '{query}':\n\n"
-            answer += "The most relevant information from your documents includes:\n"
+        # Generate an AI answer based on search results
+        answer = f"Based on the documents I found, here's what I can tell you about '{query}':\n\n"
+        answer += "The most relevant information from your documents includes:\n"
 
-            for i, result in enumerate(formatted_results[:3], 1):  # Top 3 sources
-                answer += f"{i}. {result['content'][:200]}...\n"
+        for i, result in enumerate(formatted_results[:3], 1):  # Top 3 sources
+            answer += f"{i}. {result['content'][:200]}...\n"
 
-            answer += f"\n\nThis answer is based on {len(formatted_results)} relevant document sections."
+        answer += f"\n\nThis answer is based on {len(formatted_results)} relevant document sections."
 
-            return {
-                "question": query,
-                "answer": answer,
-                "sources": formatted_results,
-                "confidence": min(
-                    0.8, max(0.3, search_results[0].score if search_results else 0.3)
-                ),
-            }
-        else:
-            # Return search results
-            return {
-                "query": query,
-                "results": formatted_results,
-                "total_results": len(formatted_results),
-            }
+        return {
+            "question": query,
+            "answer": answer,
+            "sources": formatted_results,
+            "confidence": min(
+                0.8, max(0.3, search_results[0].score if search_results else 0.3)
+            ),
+        }
 
     except HTTPException:
         raise

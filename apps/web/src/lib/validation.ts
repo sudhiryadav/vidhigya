@@ -10,8 +10,7 @@ export const documentUploadSchema = yup
       .max(100, "Title must be less than 100 characters"),
     description: yup
       .string()
-      .required("Description is required")
-      .min(10, "Description must be at least 10 characters")
+      .optional()
       .max(500, "Description must be less than 500 characters"),
     category: yup.string().required("Category is required"),
     status: yup.string().required("Status is required"),
