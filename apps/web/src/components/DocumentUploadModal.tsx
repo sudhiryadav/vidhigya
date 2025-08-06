@@ -165,8 +165,6 @@ export default function DocumentUploadModal({
         </div>
       }
       maxWidth="2xl"
-      closeOnEscape={true}
-      closeOnOverlayClick={true}
     >
       <form
         id="upload-form"

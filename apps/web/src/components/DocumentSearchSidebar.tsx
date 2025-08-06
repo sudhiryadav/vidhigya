@@ -12,6 +12,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import DocumentUploadModal from "./DocumentUploadModal";
 
 interface DraftSection {
   id: string;
@@ -66,7 +67,7 @@ export default function DocumentSearchSidebar({
   const [draftDocuments, setDraftDocuments] = useState<DraftDocument[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [showDocumentUploadModal, setShowDocumentUploadModal] = useState(false);
   const quickActions = [
     {
       title: "Search Documents",
@@ -155,7 +156,8 @@ export default function DocumentSearchSidebar({
         onSuggestionClick("Search for documents");
         break;
       case "Upload new documents to your library":
-        onUploadClick();
+        // Show document upload modal
+        setShowDocumentUploadModal(true);
         break;
       case "View document usage analytics":
         onSuggestionClick("Show analytics");
@@ -344,6 +346,12 @@ export default function DocumentSearchSidebar({
           ))}
         </div>
       </div>
+      {/* Document Upload Modal */}
+      <DocumentUploadModal
+        isOpen={showDocumentUploadModal}
+        apiClient={apiClient}
+        onClose={() => setShowDocumentUploadModal(false)}
+      />
     </div>
   );
 }

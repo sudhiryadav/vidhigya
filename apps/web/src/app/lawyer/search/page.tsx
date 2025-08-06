@@ -325,9 +325,9 @@ export default function LawyerSearchPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Search Panel */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 {/* Search Bar */}
                 <div className="mb-6">
@@ -499,26 +499,28 @@ export default function LawyerSearchPage() {
             </div>
 
             {/* Sidebar */}
-            <DocumentSearchSidebar
-              onSuggestionClick={(suggestion) => {
-                if (
-                  suggestion.includes("Ask AI Assistant") ||
-                  suggestion.includes("Get AI-powered answers")
-                ) {
-                  setActiveTab("qa");
-                } else if (suggestion.includes("Open draft:")) {
-                  // Handle draft opening
-                  console.log("Opening draft:", suggestion);
-                } else {
-                  // Handle other suggestions
-                  console.log("Suggestion:", suggestion);
-                }
-              }}
-              onUploadClick={() => window.open("/lawyer/documents", "_blank")}
-              onDraftClick={openDraft}
-              onNewDraftClick={createNewDraft}
-              drafts={drafts}
-            />
+            <div className="lg:col-span-1">
+              <DocumentSearchSidebar
+                onSuggestionClick={(suggestion) => {
+                  if (
+                    suggestion.includes("Ask AI Assistant") ||
+                    suggestion.includes("Get AI-powered answers")
+                  ) {
+                    setActiveTab("qa");
+                  } else if (suggestion.includes("Open draft:")) {
+                    // Handle draft opening
+                    console.log("Opening draft:", suggestion);
+                  } else {
+                    // Handle other suggestions
+                    console.log("Suggestion:", suggestion);
+                  }
+                }}
+                onUploadClick={() => window.open("/lawyer/documents", "_blank")}
+                onDraftClick={openDraft}
+                onNewDraftClick={createNewDraft}
+                drafts={drafts}
+              />
+            </div>
           </div>
         )}
 
