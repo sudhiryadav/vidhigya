@@ -1,5 +1,6 @@
 "use client";
 
+import DocumentSearchSidebar from "@/components/DocumentSearchSidebar";
 import ModalDialog from "@/components/ui/ModalDialog";
 import { apiClient } from "@/services/api";
 import {
@@ -34,8 +35,29 @@ interface QAMessage {
   }>;
 }
 
+interface DraftSection {
+  id: string;
+  title: string;
+  content: string;
+  citations: Citation[];
+  createdAt: string;
+}
+
+interface Citation {
+  id: string;
+  documentId: string;
+  documentTitle: string;
+  pageNumber?: number;
+  content: string;
+  quote: string;
+  createdAt: string;
+}
+
 interface DocumentQAProps {
   className?: string;
+  drafts?: DraftSection[];
+  onDraftClick?: (draft: DraftSection) => void;
+  onNewDraftClick?: () => void;
 }
 
 interface WordCloudOverlayProps {
@@ -429,7 +451,12 @@ function DocumentViewer({
   );
 }
 
-export default function DocumentQA({ className = "" }: DocumentQAProps) {
+export default function DocumentQA({
+  className = "",
+  drafts = [],
+  onDraftClick,
+  onNewDraftClick,
+}: DocumentQAProps) {
   const [messages, setMessages] = useState<QAMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [context, setContext] = useState("");
@@ -733,274 +760,285 @@ export default function DocumentQA({ className = "" }: DocumentQAProps) {
 
   return (
     <>
-      <div
-        className={`flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}
-        style={{ height: "100vh" }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-2">
-            <Bot className="w-6 h-6 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Document AI Assistant
-            </h2>
-          </div>
-          <div className="flex flex-col items-end space-y-2">
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={async () => {
-                  await loadAnalytics();
-                  setShowAnalytics(true);
-                }}
-                className="flex items-center space-x-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                <FileText className="w-4 h-4" />
-                <span className="text-sm font-medium">Analytics</span>
-              </button>
-              <button
-                onClick={() => setShowWordCloudOverlay(true)}
-                className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
-              >
-                <Cloud className="w-4 h-4" />
-                <span className="text-sm font-medium">Quick Actions</span>
-              </button>
-              <button
-                onClick={clearChat}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Context Input */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 hidden">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Context (Optional)
-          </label>
-          <textarea
-            value={context}
-            onChange={(e) => setContext(e.target.value)}
-            placeholder="Provide additional context for your questions (e.g., case details, specific requirements)..."
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
-            rows={2}
-          />
-        </div>
-
-        {/* Messages */}
-        <div
-          className="flex-1 overflow-y-auto p-4 space-y-4"
-          style={{ minHeight: 0 }}
-        >
-          {/* Load Previous Messages Button */}
-          {hasMoreMessages && (
-            <div className="flex justify-center">
-              <button
-                onClick={() => loadMoreMessages()}
-                disabled={isLoadingHistory}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoadingHistory ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+        {/* Main Chat Area */}
+        <div className="lg:col-span-3">
+          <div
+            className={`flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}
+            style={{ height: "100vh" }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center space-x-2">
+                <Bot className="w-6 h-6 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Document AI Assistant
+                </h2>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={async () => {
+                    await loadAnalytics();
+                    setShowAnalytics(true);
+                  }}
+                  className="flex items-center space-x-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 shadow-md hover:shadow-lg"
+                >
                   <FileText className="w-4 h-4" />
-                )}
-                <span className="text-sm font-medium">
-                  {isLoadingHistory ? "Loading..." : "Load Previous Messages"}
-                </span>
-              </button>
+                  <span className="text-sm font-medium">Analytics</span>
+                </button>
+                <button
+                  onClick={clearChat}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-          )}
 
-          {messages.length === 0 ? (
-            <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-              <Bot className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>
-                Ask questions about your documents to get AI-powered answers
+            {/* Context Input */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 hidden">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Context (Optional)
+              </label>
+              <textarea
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                placeholder="Provide additional context for your questions (e.g., case details, specific requirements)..."
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+                rows={2}
+              />
+            </div>
+
+            {/* Messages */}
+            <div
+              className="flex-1 overflow-y-auto p-4 space-y-4"
+              style={{ minHeight: 0 }}
+            >
+              {/* Load Previous Messages Button */}
+              {hasMoreMessages && (
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => loadMoreMessages()}
+                    disabled={isLoadingHistory}
+                    className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoadingHistory ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )}
+                    <span className="text-sm font-medium">
+                      {isLoadingHistory
+                        ? "Loading..."
+                        : "Load Previous Messages"}
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {messages.length === 0 ? (
+                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                  <Bot className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>
+                    Ask questions about your documents to get AI-powered answers
+                  </p>
+                </div>
+              ) : (
+                messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.type === "question" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg p-3 ${
+                        message.type === "question"
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
+                      }`}
+                    >
+                      <div className="flex items-start space-x-2">
+                        {message.type === "question" ? (
+                          <User className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        ) : (
+                          <Bot className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600" />
+                        )}
+                        <div className="flex-1">
+                          <p className="text-sm whitespace-pre-wrap">
+                            {message.content}
+                          </p>
+
+                          {message.type === "answer" &&
+                            message.sources &&
+                            message.sources.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                  Sources:
+                                </p>
+                                <div className="space-y-1">
+                                  {message.sources
+                                    .slice(0, 3)
+                                    .map((source, index) => (
+                                      <button
+                                        key={index}
+                                        onClick={() =>
+                                          openDocumentViewer(source)
+                                        }
+                                        className="w-full text-left text-xs bg-gray-200 dark:bg-gray-600 rounded p-2 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors cursor-pointer"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex-1">
+                                            <p className="font-medium">
+                                              {source.document_title}
+                                            </p>
+                                            {source.page_number && (
+                                              <p className="text-gray-500">
+                                                Page {source.page_number}
+                                              </p>
+                                            )}
+                                            <p className="text-gray-600 dark:text-gray-300 mt-1">
+                                              {source.content ? (
+                                                source.start_char &&
+                                                source.end_char ? (
+                                                  <>
+                                                    {source.content.substring(
+                                                      0,
+                                                      source.start_char
+                                                    )}
+                                                    <mark className="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">
+                                                      {source.content.substring(
+                                                        source.start_char,
+                                                        source.end_char
+                                                      )}
+                                                    </mark>
+                                                    {source.content.substring(
+                                                      source.end_char,
+                                                      Math.min(
+                                                        source.end_char + 50,
+                                                        source.content.length
+                                                      )
+                                                    )}
+                                                    {source.content.length >
+                                                    source.end_char + 50
+                                                      ? "..."
+                                                      : ""}
+                                                  </>
+                                                ) : (
+                                                  `${source.content.substring(0, 100)}...`
+                                                )
+                                              ) : (
+                                                "Content not available"
+                                              )}
+                                            </p>
+                                          </div>
+                                          <FileText className="w-3 h-3 text-gray-400 ml-2" />
+                                        </div>
+                                      </button>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {message.timestamp.toLocaleTimeString()}
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => copyToClipboard(message.content)}
+                            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                          {message.type === "answer" && (
+                            <>
+                              <button
+                                onClick={() =>
+                                  handleFeedback(message.id, "positive")
+                                }
+                                className="text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors"
+                                title="This answer was helpful"
+                              >
+                                <ThumbsUp className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleFeedback(message.id, "negative")
+                                }
+                                className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+                                title="This answer was not helpful"
+                              >
+                                <ThumbsDown className="w-3 h-3" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Thinking...
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Scroll to bottom reference */}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input */}
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex space-x-2">
+                <div className="flex-1 relative">
+                  <textarea
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Ask a question about your documents..."
+                    className="w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+                    rows={1}
+                    disabled={isLoading}
+                  />
+                  <button
+                    onClick={handleAskQuestion}
+                    disabled={isLoading || !question.trim()}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Press Enter to send, Shift+Enter for new line
               </p>
             </div>
-          ) : (
-            messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.type === "question" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
-                    message.type === "question"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
-                  }`}
-                >
-                  <div className="flex items-start space-x-2">
-                    {message.type === "question" ? (
-                      <User className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    ) : (
-                      <Bot className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600" />
-                    )}
-                    <div className="flex-1">
-                      <p className="text-sm whitespace-pre-wrap">
-                        {message.content}
-                      </p>
-
-                      {message.type === "answer" &&
-                        message.sources &&
-                        message.sources.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                              Sources:
-                            </p>
-                            <div className="space-y-1">
-                              {message.sources
-                                .slice(0, 3)
-                                .map((source, index) => (
-                                  <button
-                                    key={index}
-                                    onClick={() => openDocumentViewer(source)}
-                                    className="w-full text-left text-xs bg-gray-200 dark:bg-gray-600 rounded p-2 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors cursor-pointer"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex-1">
-                                        <p className="font-medium">
-                                          {source.document_title}
-                                        </p>
-                                        {source.page_number && (
-                                          <p className="text-gray-500">
-                                            Page {source.page_number}
-                                          </p>
-                                        )}
-                                        <p className="text-gray-600 dark:text-gray-300 mt-1">
-                                          {source.content ? (
-                                            source.start_char &&
-                                            source.end_char ? (
-                                              <>
-                                                {source.content.substring(
-                                                  0,
-                                                  source.start_char
-                                                )}
-                                                <mark className="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">
-                                                  {source.content.substring(
-                                                    source.start_char,
-                                                    source.end_char
-                                                  )}
-                                                </mark>
-                                                {source.content.substring(
-                                                  source.end_char,
-                                                  Math.min(
-                                                    source.end_char + 50,
-                                                    source.content.length
-                                                  )
-                                                )}
-                                                {source.content.length >
-                                                source.end_char + 50
-                                                  ? "..."
-                                                  : ""}
-                                              </>
-                                            ) : (
-                                              `${source.content.substring(0, 100)}...`
-                                            )
-                                          ) : (
-                                            "Content not available"
-                                          )}
-                                        </p>
-                                      </div>
-                                      <FileText className="w-3 h-3 text-gray-400 ml-2" />
-                                    </div>
-                                  </button>
-                                ))}
-                            </div>
-                          </div>
-                        )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {message.timestamp.toLocaleTimeString()}
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => copyToClipboard(message.content)}
-                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                      >
-                        <Copy className="w-3 h-3" />
-                      </button>
-                      {message.type === "answer" && (
-                        <>
-                          <button
-                            onClick={() =>
-                              handleFeedback(message.id, "positive")
-                            }
-                            className="text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors"
-                            title="This answer was helpful"
-                          >
-                            <ThumbsUp className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleFeedback(message.id, "negative")
-                            }
-                            className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-                            title="This answer was not helpful"
-                          >
-                            <ThumbsDown className="w-3 h-3" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
-                <div className="flex items-center space-x-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Thinking...
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Scroll to bottom reference */}
-          <div ref={messagesEndRef} />
+          </div>
         </div>
 
-        {/* Input */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex space-x-2">
-            <div className="flex-1 relative">
-              <textarea
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask a question about your documents..."
-                className="w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
-                rows={1}
-                disabled={isLoading}
-              />
-              <button
-                onClick={handleAskQuestion}
-                disabled={isLoading || !question.trim()}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </button>
-            </div>
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            Press Enter to send, Shift+Enter for new line
-          </p>
+        {/* Sidebar */}
+        <div className="lg:col-span-1">
+          <DocumentSearchSidebar
+            onSuggestionClick={handleSuggestedQuestionClick}
+            onUploadClick={() => window.open("/lawyer/documents", "_blank")}
+            onDraftClick={onDraftClick}
+            onNewDraftClick={onNewDraftClick}
+            drafts={drafts}
+          />
         </div>
       </div>
 
