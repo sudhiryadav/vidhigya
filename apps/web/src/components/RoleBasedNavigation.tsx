@@ -187,10 +187,10 @@ export function RoleBasedNavigation() {
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <Link href="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">V</span>
+                <span className="text-white font-bold text-lg">व</span>
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">
-                Vidhigya
+              <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                विधीज्ञ
               </span>
             </Link>
             {hasRole(["SUPER_ADMIN", "ADMIN"]) && (

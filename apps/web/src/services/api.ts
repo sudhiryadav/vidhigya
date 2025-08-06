@@ -477,7 +477,6 @@ class ApiClient {
 
   async queryDocuments(
     query: string,
-    mode: "qa" = "qa",
     context?: string,
     limit: number = 10
   ): Promise<any> {
@@ -489,7 +488,7 @@ class ApiClient {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ query, mode, context, limit }),
+      body: JSON.stringify({ query, context, limit }),
     });
 
     if (!response.ok) {
@@ -500,7 +499,7 @@ class ApiClient {
   }
 
   async askDocumentQuestion(question: string, context?: string): Promise<any> {
-    return this.queryDocuments(question, "qa", context);
+    return this.queryDocuments(question, context);
   }
 
   async submitFeedback(feedbackData: {

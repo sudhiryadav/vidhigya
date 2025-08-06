@@ -186,7 +186,7 @@ export class DocumentsController {
         // Store chunks in Qdrant directly
         if (this.qdrantService && processedDocument.chunks.length > 0) {
           const qdrantSuccess = await this.qdrantService.storeDocumentChunks(
-            processedDocument.document_id,
+            createdDocument.id, // Use the database document ID instead of generated UUID
             req.user.sub,
             processedDocument.chunks,
             processedDocument.filename,
@@ -203,7 +203,7 @@ export class DocumentsController {
         await this.prisma.legalDocument.update({
           where: { id: createdDocument.id },
           data: {
-            aiDocumentId: processedDocument.document_id,
+            aiDocumentId: createdDocument.id, // Use the database document ID
             aiChunks: processedDocument.chunks.length,
             content: processedDocument.content,
           },
@@ -247,6 +247,81 @@ export class DocumentsController {
     }
   }
 
+  @Post('search')
+  @UseGuards(JwtAuthGuard)
+  async searchDocuments(
+    @Body() searchDto: { query: string; limit?: number },
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      const { query, limit = 10 } = searchDto;
+
+      console.log('Document search request:', {
+        query,
+        limit,
+        userId: req.user.sub,
+      });
+
+      if (!this.qdrantService) {
+        throw new BadRequestException('Vector database not available');
+      }
+
+      const searchResults = await this.qdrantService.searchDocuments(
+        query,
+        req.user.sub,
+        limit,
+      );
+
+      // Map document IDs to actual document information for search results
+      const documentMap = new Map();
+      const documents = await this.prisma.legalDocument.findMany({
+        where: { uploadedById: req.user.sub },
+        select: { id: true, originalFilename: true, title: true },
+      });
+
+      documents.forEach((doc) => {
+        documentMap.set(doc.id, {
+          title: (doc.title || doc.originalFilename) as string,
+        });
+      });
+
+      const enhancedResults = searchResults.map((result) => {
+        const documentInfo = documentMap.get(result.document_id);
+        return {
+          ...result,
+          document_title: documentInfo?.title || 'Unknown Document',
+        };
+      });
+
+      const result = {
+        query,
+        results: enhancedResults,
+        total_results: searchResults.length,
+        generated_at: new Date().toISOString(),
+      };
+
+      // Log the search query
+      await this.documentsService.logDocumentQuery(
+        req.user.sub,
+        query,
+        JSON.stringify(searchResults),
+        undefined,
+        searchResults,
+        undefined,
+        undefined,
+        QueryType.DOCUMENT_ANALYSIS,
+      );
+
+      return result;
+    } catch (error) {
+      console.error('Error processing document search:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to process search');
+    }
+  }
+
   @Post('query')
   @UseGuards(JwtAuthGuard)
   async queryDocuments(
@@ -254,7 +329,7 @@ export class DocumentsController {
     @Request() req: AuthenticatedRequest,
   ) {
     try {
-      const { query, mode = 'search', context, limit = 10 } = queryDto;
+      const { query, mode = 'qa', context, limit = 10 } = queryDto;
 
       console.log('Document query request:', {
         query,
@@ -268,176 +343,146 @@ export class DocumentsController {
         throw new BadRequestException('Vector database not available');
       }
 
-      if (mode === 'qa') {
-        // AI Assistant mode - use Mistral 7B for sophisticated AI responses
-        console.log('Using Mistral 7B for AI Assistant mode');
+      // AI Assistant mode - use Mistral 7B for sophisticated AI responses
+      console.log('Using Mistral 7B for AI Assistant mode');
 
-        try {
-          // Use the QdrantService to generate responses
-          const qaResponse = await this.qdrantService.queryDocuments(
-            query,
-            req.user.sub,
-          );
+      try {
+        // Use the QdrantService to generate responses
+        const qaResponse = await this.qdrantService.queryDocuments(
+          query,
+          req.user.sub,
+        );
 
-          // Map document IDs to actual document information
-          const documentMap = new Map();
-          const documents = await this.prisma.legalDocument.findMany({
-            where: { uploadedById: req.user.sub },
-            select: { id: true, originalFilename: true, title: true },
+        // Map document IDs to actual document information
+        const documentMap = new Map();
+        const documents = await this.prisma.legalDocument.findMany({
+          where: { uploadedById: req.user.sub },
+          select: { id: true, originalFilename: true, title: true },
+        });
+
+        documents.forEach((doc) => {
+          documentMap.set(doc.id, {
+            title: (doc.title || doc.originalFilename) as string,
           });
+        });
 
-          documents.forEach((doc) => {
-            documentMap.set(doc.id, {
-              title: (doc.title || doc.originalFilename) as string,
-            });
-          });
+        const result = {
+          question: query,
+          answer: qaResponse.answer,
+          sources: qaResponse.sources.map((source) => {
+            const documentInfo = documentMap.get(source.document_id) as
+              | { title: string }
+              | undefined;
 
-          const result = {
-            question: query,
-            answer: qaResponse.answer,
-            sources: qaResponse.sources.map((source) => {
-              const documentInfo = documentMap.get(source.document_id) as
-                | { title: string }
-                | undefined;
-
-              return {
-                document_id: source.document_id,
-                document_title: documentInfo?.title || 'Unknown Document',
-                content: source.content,
-                score: source.score,
-                page_number: source.page_number,
-                start_char: source.start_char,
-                end_char: source.end_char,
-              };
-            }),
-            confidence: qaResponse.confidence,
-            generated_at: new Date().toISOString(),
-          };
-
-          // Log the Q&A query
-          await this.documentsService.logDocumentQuery(
-            req.user.sub,
-            query,
-            qaResponse.answer,
-            undefined,
-            qaResponse.sources,
-            undefined,
-            undefined,
-            QueryType.GENERAL,
-          );
-
-          return result;
-        } catch (error) {
-          console.error('AI Service error:', error);
-
-          // Fallback to fast Qdrant-based response if AI service fails
-          console.log('Falling back to Qdrant-based response');
-
-          const searchResults = await this.qdrantService.searchDocuments(
-            query,
-            req.user.sub,
-            limit,
-          );
-
-          if (!searchResults || searchResults.length === 0) {
-            const result = {
-              question: query,
-              answer:
-                'I could not find any relevant information. Please try rephrasing your question or make sure you have uploaded the relevant documents.',
-              sources: [],
-              confidence: 0.0,
-              generated_at: new Date().toISOString(),
+            return {
+              document_id: source.document_id,
+              document_title: documentInfo?.title || 'Unknown Document',
+              content: source.content,
+              score: source.score,
+              page_number: source.page_number,
+              start_char: source.start_char,
+              end_char: source.end_char,
             };
+          }),
+          confidence: qaResponse.confidence,
+          generated_at: new Date().toISOString(),
+        };
 
-            // Log the Q&A query
-            await this.documentsService.logDocumentQuery(
-              req.user.sub,
-              query,
-              result.answer,
-              undefined,
-              [],
-              undefined,
-              undefined,
-              QueryType.GENERAL,
-            );
+        // Log the Q&A query
+        await this.documentsService.logDocumentQuery(
+          req.user.sub,
+          query,
+          qaResponse.answer,
+          undefined,
+          qaResponse.sources,
+          undefined,
+          undefined,
+          QueryType.GENERAL,
+        );
 
-            return result;
-          }
+        return result;
+      } catch (error) {
+        console.error('AI Service error:', error);
 
-          // Generate a comprehensive answer based on the search results
-          let answer = `Based on your documents, here's what I found about "${query}":\n\n`;
+        // Fallback to fast Qdrant-based response if AI service fails
+        console.log('Falling back to Qdrant-based response');
 
-          // Add the most relevant information from the top results
-          const topResults = searchResults.slice(0, 3);
-          for (let i = 0; i < topResults.length; i++) {
-            const result = topResults[i];
-            answer += `${i + 1}. ${result.content.substring(0, 300)}${
-              result.content.length > 300 ? '...' : ''
-            }\n\n`;
-          }
-
-          answer += `\nThis answer is based on ${searchResults.length} relevant document sections from your uploaded files.`;
-
-          const fallbackResult = {
-            question: query,
-            answer: answer,
-            sources: searchResults.map((result) => ({
-              document_id: result.document_id,
-              content: result.content,
-              score: result.score,
-              page_number: result.page_number,
-              start_char: result.start_char,
-              end_char: result.end_char,
-            })),
-            confidence: Math.min(
-              0.9,
-              Math.max(0.3, searchResults[0]?.score || 0.3),
-            ),
-            generated_at: new Date().toISOString(),
-          };
-
-          // Log the Q&A query
-          await this.documentsService.logDocumentQuery(
-            req.user.sub,
-            query,
-            answer,
-            undefined,
-            searchResults,
-            undefined,
-            undefined,
-            QueryType.GENERAL,
-          );
-
-          return fallbackResult;
-        }
-      } else {
-        // Search mode
         const searchResults = await this.qdrantService.searchDocuments(
           query,
           req.user.sub,
           limit,
         );
 
-        const result = {
-          query,
-          results: searchResults,
-          total_results: searchResults.length,
+        if (!searchResults || searchResults.length === 0) {
+          const result = {
+            question: query,
+            answer:
+              'I could not find any relevant information. Please try rephrasing your question or make sure you have uploaded the relevant documents.',
+            sources: [],
+            confidence: 0.0,
+            generated_at: new Date().toISOString(),
+          };
+
+          // Log the Q&A query
+          await this.documentsService.logDocumentQuery(
+            req.user.sub,
+            query,
+            result.answer,
+            undefined,
+            [],
+            undefined,
+            undefined,
+            QueryType.GENERAL,
+          );
+
+          return result;
+        }
+
+        // Generate a comprehensive answer based on the search results
+        let answer = `Based on your documents, here's what I found about "${query}":\n\n`;
+
+        // Add the most relevant information from the top results
+        const topResults = searchResults.slice(0, 3);
+        for (let i = 0; i < topResults.length; i++) {
+          const result = topResults[i];
+          answer += `${i + 1}. ${result.content.substring(0, 300)}${
+            result.content.length > 300 ? '...' : ''
+          }\n\n`;
+        }
+
+        answer += `\nThis answer is based on ${searchResults.length} relevant document sections from your uploaded files.`;
+
+        const fallbackResult = {
+          question: query,
+          answer: answer,
+          sources: searchResults.map((result) => ({
+            document_id: result.document_id,
+            content: result.content,
+            score: result.score,
+            page_number: result.page_number,
+            start_char: result.start_char,
+            end_char: result.end_char,
+          })),
+          confidence: Math.min(
+            0.9,
+            Math.max(0.3, searchResults[0]?.score || 0.3),
+          ),
           generated_at: new Date().toISOString(),
         };
 
-        // Log the search query
+        // Log the Q&A query
         await this.documentsService.logDocumentQuery(
           req.user.sub,
           query,
-          JSON.stringify(searchResults),
+          answer,
           undefined,
           searchResults,
           undefined,
           undefined,
-          QueryType.DOCUMENT_ANALYSIS,
+          QueryType.GENERAL,
         );
 
-        return result;
+        return fallbackResult;
       }
     } catch (error) {
       console.error('Error processing document query:', error);

@@ -606,7 +606,6 @@ export default function DocumentQA({
     try {
       const response = await apiClient.queryDocuments(
         currentQuestion,
-        "qa",
         context,
         10
       );
