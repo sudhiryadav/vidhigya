@@ -664,6 +664,12 @@ class ApiClient {
     });
   }
 
+  async getDocumentStatus(aiDocumentId: string) {
+    return this.request(`/documents/status/${aiDocumentId}`, {
+      method: "GET",
+    });
+  }
+
   async downloadDocument(id: string) {
     const token =
       typeof window !== "undefined" ? localStorage.getItem("token") : null;

@@ -474,6 +474,8 @@ enum DocumentStatus {
   APPROVED
   FILED
   ARCHIVED
+  PROCESSING
+  PROCESSED
 }
 
 enum NoteType {

@@ -19,7 +19,6 @@ import { DocumentCategory, DocumentStatus } from '@prisma/client';
 import { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { DocumentProcessorService } from '../config/document-processor.service';
 import { QdrantService } from '../config/qdrant.service';
 import { S3Service } from '../config/s3.config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -64,7 +63,6 @@ export class DocumentsController {
     private readonly s3Service: S3Service,
     private readonly configService: ConfigService,
     private readonly qdrantService: QdrantService,
-    private readonly documentProcessorService: DocumentProcessorService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -87,9 +85,7 @@ export class DocumentsController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(), // Use memory storage to get file.buffer
-      limits: {
-        fileSize: 20 * 1024 * 1024, // 20MB limit
-      },
+      // No fileSize limit - let runtime validation handle it with proper error messages
       fileFilter: (req, file, cb) => {
         const allowedMimes = [
           'application/pdf',
@@ -126,7 +122,18 @@ export class DocumentsController {
     }
 
     let uploadedFileUrl: string | null = null;
-    let createdDocument: any = null;
+    let createdDocument: {
+      id: string;
+      title: string;
+      fileUrl: string;
+      originalFilename: string;
+      fileType: string;
+      fileSize: number;
+      category: DocumentCategory;
+      uploadedById: string;
+      createdAt: Date;
+      updatedAt: Date;
+    } | null = null;
 
     try {
       // Generate unique filename
@@ -168,54 +175,95 @@ export class DocumentsController {
         title: createdDocument.title,
       });
 
-      // Process document locally using NestJS
+      // Process document using FastAPI service
       try {
-        const processedDocument =
-          await this.documentProcessorService.processDocument(
-            file.buffer,
-            file.originalname,
-            req.user.sub,
-          );
-
-        console.log('Document processed:', {
-          documentId: processedDocument.document_id,
-          chunks: processedDocument.chunks.length,
-          contentLength: processedDocument.content.length,
-        });
-
-        // Store chunks in Qdrant directly
-        if (this.qdrantService && processedDocument.chunks.length > 0) {
-          const qdrantSuccess = await this.qdrantService.storeDocumentChunks(
-            createdDocument.id, // Use the database document ID instead of generated UUID
-            req.user.sub,
-            processedDocument.chunks,
-            processedDocument.filename,
-            processedDocument.file_type,
-          );
-
-          if (!qdrantSuccess) {
-            console.error('Failed to store document chunks in Qdrant');
-            // Continue anyway, but log the failure
-          }
+        const formData = new FormData();
+        // Create a proper File object from the buffer and append as array
+        const fileBlob = new Blob([file.buffer], { type: file.mimetype });
+        formData.append('files', fileBlob, file.originalname);
+        formData.append('userId', req.user.sub);
+        if (body.description) {
+          formData.append('description', body.description);
         }
 
-        // Update the document with processing information
-        await this.prisma.legalDocument.update({
-          where: { id: createdDocument.id },
-          data: {
-            aiDocumentId: createdDocument.id, // Use the database document ID
-            aiChunks: processedDocument.chunks.length,
-            content: processedDocument.content,
+        const response = await fetch(
+          `${this.configService.get('AI_SERVICE_URL')}/api/v1/admin/documents/upload`,
+          {
+            method: 'POST',
+            headers: {
+              'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+            },
+            body: formData,
           },
-        });
+        );
 
-        console.log('Document processing completed successfully:', {
-          documentId: createdDocument.id,
-          chunks: processedDocument.chunks.length,
-          contentLength: processedDocument.content.length,
-        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('FastAPI service error:', response.status, errorText);
+          throw new Error(
+            `FastAPI service error: ${response.status} - ${errorText}`,
+          );
+        }
+
+        const result = await response.json();
+
+        // Check if processing is in background
+        if (result.processing_status === 'BACKGROUND') {
+          const documentInfo = result.documents[0]; // Get first document info
+
+          console.log(
+            'Document uploaded and processing started in background:',
+            {
+              documentId: documentInfo.document_id,
+              status: documentInfo.status,
+            },
+          );
+
+          // Update the document with processing status
+          await this.prisma.legalDocument.update({
+            where: { id: createdDocument.id },
+            data: {
+              aiDocumentId: documentInfo.document_id,
+              status: 'PROCESSING', // Set status to processing
+            },
+          });
+
+          console.log(
+            'Document uploaded successfully, processing in background:',
+            {
+              documentId: createdDocument.id,
+              aiDocumentId: documentInfo.document_id,
+            },
+          );
+        } else {
+          // Handle synchronous processing (fallback)
+          const documentInfo = result.documents[0];
+
+          console.log('Document processed synchronously by FastAPI:', {
+            documentId: documentInfo.document_id,
+            chunks: documentInfo.chunks,
+            contentLength: documentInfo.content?.length || 0,
+          });
+
+          // Update the document with processing information
+          await this.prisma.legalDocument.update({
+            where: { id: createdDocument.id },
+            data: {
+              aiDocumentId: documentInfo.document_id,
+              aiChunks: documentInfo.chunks,
+              content: documentInfo.content,
+              status: 'PROCESSED',
+            },
+          });
+
+          console.log('Document processing completed successfully:', {
+            documentId: createdDocument.id,
+            chunks: documentInfo.chunks,
+            contentLength: documentInfo.content?.length || 0,
+          });
+        }
       } catch (error) {
-        console.error('Error processing document:', error);
+        console.error('Error processing document with FastAPI:', error);
         // Don't fail the upload if processing fails, but log it
         // The document will still be available for download
       }
@@ -244,6 +292,53 @@ export class DocumentsController {
       }
 
       throw new BadRequestException('Failed to upload document');
+    }
+  }
+
+  @Get('status/:aiDocumentId')
+  @UseGuards(JwtAuthGuard)
+  async getDocumentProcessingStatus(
+    @Param('aiDocumentId') aiDocumentId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      console.log('Checking processing status for document:', aiDocumentId);
+      console.log('AI Service URL:', this.configService.get('AI_SERVICE_URL'));
+      console.log('API Key:', this.configService.get('AI_SERVICE_API_KEY'));
+
+      const response = await fetch(
+        `${this.configService.get('AI_SERVICE_URL')}/api/v1/admin/documents/status/${aiDocumentId}`,
+        {
+          method: 'GET',
+          headers: {
+            'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`FastAPI service error: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // If processing is complete, update the database
+      if (result.status?.status === 'COMPLETED') {
+        await this.prisma.legalDocument.updateMany({
+          where: {
+            aiDocumentId: aiDocumentId,
+            uploadedById: req.user.sub,
+          },
+          data: {
+            status: 'PROCESSED',
+          },
+        });
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error checking document status:', error);
+      throw new BadRequestException('Failed to check document status');
     }
   }
 
@@ -281,12 +376,14 @@ export class DocumentsController {
 
       documents.forEach((doc) => {
         documentMap.set(doc.id, {
-          title: (doc.title || doc.originalFilename) as string,
+          title: doc.title || doc.originalFilename,
         });
       });
 
       const enhancedResults = searchResults.map((result) => {
-        const documentInfo = documentMap.get(result.document_id);
+        const documentInfo = documentMap.get(result.document_id) as
+          | { title: string }
+          | undefined;
         return {
           ...result,
           document_title: documentInfo?.title || 'Unknown Document',
@@ -343,146 +440,58 @@ export class DocumentsController {
         throw new BadRequestException('Vector database not available');
       }
 
-      // AI Assistant mode - use Mistral 7B for sophisticated AI responses
-      console.log('Using Mistral 7B for AI Assistant mode');
+      // Use FastAPI service for document querying
+      console.log('Using FastAPI service for document querying');
 
       try {
-        // Use the QdrantService to generate responses
-        const qaResponse = await this.qdrantService.queryDocuments(
-          query,
-          req.user.sub,
+        const formData = new FormData();
+        formData.append('query', query);
+        formData.append('userId', req.user.sub);
+        formData.append('limit', limit.toString());
+        if (context) {
+          formData.append('context', context);
+        }
+
+        const response = await fetch(
+          `${this.configService.get('AI_SERVICE_URL')}/api/v1/admin/documents/query`,
+          {
+            method: 'POST',
+            headers: {
+              'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+            },
+            body: formData,
+          },
         );
 
-        // Map document IDs to actual document information
-        const documentMap = new Map();
-        const documents = await this.prisma.legalDocument.findMany({
-          where: { uploadedById: req.user.sub },
-          select: { id: true, originalFilename: true, title: true },
-        });
-
-        documents.forEach((doc) => {
-          documentMap.set(doc.id, {
-            title: (doc.title || doc.originalFilename) as string,
-          });
-        });
-
-        const result = {
-          question: query,
-          answer: qaResponse.answer,
-          sources: qaResponse.sources.map((source) => {
-            const documentInfo = documentMap.get(source.document_id) as
-              | { title: string }
-              | undefined;
-
-            return {
-              document_id: source.document_id,
-              document_title: documentInfo?.title || 'Unknown Document',
-              content: source.content,
-              score: source.score,
-              page_number: source.page_number,
-              start_char: source.start_char,
-              end_char: source.end_char,
-            };
-          }),
-          confidence: qaResponse.confidence,
-          generated_at: new Date().toISOString(),
-        };
-
-        // Log the Q&A query
-        await this.documentsService.logDocumentQuery(
-          req.user.sub,
-          query,
-          qaResponse.answer,
-          undefined,
-          qaResponse.sources,
-          undefined,
-          undefined,
-          QueryType.GENERAL,
-        );
-
-        return result;
-      } catch (error) {
-        console.error('AI Service error:', error);
-
-        // Fallback to fast Qdrant-based response if AI service fails
-        console.log('Falling back to Qdrant-based response');
-
-        const searchResults = await this.qdrantService.searchDocuments(
-          query,
-          req.user.sub,
-          limit,
-        );
-
-        if (!searchResults || searchResults.length === 0) {
-          const result = {
-            question: query,
-            answer:
-              'I could not find any relevant information. Please try rephrasing your question or make sure you have uploaded the relevant documents.',
-            sources: [],
-            confidence: 0.0,
-            generated_at: new Date().toISOString(),
-          };
-
-          // Log the Q&A query
-          await this.documentsService.logDocumentQuery(
-            req.user.sub,
-            query,
-            result.answer,
-            undefined,
-            [],
-            undefined,
-            undefined,
-            QueryType.GENERAL,
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('FastAPI service error:', response.status, errorText);
+          throw new Error(
+            `FastAPI service error: ${response.status} - ${errorText}`,
           );
-
-          return result;
         }
 
-        // Generate a comprehensive answer based on the search results
-        let answer = `Based on your documents, here's what I found about "${query}":\n\n`;
-
-        // Add the most relevant information from the top results
-        const topResults = searchResults.slice(0, 3);
-        for (let i = 0; i < topResults.length; i++) {
-          const result = topResults[i];
-          answer += `${i + 1}. ${result.content.substring(0, 300)}${
-            result.content.length > 300 ? '...' : ''
-          }\n\n`;
-        }
-
-        answer += `\nThis answer is based on ${searchResults.length} relevant document sections from your uploaded files.`;
-
-        const fallbackResult = {
-          question: query,
-          answer: answer,
-          sources: searchResults.map((result) => ({
-            document_id: result.document_id,
-            content: result.content,
-            score: result.score,
-            page_number: result.page_number,
-            start_char: result.start_char,
-            end_char: result.end_char,
-          })),
-          confidence: Math.min(
-            0.9,
-            Math.max(0.3, searchResults[0]?.score || 0.3),
-          ),
-          generated_at: new Date().toISOString(),
-        };
+        const result = await response.json();
 
         // Log the Q&A query
         await this.documentsService.logDocumentQuery(
           req.user.sub,
           query,
-          answer,
+          result.answer,
           undefined,
-          searchResults,
+          result.sources,
           undefined,
           undefined,
           QueryType.GENERAL,
         );
 
-        return fallbackResult;
+        return {
+          ...result,
+          generated_at: new Date().toISOString(),
+        };
+      } catch (error) {
+        console.error('FastAPI service error:', error);
+        throw new BadRequestException('Failed to process document query');
       }
     } catch (error) {
       console.error('Error processing document query:', error);
@@ -644,7 +653,7 @@ export class DocumentsController {
       res.setHeader('Content-Type', contentType);
 
       // Use original filename from database or fallback to document title
-      const originalFilename = document.originalFilename as string | null;
+      const originalFilename = document.originalFilename;
       const filename =
         originalFilename || `${document.title || 'document'}.${fileExtension}`;
 

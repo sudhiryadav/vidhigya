@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
-import { DocumentProcessorService } from '../config/document-processor.service';
+
 import { QdrantModule } from '../config/qdrant.module';
 import { S3Module } from '../config/s3.module';
 import { LogsModule } from '../logs/logs.module';
@@ -19,7 +19,7 @@ import { DocumentsService } from './documents.service';
     }),
   ],
   controllers: [DocumentsController],
-  providers: [DocumentsService, DocumentProcessorService],
+  providers: [DocumentsService],
   exports: [DocumentsService],
 })
 export class DocumentsModule {}

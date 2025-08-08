@@ -18,12 +18,7 @@
   "debug.internalConsoleOptions": "openOnSessionStart",
   "debug.showBreakpointsInOverviewRuler": true,
   "debug.showInlineBreakpointCandidates": true,
-  "python.defaultInterpreterPath": "./apps/ai-service/venv/bin/python",
-  "python.terminal.activateEnvironment": true,
-  "python.linting.enabled": true,
-  "python.linting.pylintEnabled": true,
-  "python.formatting.provider": "black",
-  "python.sortImports.args": ["--profile", "black"],
+
   "files.exclude": {
     "**/node_modules": true,
     "**/dist": true,
@@ -51,5 +46,9 @@
     "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb",
     "requirements.txt": "requirements-*.txt",
     "*.py": "${capture}.pyc, ${capture}.pyo, ${capture}.pyd, ${capture}.pyi"
-  }
+  },
+
+  "python.defaultInterpreterPath": "${workspaceFolder}/apps/ai-service/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.terminal.activateEnvInCurrentTerminal": true
 } 

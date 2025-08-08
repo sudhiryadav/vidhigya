@@ -5,10 +5,11 @@ import json
 import os
 import re
 import sys
+import threading
 import traceback
 import uuid
 from functools import lru_cache
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import docx
 import fitz
@@ -25,7 +26,6 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from PIL import Image
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
-from sqlalchemy.orm import Session
 
 # Add the root directory to Python path
 backend_dir = os.path.dirname(
@@ -38,9 +38,6 @@ if backend_dir not in sys.path:
 
 # Now we can import from absolute paths
 from app.core.config import settings
-from app.database import get_db
-
-# Removed database model imports - AI service should not manage database records
 
 # OCR Configuration
 OCR_ENABLED = getattr(settings, "OCR_ENABLED", True)  # Enable/disable OCR
@@ -58,6 +55,10 @@ try:
 except Exception as e:
     print(f"Warning: Could not initialize SentenceTransformer: {str(e)}")
     embedding_model = None
+
+# Processing status tracking
+processing_status = {}  # Global dict to track processing status
+processing_lock = threading.Lock()  # Thread lock for status updates
 
 # Initialize Qdrant client
 try:
@@ -85,6 +86,30 @@ try:
 except Exception as e:
     print(f"Warning: Could not initialize Qdrant client: {str(e)}")
     qdrant_client = None
+
+
+def update_processing_status(
+    document_id: str,
+    status: str,
+    details: str = None,
+    error: str = None,
+    progress: int = None,
+):
+    """Update processing status for a document."""
+    with processing_lock:
+        processing_status[document_id] = {
+            "status": status,
+            "details": details,
+            "error": error,
+            "progress": progress,  # 0-100 percentage
+            "timestamp": datetime.datetime.now().isoformat(),
+        }
+
+
+def get_processing_status(document_id: str) -> Dict[str, Any]:
+    """Get processing status for a document."""
+    with processing_lock:
+        return processing_status.get(document_id, {"status": "NOT_FOUND"})
 
 
 def ensure_qdrant_collection_exists():
@@ -324,20 +349,342 @@ def clean_text_content(text: str) -> str:
     return text
 
 
+def process_file_background(
+    file_content: bytes,
+    file_extension: str,
+    original_filename: str,
+    userId: str,
+    document_id: str,
+):
+    """Process file in background thread."""
+    try:
+        update_processing_status(
+            document_id,
+            "PROCESSING",
+            f"Starting to process {original_filename}",
+            None,
+            10,
+        )
+
+        # Process the file with progress updates
+        result = process_file_with_progress(
+            file_content, file_extension, original_filename, userId, document_id
+        )
+
+        # Update status to completed
+        update_processing_status(
+            document_id,
+            "COMPLETED",
+            f"Successfully processed {original_filename}. Generated {result.get('chunks', 0)} chunks.",
+            None,  # error
+            100,  # progress
+        )
+
+        log_to_backend(
+            "info", f"Background processing completed for {original_filename}"
+        )
+
+    except Exception as e:
+        error_msg = f"Error processing {original_filename}: {str(e)}"
+        update_processing_status(document_id, "ERROR", error_msg, str(e), 0)
+        log_to_backend("error", error_msg, error=e)
+
+
+def process_file_with_progress(
+    file_content: bytes,
+    file_extension: str,
+    original_filename: str,
+    userId: str,
+    document_id: str,
+) -> dict:
+    """Process file with progress tracking."""
+    try:
+        text_content = ""
+        financial_analysis = {}
+
+        update_processing_status(
+            document_id, "PROCESSING", "Extracting text content...", None, 20
+        )
+
+        if file_extension.lower() == ".pdf":
+            doc = None
+            try:
+                doc = fitz.open(stream=file_content, filetype="pdf")
+                total_pages = len(doc)
+                update_processing_status(
+                    document_id,
+                    "PROCESSING",
+                    f"Processing PDF with {total_pages} pages...",
+                    None,  # error
+                    30,  # progress
+                )
+
+                for page_num, page in enumerate(doc):
+                    # Update progress based on page processing
+                    progress = 30 + int(
+                        (page_num / total_pages) * 50
+                    )  # 30-80% for page processing
+                    update_processing_status(
+                        document_id,
+                        "PROCESSING",
+                        f"Processing page {page_num + 1}/{total_pages}...",
+                        None,  # error
+                        progress,  # progress
+                    )
+
+                    # Extract selectable text first
+                    page_text = page.get_text()
+                    text_content += page_text
+
+                    # If no text was extracted, the page might be scanned/image-based
+                    if not page_text.strip() and OCR_ENABLED:
+                        log_to_backend(
+                            "info",
+                            f"Page {page_num + 1} appears to be image-based, running OCR...",
+                        )
+                        try:
+                            # Render page as image for OCR
+                            pix = page.get_pixmap(dpi=OCR_DPI)
+                            img = Image.frombytes(
+                                "RGB", [pix.width, pix.height], pix.samples
+                            )
+
+                            # Run OCR on the page image
+                            ocr_text = pytesseract.image_to_string(
+                                img, lang=OCR_LANGUAGE, config=OCR_CONFIG
+                            )
+                            if ocr_text.strip():
+                                text_content += (
+                                    f"\n[OCR Page {page_num + 1}]:\n{ocr_text}\n"
+                                )
+                                log_to_backend(
+                                    "info",
+                                    f"OCR extracted {len(ocr_text)} characters from page {page_num + 1}",
+                                )
+                            else:
+                                log_to_backend(
+                                    "warning",
+                                    f"No text found via OCR on page {page_num + 1}",
+                                )
+                        except Exception as e:
+                            log_to_backend(
+                                "error",
+                                f"OCR failed on page {page_num + 1}: {str(e)}",
+                            )
+                    elif not page_text.strip() and not OCR_ENABLED:
+                        log_to_backend(
+                            "warning",
+                            f"Page {page_num + 1} appears to be image-based but OCR is disabled",
+                        )
+
+                    # Also extract text from embedded images in the page
+                    if OCR_ENABLED:
+                        try:
+                            for img_index, img in enumerate(page.get_images(full=True)):
+                                xref = img[0]
+                                base_image = doc.extract_image(xref)
+                                image_bytes = base_image["image"]
+                                image = Image.open(io.BytesIO(image_bytes))
+
+                                # Run OCR on embedded image
+                                ocr_text = pytesseract.image_to_string(
+                                    image, lang=OCR_LANGUAGE, config=OCR_CONFIG
+                                )
+                                if ocr_text.strip():
+                                    text_content += f"\n[OCR Page {page_num + 1} Image {img_index + 1}]:\n{ocr_text}\n"
+                                    log_to_backend(
+                                        "info",
+                                        f"OCR extracted {len(ocr_text)} characters from image {img_index + 1} on page {page_num + 1}",
+                                    )
+                        except Exception as e:
+                            log_to_backend(
+                                "warning",
+                                f"Failed to process embedded images on page {page_num + 1}: {str(e)}",
+                            )
+            finally:
+                if doc:
+                    doc.close()
+
+        elif file_extension.lower() in [".docx", ".doc"]:
+            update_processing_status(
+                document_id, "PROCESSING", "Processing Word document...", None, 40
+            )
+            # Create a BytesIO object from the file content
+            doc_stream = io.BytesIO(file_content)
+            doc = docx.Document(doc_stream)
+            for para in doc.paragraphs:
+                text_content += para.text + "\n"
+
+        elif file_extension.lower() == ".txt":
+            update_processing_status(
+                document_id, "PROCESSING", "Processing text file...", None, 40
+            )
+            # Handle plain text files
+            try:
+                # Try UTF-8 first
+                text_content = file_content.decode("utf-8")
+            except UnicodeDecodeError:
+                try:
+                    # Fallback to UTF-8 with error handling
+                    text_content = file_content.decode("utf-8", errors="replace")
+                except Exception:
+                    # Final fallback to latin-1
+                    text_content = file_content.decode("latin-1", errors="replace")
+
+        elif file_extension.lower() in [".xlsx", ".xls", ".csv"]:
+            update_processing_status(
+                document_id, "PROCESSING", "Processing spreadsheet...", None, 40
+            )
+            file_stream = io.BytesIO(file_content)
+            try:
+                if file_extension.lower() == ".csv":
+                    df = pd.read_csv(file_stream)
+                    text_content = df_to_markdown(df)
+                else:
+                    xls = pd.ExcelFile(file_stream)
+                    sheet_names = xls.sheet_names
+                    sheet_tables = []
+                    for idx, sheet in enumerate(sheet_names):
+                        df_sheet = pd.read_excel(xls, sheet_name=sheet)
+                        sheet_tables.append(
+                            f"Sheet: {sheet}\n\n{df_to_markdown(df_sheet)}\n"
+                        )
+                        if idx == 0:
+                            df = df_sheet  # Use first sheet for financial analysis
+                    text_content = "\n\n".join(sheet_tables)
+                # Perform financial analysis on the first sheet only
+                financial_analysis = analyze_financial_data(df)
+            except Exception as e:
+                print(f"Error processing file: {str(e)}")
+                raise ValueError(f"Error processing file: {str(e)}")
+
+        elif file_extension.lower() in [
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".bmp",
+            ".tiff",
+            ".tif",
+        ]:
+            update_processing_status(
+                document_id, "PROCESSING", "Processing image with OCR...", None, 40
+            )
+            # Handle image files with OCR
+            if not OCR_ENABLED:
+                raise ValueError(
+                    f"OCR is disabled. Cannot process image file: {file_extension}"
+                )
+
+            try:
+                image = Image.open(io.BytesIO(file_content))
+
+                # Convert to RGB if necessary (for better OCR accuracy)
+                if image.mode != "RGB":
+                    image = image.convert("RGB")
+
+                # Run OCR on the image
+                ocr_text = pytesseract.image_to_string(
+                    image, lang=OCR_LANGUAGE, config=OCR_CONFIG
+                )
+                if ocr_text.strip():
+                    text_content = ocr_text
+                    log_to_backend(
+                        "info",
+                        f"OCR extracted {len(ocr_text)} characters from image {original_filename}",
+                    )
+                else:
+                    log_to_backend(
+                        "warning", f"No text found via OCR in image {original_filename}"
+                    )
+                    text_content = (
+                        f"[Image file: {original_filename} - No text detected via OCR]"
+                    )
+            except Exception as e:
+                log_to_backend(
+                    "error",
+                    f"Failed to process image file {original_filename}: {str(e)}",
+                )
+                raise ValueError(f"Error processing image file: {str(e)}")
+        else:
+            raise ValueError(f"Unsupported file type: {file_extension}")
+
+        update_processing_status(
+            document_id, "PROCESSING", "Cleaning and chunking text...", None, 80
+        )
+
+        # Clean text content before chunking
+        cleaned_text_content = clean_text_content(text_content)
+
+        # Generate a unique document ID for vector storage
+        document_id_for_storage = str(uuid.uuid4())
+
+        # Optimize chunks with page tracking
+        chunks_with_pages = optimize_chunk_size_with_pages(
+            cleaned_text_content, file_extension, file_content
+        )
+        total_chunks = len(chunks_with_pages)
+
+        update_processing_status(
+            document_id, "PROCESSING", "Storing in vector database...", None, 90
+        )
+
+        if qdrant_client:
+            try:
+                points = []
+                for idx, chunk_data in enumerate(chunks_with_pages):
+                    embedding = get_cached_embedding(chunk_data["text"])
+                    points.append(
+                        PointStruct(
+                            id=str(uuid.uuid4()),
+                            vector=embedding,
+                            payload={
+                                "document_id": document_id_for_storage,
+                                "user_id": userId,
+                                "content": chunk_data["text"],
+                                "filename": original_filename,
+                                "chunk_index": idx,
+                                "page_number": chunk_data.get("page_number"),
+                                "start_char": chunk_data.get("start_char"),
+                                "end_char": chunk_data.get("end_char"),
+                                "file_type": file_extension.lower().lstrip("."),
+                            },
+                        )
+                    )
+
+                qdrant_client.upsert(collection_name=qdrant_collection, points=points)
+                print(
+                    f"Upserted {len(points)} chunks to Qdrant for document {document_id_for_storage}"
+                )
+            except Exception as e:
+                print(f"Warning: Failed to upsert to Qdrant: {str(e)}")
+                # Continue processing even if Qdrant fails
+
+        return {
+            "chunks": total_chunks,
+            "document_id": document_id_for_storage,
+            "content": cleaned_text_content,
+            "filename": original_filename,
+            "file_size": len(file_content),
+            "file_type": file_extension.lower().lstrip("."),
+            "pages": len(
+                [c for c in chunks_with_pages if c.get("page_number") is not None]
+            ),
+        }
+
+    except Exception as e:
+        raise e
+
+
 def process_file(
     file_content: bytes,
     file_extension: str,
     original_filename: str,
     userId: str,
-    db: Session = None,  # Make database optional
 ) -> dict:
     """Process uploaded file with optimized chunking and Qdrant integration."""
     try:
         text_content = ""
         financial_analysis = {}
-
-        # Remove database user creation - AI service should not manage users
-        # The backend is responsible for user management
 
         if file_extension.lower() == ".pdf":
             doc = None
@@ -533,7 +880,6 @@ def process_file(
         )
         total_chunks = len(chunks_with_pages)
 
-        # Store chunks directly in Qdrant (no database storage for chunks)
         if qdrant_client:
             try:
                 points = []
@@ -578,7 +924,6 @@ def process_file(
         }
 
     except Exception as e:
-        # db.rollback() # Removed database operations
         raise e
 
 
@@ -645,7 +990,6 @@ def decrypt_token(token: str) -> dict:
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db),
 ):
     """Get current user from Next.js session token."""
     try:
@@ -673,9 +1017,8 @@ async def get_current_user(
             # Check if user is active
             user_id = payload.get("id")
             if user_id:
-                # Removed database user lookup - AI service should not manage users
-                # The backend is responsible for user management
-                pass  # No user lookup needed here
+                # No database user lookup needed - AI service should not manage users
+                pass
 
             return payload
         except Exception as e:
@@ -690,17 +1033,16 @@ async def get_current_user(
 
 @router.post("/upload")
 async def upload_files(
-    files: List[UploadFile] = File(...),
+    files: Union[UploadFile, List[UploadFile]] = File(...),
     userId: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     api_key: str = Header(..., alias="X-API-Key"),
-    db: Session = Depends(get_db),
 ):
     """Upload one or more documents (PDF, DOC, DOCX, TXT, CSV, XLS, XLSX) for processing."""
     try:
         # Validate API key
-        if api_key != settings.BACKEND_API_KEY:
+        if api_key != settings.AI_SERVICE_API_KEY:
             raise HTTPException(status_code=401, detail="Invalid API key")
 
         # For now, we'll need to get user ID from the request or use a default
@@ -715,11 +1057,12 @@ async def upload_files(
             log_to_backend("error", "Failed to ensure Qdrant collection exists")
             raise HTTPException(status_code=500, detail="Vector database setup failed")
 
-        total_chunks = 0
-        processed_documents = []
+        # Handle both single file and list of files
+        file_list = files if isinstance(files, list) else [files]
+        uploaded_documents = []
 
-        for file in files:
-            log_to_backend("info", f"Processing file: {file.filename}")
+        for file in file_list:
+            log_to_backend("info", f"Starting upload for file: {file.filename}")
 
             # Read file content
             content = await file.read()
@@ -767,41 +1110,48 @@ async def upload_files(
                         detail=f"File '{file.filename}' appears to be too small to be a valid PDF file",
                     )
 
-            try:
-                # Process the document (no database operations)
-                document_info = process_file(
-                    file_content=content,
-                    file_extension=ext,
-                    original_filename=file.filename,
-                    userId=userId,
-                    db=None,  # No database operations in AI service
-                )
-                total_chunks += document_info.get("chunks")
-                processed_documents.append(document_info)
+            # Generate document ID for tracking
+            document_id = str(uuid.uuid4())
 
-                log_to_backend(
-                    "info",
-                    f"Processed {document_info.get('chunks')} chunks from {file.filename}",
-                )
-            except ValueError as e:
-                # Handle specific validation errors (like corrupted PDFs)
-                error_msg = f"Error processing file {file.filename}: {str(e)}"
-                log_to_backend("error", error_msg)
-                raise HTTPException(status_code=400, detail=str(e))
-            except Exception as e:
-                error_msg = f"Error processing file {file.filename}"
-                log_to_backend("error", error_msg, error=e)
-                raise HTTPException(
-                    status_code=500, detail=f"Error processing document: {str(e)}"
-                )
+            # Initialize processing status
+            update_processing_status(
+                document_id,
+                "UPLOADED",
+                f"File {file.filename} uploaded successfully",
+                None,
+                0,
+            )
+
+            # Start background processing
+            processing_thread = threading.Thread(
+                target=process_file_background,
+                args=(content, ext, file.filename, userId, document_id),
+            )
+            processing_thread.daemon = True
+            processing_thread.start()
+
+            # Add to uploaded documents list
+            uploaded_documents.append(
+                {
+                    "document_id": document_id,
+                    "filename": file.filename,
+                    "status": "PROCESSING",
+                    "message": f"File uploaded successfully. Processing started in background.",
+                }
+            )
+
+            log_to_backend(
+                "info",
+                f"Started background processing for {file.filename} with ID: {document_id}",
+            )
 
         return {
-            "message": f"Successfully processed {len(files)} files",
-            "total_chunks": total_chunks,
-            "documents": processed_documents,
+            "message": f"Successfully uploaded {len(file_list)} files. Processing in background.",
+            "documents": uploaded_documents,
+            "processing_status": "BACKGROUND",
             "user": {
                 "id": userId,
-                "name": "User",  # We don't have user details from API key auth
+                "name": "User",
                 "email": "user@example.com",
             },
         }
@@ -815,6 +1165,31 @@ async def upload_files(
         )
 
 
+@router.get("/status/{document_id}")
+async def get_document_status(
+    document_id: str,
+    api_key: str = Header(..., alias="X-API-Key"),
+):
+    """Get processing status for a document."""
+    try:
+        # Validate API key
+        if api_key != settings.AI_SERVICE_API_KEY:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+
+        status = get_processing_status(document_id)
+        print(f"Status request for {document_id}: {status}")
+        return {"document_id": document_id, "status": status}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_to_backend("error", "Unexpected error in get_document_status", error=e)
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while getting document status",
+        )
+
+
 @router.post("/embeddings/generate")
 async def generate_embedding(
     text: str = Form(...),
@@ -823,7 +1198,7 @@ async def generate_embedding(
     """Generate embedding for text using the same model as document processing."""
     try:
         # Validate API key
-        if api_key != settings.BACKEND_API_KEY:
+        if api_key != settings.AI_SERVICE_API_KEY:
             raise HTTPException(status_code=401, detail="Invalid API key")
 
         if not embedding_model:
@@ -855,12 +1230,11 @@ async def query_documents(
     limit: int = Form(10),
     context: Optional[str] = Form(None),
     api_key: str = Header(..., alias="X-API-Key"),
-    db: Session = Depends(get_db),
 ):
     """Query documents - AI Assistant mode for sophisticated Q&A responses."""
     try:
         # Validate API key
-        if api_key != settings.BACKEND_API_KEY:
+        if api_key != settings.AI_SERVICE_API_KEY:
             raise HTTPException(status_code=401, detail="Invalid API key")
 
         if not userId:

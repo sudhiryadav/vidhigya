@@ -1,5 +1,6 @@
 "use client";
 
+import DocumentProgressTracker from "@/components/DocumentProgressTracker";
 import DocumentUploadModal from "@/components/DocumentUploadModal";
 import DocumentViewer from "@/components/DocumentViewer";
 import ModalDialog from "@/components/ui/ModalDialog";
@@ -33,6 +34,7 @@ interface Document {
   fileSize: number;
   category: string;
   status: string;
+  aiDocumentId?: string;
   createdAt: string;
   uploadedBy: {
     id: string;
@@ -528,6 +530,30 @@ export default function DocumentsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Progress Tracking */}
+                {doc.aiDocumentId &&
+                  (doc.status === "PROCESSING" ||
+                    doc.status === "UPLOADED") && (
+                    <div className="mb-4">
+                      <DocumentProgressTracker
+                        documentId={doc.id}
+                        aiDocumentId={doc.aiDocumentId}
+                        filename={doc.title}
+                        apiClient={apiClient}
+                        onComplete={() => {
+                          // Refresh documents when processing is complete
+                          fetchDocuments();
+                          toast.success(`${doc.title} processing completed!`);
+                        }}
+                        onError={(error) => {
+                          toast.error(
+                            `Processing failed for ${doc.title}: ${error}`
+                          );
+                        }}
+                      />
+                    </div>
+                  )}
 
                 {/* Actions */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">

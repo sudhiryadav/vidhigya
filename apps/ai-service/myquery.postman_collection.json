@@ -30,6 +30,28 @@
                     }
                 },
                 {
+                    "name": "Get Document Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/admin/documents/status/{document_id}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "admin",
+                                "documents",
+                                "status",
+                                "{document_id}"
+                            ]
+                        },
+                        "description": "Get processing status for a document."
+                    }
+                },
+                {
                     "name": "Generate Embedding",
                     "request": {
                         "method": "POST",

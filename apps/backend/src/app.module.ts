@@ -9,7 +9,7 @@ import { CalendarModule } from './calendar/calendar.module';
 import { CasesModule } from './cases/cases.module';
 import { ChatModule } from './chat/chat.module';
 import { ClientPortalModule } from './client-portal/client-portal.module';
-import { AIModule } from './config/ai.module';
+
 import { QdrantModule } from './config/qdrant.module';
 import { S3Module } from './config/s3.module';
 import { CourtsModule } from './courts/courts.module';
@@ -32,7 +32,7 @@ import { VideoCallsModule } from './video-calls/video-calls.module';
     PrismaModule,
     S3Module,
     QdrantModule,
-    AIModule,
+
     AuthModule,
     CasesModule,
     DocumentsModule,
