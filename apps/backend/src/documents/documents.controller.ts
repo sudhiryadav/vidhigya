@@ -615,10 +615,39 @@ export class DocumentsController {
         QueryType.GENERAL,
       );
 
+      // Map document IDs to actual document information for search results
+      const documentMap = new Map();
+      const documents = await this.prisma.legalDocument.findMany({
+        where: { uploadedById: userId },
+        select: { id: true, originalFilename: true, title: true },
+      });
+
+      documents.forEach((doc) => {
+        documentMap.set(doc.id, {
+          title: doc.title || doc.originalFilename,
+        });
+      });
+
+      // Convert Qdrant search results to the expected format for frontend
+      const formattedSources = searchResults.map((result) => {
+        const documentInfo = documentMap.get(result.document_id) as
+          | { title: string }
+          | undefined;
+        return {
+          document_id: result.document_id,
+          document_title: documentInfo?.title || 'Unknown Document',
+          page_number: result.page_number,
+          content: result.content,
+          score: result.score,
+          start_char: result.start_char,
+          end_char: result.end_char,
+        };
+      });
+
       return {
         question: query,
         answer: result.answer,
-        sources: result.sources,
+        sources: formattedSources, // Use Qdrant results instead of Modal.com sources
         confidence: result.confidence,
         generated_at: new Date().toISOString(),
       };

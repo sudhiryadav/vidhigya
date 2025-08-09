@@ -516,11 +516,17 @@ export default function DocumentQA({
       try {
         const history = JSON.parse(savedHistory);
         setSearchHistory(history);
+        console.log("Loaded search history:", history);
       } catch (error) {
         console.error("Error loading search history:", error);
       }
     }
   }, []);
+
+  // Debug search history changes
+  useEffect(() => {
+    console.log("Search history updated:", searchHistory);
+  }, [searchHistory]);
 
   // Load more messages function
   const loadMoreMessages = async (page: number = currentPage + 1) => {
@@ -607,6 +613,7 @@ export default function DocumentQA({
       query,
       ...searchHistory.filter((item) => item !== query),
     ].slice(0, 10);
+    console.log("Saving to search history:", query, "New history:", newHistory);
     setSearchHistory(newHistory);
     localStorage.setItem(
       "documentQA_searchHistory",
@@ -680,17 +687,25 @@ export default function DocumentQA({
       handleAskQuestion();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      if (question.trim() === "" && searchHistory.length > 0) {
-        // If input is empty, navigate through history
+      console.log("ArrowUp pressed", { searchHistory, historyIndex });
+      if (searchHistory.length > 0) {
+        // Navigate up in history (most recent first)
         const newIndex =
           historyIndex < searchHistory.length - 1
             ? historyIndex + 1
             : historyIndex;
+        console.log(
+          "Setting new index:",
+          newIndex,
+          "Question:",
+          searchHistory[newIndex]
+        );
         setHistoryIndex(newIndex);
         setQuestion(searchHistory[newIndex] || "");
       }
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
+      console.log("ArrowDown pressed", { historyIndex });
       if (historyIndex > 0) {
         // Navigate down in history
         const newIndex = historyIndex - 1;
@@ -933,7 +948,7 @@ export default function DocumentQA({
                           {message.type === "answer" &&
                             message.sources &&
                             message.sources.length > 0 && (
-                              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 hidden">
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                                   Sources:
                                 </p>
@@ -1065,7 +1080,7 @@ export default function DocumentQA({
                   <textarea
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onKeyDown={handleKeyPress}
                     placeholder="Ask a question about your documents..."
                     className="w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
                     rows={1}
