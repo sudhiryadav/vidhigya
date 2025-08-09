@@ -208,6 +208,124 @@ export class VideoCallsService {
     }
   }
 
+  async startInstantCall(
+    createVideoCallDto: CreateVideoCallDto,
+    userId: string,
+  ) {
+    try {
+      const { participantIds, ...callData } = createVideoCallDto;
+
+      // Convert string dates to Date objects
+      const processedCallData = {
+        ...callData,
+        startTime: new Date(), // Start immediately
+        endTime: callData.endTime
+          ? new Date(callData.endTime)
+          : new Date(Date.now() + 60 * 60 * 1000), // Default 1 hour
+      };
+
+      // Validate caseId if provided
+      if (processedCallData.caseId) {
+        const caseExists = await this.prisma.legalCase.findUnique({
+          where: { id: processedCallData.caseId },
+        });
+        if (!caseExists) {
+          throw new Error(`Case with ID ${processedCallData.caseId} not found`);
+        }
+      }
+
+      // Generate unique short meeting ID
+      let meetingId: string;
+      let isUnique = false;
+      let attempts = 0;
+
+      while (!isUnique && attempts < 10) {
+        meetingId = generateShortMeetingId();
+        const existingCall = await this.prisma.videoCall.findUnique({
+          where: { meetingId },
+        });
+        if (!existingCall) {
+          isUnique = true;
+        }
+        attempts++;
+      }
+
+      if (!isUnique) {
+        throw new Error('Unable to generate unique meeting ID');
+      }
+
+      const meetingUrl = `https://meet.vidhigya.com/${meetingId}`;
+
+      // Create the video call with IN_PROGRESS status
+      const videoCall = await this.prisma.videoCall.create({
+        data: {
+          ...processedCallData,
+          meetingId,
+          meetingUrl,
+          hostId: userId,
+          status: 'IN_PROGRESS', // Start immediately
+        },
+        include: {
+          host: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          case: {
+            select: {
+              id: true,
+              caseNumber: true,
+              title: true,
+            },
+          },
+        },
+      });
+
+      // Add host as participant
+      await this.prisma.callParticipant.create({
+        data: {
+          callId: videoCall.id,
+          userId,
+          joinedAt: new Date(),
+        },
+      });
+
+      // Add participants if provided
+      if (participantIds && participantIds.length > 0) {
+        const participantData = participantIds.map((participantId) => ({
+          callId: videoCall.id,
+          userId: participantId,
+        }));
+
+        await this.prisma.callParticipant.createMany({
+          data: participantData,
+        });
+
+        // Send instant notifications to all participants
+        for (const participantId of participantIds) {
+          try {
+            await this.notificationsService.createVideoCallInstantNotification(
+              videoCall.id,
+              participantId,
+            );
+          } catch (error) {
+            console.error(
+              `Failed to send notification to participant ${participantId}:`,
+              error,
+            );
+          }
+        }
+      }
+
+      return videoCall;
+    } catch (error) {
+      console.error('Error creating instant video call:', error);
+      throw error;
+    }
+  }
+
   async findAll(
     userId: string,
     filters?: {

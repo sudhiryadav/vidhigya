@@ -59,6 +59,17 @@ export class VideoCallsController {
     );
   }
 
+  @Post('instant')
+  startInstantCall(
+    @Body() createVideoCallDto: CreateVideoCallDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.videoCallsService.startInstantCall(
+      createVideoCallDto,
+      req.user.sub,
+    );
+  }
+
   @Get()
   findAll(
     @Request() req: AuthenticatedRequest,

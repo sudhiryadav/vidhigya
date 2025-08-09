@@ -60,6 +60,8 @@ export default function ClientVideoCalls() {
   const [selectedVideoCall, setSelectedVideoCall] =
     useState<ClientVideoCall | null>(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showJoinWithIdModal, setShowJoinWithIdModal] = useState(false);
+  const [joinMeetingId, setJoinMeetingId] = useState("");
 
   // Pre-call settings
   const [preCallAudioEnabled, setPreCallAudioEnabled] = useState(true);
@@ -176,6 +178,40 @@ export default function ClientVideoCalls() {
     }
   };
 
+  const handleJoinWithMeetingId = () => {
+    setShowJoinWithIdModal(true);
+  };
+
+  const handleJoinWithMeetingIdSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!joinMeetingId.trim()) {
+      toast.error("Please enter a meeting ID");
+      return;
+    }
+
+    // Save pre-call settings
+    localStorage.setItem("preCallAudioEnabled", preCallAudioEnabled.toString());
+    localStorage.setItem("preCallVideoEnabled", preCallVideoEnabled.toString());
+
+    // Navigate to video call room
+    window.open(`/video-call-room/${joinMeetingId.trim()}`, "_blank");
+
+    // Close modal and reset
+    setShowJoinWithIdModal(false);
+    setJoinMeetingId("");
+  };
+
+  const handleJoinWithMeetingIdCancel = () => {
+    setShowJoinWithIdModal(false);
+    setJoinMeetingId("");
+  };
+
+  const formatParticipantStatus = (status: string | undefined) => {
+    if (!status) return "Invited";
+    return status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
   const filteredVideoCalls = videoCalls.filter((call) => {
     const matchesSearch =
       call.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -264,13 +300,22 @@ export default function ClientVideoCalls() {
                 View and manage all video calls related to your cases
               </p>
             </div>
-            <button
-              onClick={handleScheduleCall}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Schedule Video Call
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleJoinWithMeetingId}
+                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Join with ID
+              </button>
+              <button
+                onClick={handleScheduleCall}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Schedule Video Call
+              </button>
+            </div>
           </div>
         </div>
 
@@ -440,9 +485,8 @@ export default function ClientVideoCalls() {
                                       {participant.user.name}
                                     </span>
                                     <span className="text-gray-500 dark:text-gray-400 text-xs">
-                                      {participant.status.replace(
-                                        /\b\w/g,
-                                        (l) => l.toUpperCase()
+                                      {formatParticipantStatus(
+                                        participant.status
                                       )}
                                     </span>
                                   </div>
@@ -588,9 +632,8 @@ export default function ClientVideoCalls() {
                                       {participant.user.name}
                                     </span>
                                     <span className="text-gray-500 dark:text-gray-400 text-xs">
-                                      {participant.status.replace(
-                                        /\b\w/g,
-                                        (l) => l.toUpperCase()
+                                      {formatParticipantStatus(
+                                        participant.status
                                       )}
                                     </span>
                                   </div>
@@ -862,6 +905,140 @@ export default function ClientVideoCalls() {
                   Join Call
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Join with Meeting ID Modal */}
+      {showJoinWithIdModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Join Video Call
+                </h3>
+                <button
+                  onClick={handleJoinWithMeetingIdCancel}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleJoinWithMeetingIdSubmit}>
+                <div className="mb-4">
+                  <label
+                    htmlFor="meetingId"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Meeting ID
+                  </label>
+                  <input
+                    type="text"
+                    id="meetingId"
+                    value={joinMeetingId}
+                    onChange={(e) => setJoinMeetingId(e.target.value)}
+                    placeholder="Enter meeting ID (e.g., abc123)"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Pre-call Settings */}
+                <div className="mb-6">
+                  <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                    Pre-call settings:
+                  </h5>
+
+                  <div className="space-y-3">
+                    {/* Audio Setting */}
+                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        {preCallAudioEnabled ? (
+                          <Mic className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <MicOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            Microphone
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {preCallAudioEnabled
+                              ? "Will be enabled"
+                              : "Will be muted"}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreCallAudioEnabled(!preCallAudioEnabled)
+                        }
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          preCallAudioEnabled
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                            : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                        }`}
+                      >
+                        {preCallAudioEnabled ? "ON" : "OFF"}
+                      </button>
+                    </div>
+
+                    {/* Video Setting */}
+                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        {preCallVideoEnabled ? (
+                          <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <VideoOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            Camera
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {preCallVideoEnabled
+                              ? "Will be enabled"
+                              : "Will be turned off"}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreCallVideoEnabled(!preCallVideoEnabled)
+                        }
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          preCallVideoEnabled
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                            : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                        }`}
+                      >
+                        {preCallVideoEnabled ? "ON" : "OFF"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={handleJoinWithMeetingIdCancel}
+                    className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                  >
+                    Join Call
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

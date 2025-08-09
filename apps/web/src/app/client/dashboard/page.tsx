@@ -9,6 +9,7 @@ import {
   Calendar,
   CreditCard,
   FileText,
+  Phone,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -84,10 +85,50 @@ export default function ClientDashboard() {
   const [recentBills, setRecentBills] = useState<ClientBill[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showInstantCallNotification, setShowInstantCallNotification] =
+    useState(false);
+  const [instantCallData, setInstantCallData] = useState<any>(null);
 
   useEffect(() => {
     fetchDashboardData();
+    fetchNotifications();
+
+    // Check for notifications every 30 seconds
+    const notificationInterval = setInterval(() => {
+      fetchNotifications();
+    }, 30000);
+
+    return () => clearInterval(notificationInterval);
   }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch("/api/client-portal/notifications", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data);
+
+        // Check for instant call notifications
+        const instantCallNotification = data.find(
+          (notification: any) =>
+            notification.type === "VIDEO_CALL_INSTANT" && !notification.isRead
+        );
+
+        if (instantCallNotification) {
+          setInstantCallData(instantCallNotification);
+          setShowInstantCallNotification(true);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -644,6 +685,82 @@ export default function ClientDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Instant Call Notification Modal */}
+      {showInstantCallNotification && instantCallData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
+                  <Phone className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                    Instant Video Call
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {instantCallData.title || "Video call invitation"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  {instantCallData.message ||
+                    "You have been invited to join an instant video call."}
+                </p>
+
+                {instantCallData.videoCall && (
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        Meeting ID:
+                      </span>
+                      <span className="text-sm font-mono text-blue-600 dark:text-blue-400">
+                        {instantCallData.videoCall.meetingId}
+                      </span>
+                    </div>
+                    {instantCallData.videoCall.host && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          Host:
+                        </span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          {instantCallData.videoCall.host.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowInstantCallNotification(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={() => {
+                    if (instantCallData.videoCall?.meetingId) {
+                      window.open(
+                        `/video-call-room/${instantCallData.videoCall.meetingId}`,
+                        "_blank"
+                      );
+                    }
+                    setShowInstantCallNotification(false);
+                  }}
+                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md text-sm font-medium hover:bg-orange-700"
+                >
+                  Join Call
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

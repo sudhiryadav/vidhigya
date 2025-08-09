@@ -227,6 +227,8 @@ export default function VideoCallsPage() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showJoinWithIdModal, setShowJoinWithIdModal] = useState(false);
+  const [showInstantCallModal, setShowInstantCallModal] = useState(false);
   const [selectedVideoCall, setSelectedVideoCall] = useState<VideoCall | null>(
     null
   );
@@ -234,6 +236,13 @@ export default function VideoCallsPage() {
   const [videoCallToDelete, setVideoCallToDelete] = useState<VideoCall | null>(
     null
   );
+  const [joinMeetingId, setJoinMeetingId] = useState("");
+  const [instantCallData, setInstantCallData] = useState({
+    title: "",
+    description: "",
+    caseId: "",
+    participantIds: [] as string[],
+  });
   // Form data
   const [createFormData, setCreateFormData] = useState({
     title: "",
@@ -558,6 +567,90 @@ export default function VideoCallsPage() {
     }
   };
 
+  const handleJoinWithMeetingId = () => {
+    setShowJoinWithIdModal(true);
+  };
+
+  const handleJoinWithMeetingIdSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!joinMeetingId.trim()) {
+      toast.error("Please enter a meeting ID");
+      return;
+    }
+
+    // Save pre-call settings
+    localStorage.setItem("preCallAudioEnabled", preCallAudioEnabled.toString());
+    localStorage.setItem("preCallVideoEnabled", preCallVideoEnabled.toString());
+
+    // Navigate to video call room
+    window.open(`/video-call-room/${joinMeetingId.trim()}`, "_blank");
+
+    // Close modal and reset
+    setShowJoinWithIdModal(false);
+    setJoinMeetingId("");
+  };
+
+  const handleJoinWithMeetingIdCancel = () => {
+    setShowJoinWithIdModal(false);
+    setJoinMeetingId("");
+  };
+
+  const handleStartInstantCall = () => {
+    setShowInstantCallModal(true);
+  };
+
+  const handleInstantCallSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const response = await apiClient.startInstantCall(instantCallData);
+
+      // Save pre-call settings
+      localStorage.setItem(
+        "preCallAudioEnabled",
+        preCallAudioEnabled.toString()
+      );
+      localStorage.setItem(
+        "preCallVideoEnabled",
+        preCallVideoEnabled.toString()
+      );
+
+      // Navigate to video call room
+      window.open(`/video-call-room/${response.meetingId}`, "_blank");
+
+      // Close modal and reset
+      setShowInstantCallModal(false);
+      setInstantCallData({
+        title: "",
+        description: "",
+        caseId: "",
+        participantIds: [],
+      });
+
+      // Refresh video calls list
+      await fetchVideoCalls();
+
+      toast.success("Instant call started! Participants have been notified.");
+    } catch (error) {
+      console.error("Error starting instant call:", error);
+      toast.error("Failed to start instant call");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInstantCallCancel = () => {
+    setShowInstantCallModal(false);
+    setInstantCallData({
+      title: "",
+      description: "",
+      caseId: "",
+      participantIds: [],
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "SCHEDULED":
@@ -701,6 +794,20 @@ export default function VideoCallsPage() {
                   </div>
                 </div>
               </div>
+              <button
+                onClick={handleStartInstantCall}
+                className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors"
+              >
+                <Phone className="w-4 h-4 mr-2" />
+                Start Instant Call
+              </button>
+              <button
+                onClick={handleJoinWithMeetingId}
+                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors"
+              >
+                <Phone className="w-4 h-4 mr-2" />
+                Join with ID
+              </button>
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
@@ -1436,6 +1543,378 @@ export default function VideoCallsPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </ModalDialog>
+
+      {/* Join with Meeting ID Modal */}
+      <ModalDialog
+        isOpen={showJoinWithIdModal}
+        onClose={handleJoinWithMeetingIdCancel}
+        title="Join Video Call"
+        size="md"
+      >
+        <div className="p-6">
+          <div className="mb-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Enter the meeting ID to join an existing video call.
+            </p>
+
+            <form onSubmit={handleJoinWithMeetingIdSubmit}>
+              <div className="mb-4">
+                <label
+                  htmlFor="meetingId"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  Meeting ID
+                </label>
+                <input
+                  type="text"
+                  id="meetingId"
+                  value={joinMeetingId}
+                  onChange={(e) => setJoinMeetingId(e.target.value)}
+                  placeholder="Enter meeting ID (e.g., abc123)"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  autoFocus
+                />
+              </div>
+
+              {/* Pre-call Settings */}
+              <div className="mb-6">
+                <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                  Pre-call settings:
+                </h5>
+
+                <div className="space-y-3">
+                  {/* Audio Setting */}
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      {preCallAudioEnabled ? (
+                        <Mic className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <MicOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          Microphone
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {preCallAudioEnabled
+                            ? "Will be enabled"
+                            : "Will be muted"}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPreCallAudioEnabled(!preCallAudioEnabled)
+                      }
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        preCallAudioEnabled
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                          : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                      }`}
+                    >
+                      {preCallAudioEnabled ? "ON" : "OFF"}
+                    </button>
+                  </div>
+
+                  {/* Video Setting */}
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      {preCallVideoEnabled ? (
+                        <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <VideoOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          Camera
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {preCallVideoEnabled
+                            ? "Will be enabled"
+                            : "Will be turned off"}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPreCallVideoEnabled(!preCallVideoEnabled)
+                      }
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        preCallVideoEnabled
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                          : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                      }`}
+                    >
+                      {preCallVideoEnabled ? "ON" : "OFF"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleJoinWithMeetingIdCancel}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                >
+                  Join Call
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </ModalDialog>
+
+      {/* Start Instant Call Modal */}
+      <ModalDialog
+        isOpen={showInstantCallModal}
+        onClose={handleInstantCallCancel}
+        title="Start Instant Video Call"
+        size="lg"
+      >
+        <div className="p-6">
+          <div className="mb-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Start a video call immediately and notify participants. The call
+              will begin right away.
+            </p>
+
+            <form onSubmit={handleInstantCallSubmit}>
+              <div className="space-y-4">
+                {/* Title */}
+                <div>
+                  <label
+                    htmlFor="instantTitle"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Call Title *
+                  </label>
+                  <input
+                    type="text"
+                    id="instantTitle"
+                    value={instantCallData.title}
+                    onChange={(e) =>
+                      setInstantCallData({
+                        ...instantCallData,
+                        title: e.target.value,
+                      })
+                    }
+                    placeholder="Enter call title"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label
+                    htmlFor="instantDescription"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Description
+                  </label>
+                  <textarea
+                    id="instantDescription"
+                    value={instantCallData.description}
+                    onChange={(e) =>
+                      setInstantCallData({
+                        ...instantCallData,
+                        description: e.target.value,
+                      })
+                    }
+                    placeholder="Enter call description"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                {/* Case Selection */}
+                <div>
+                  <label
+                    htmlFor="instantCase"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Related Case
+                  </label>
+                  <CustomSelect
+                    options={[
+                      { value: "", label: "No case selected" },
+                      ...cases.map((caseItem) => ({
+                        value: caseItem.id,
+                        label: `${caseItem.caseNumber} - ${caseItem.title}`,
+                      })),
+                    ]}
+                    value={{
+                      value: instantCallData.caseId,
+                      label: instantCallData.caseId
+                        ? cases.find((c) => c.id === instantCallData.caseId)
+                            ?.caseNumber +
+                          " - " +
+                          cases.find((c) => c.id === instantCallData.caseId)
+                            ?.title
+                        : "No case selected",
+                    }}
+                    onChange={(option) =>
+                      setInstantCallData({
+                        ...instantCallData,
+                        caseId: option?.value || "",
+                      })
+                    }
+                    placeholder="Select a case"
+                  />
+                </div>
+
+                {/* Participants */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Participants
+                  </label>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {users.map((user) => (
+                      <label
+                        key={user.id}
+                        className="flex items-center space-x-3"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={instantCallData.participantIds.includes(
+                            user.id
+                          )}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setInstantCallData({
+                                ...instantCallData,
+                                participantIds: [
+                                  ...instantCallData.participantIds,
+                                  user.id,
+                                ],
+                              });
+                            } else {
+                              setInstantCallData({
+                                ...instantCallData,
+                                participantIds:
+                                  instantCallData.participantIds.filter(
+                                    (id) => id !== user.id
+                                  ),
+                              });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-900 dark:text-white">
+                          {user.name} ({user.email})
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pre-call Settings */}
+                <div className="border-t pt-4">
+                  <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                    Pre-call settings:
+                  </h5>
+
+                  <div className="space-y-3">
+                    {/* Audio Setting */}
+                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        {preCallAudioEnabled ? (
+                          <Mic className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <MicOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            Microphone
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {preCallAudioEnabled
+                              ? "Will be enabled"
+                              : "Will be muted"}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreCallAudioEnabled(!preCallAudioEnabled)
+                        }
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          preCallAudioEnabled
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                            : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                        }`}
+                      >
+                        {preCallAudioEnabled ? "ON" : "OFF"}
+                      </button>
+                    </div>
+
+                    {/* Video Setting */}
+                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        {preCallVideoEnabled ? (
+                          <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <VideoOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            Camera
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {preCallVideoEnabled
+                              ? "Will be enabled"
+                              : "Will be turned off"}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreCallVideoEnabled(!preCallVideoEnabled)
+                        }
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          preCallVideoEnabled
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                            : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                        }`}
+                      >
+                        {preCallVideoEnabled ? "ON" : "OFF"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={handleInstantCallCancel}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading || !instantCallData.title.trim()}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? "Starting..." : "Start Instant Call"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </ModalDialog>

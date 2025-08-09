@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_BASE_URL =
+  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001") + "/api";
 
 class ApiClient {
   private getAuthHeaders(): HeadersInit {
@@ -1012,6 +1013,10 @@ class ApiClient {
     return this.request(`/video-calls/${id}`);
   }
 
+  async getVideoCallByMeetingId(meetingId: string) {
+    return this.request(`/video-calls/meeting/${meetingId}`);
+  }
+
   async createVideoCall(data: {
     title: string;
     description?: string;
@@ -1021,6 +1026,18 @@ class ApiClient {
     participantIds?: string[];
   }) {
     return this.request("/video-calls", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async startInstantCall(data: {
+    title: string;
+    description?: string;
+    caseId?: string;
+    participantIds?: string[];
+  }) {
+    return this.request("/video-calls/instant", {
       method: "POST",
       body: JSON.stringify(data),
     });
