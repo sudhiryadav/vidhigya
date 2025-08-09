@@ -516,17 +516,11 @@ export default function DocumentQA({
       try {
         const history = JSON.parse(savedHistory);
         setSearchHistory(history);
-        console.log("Loaded search history:", history);
       } catch (error) {
         console.error("Error loading search history:", error);
       }
     }
   }, []);
-
-  // Debug search history changes
-  useEffect(() => {
-    console.log("Search history updated:", searchHistory);
-  }, [searchHistory]);
 
   // Load more messages function
   const loadMoreMessages = async (page: number = currentPage + 1) => {
@@ -613,7 +607,6 @@ export default function DocumentQA({
       query,
       ...searchHistory.filter((item) => item !== query),
     ].slice(0, 10);
-    console.log("Saving to search history:", query, "New history:", newHistory);
     setSearchHistory(newHistory);
     localStorage.setItem(
       "documentQA_searchHistory",
@@ -687,25 +680,17 @@ export default function DocumentQA({
       handleAskQuestion();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      console.log("ArrowUp pressed", { searchHistory, historyIndex });
       if (searchHistory.length > 0) {
         // Navigate up in history (most recent first)
         const newIndex =
           historyIndex < searchHistory.length - 1
             ? historyIndex + 1
             : historyIndex;
-        console.log(
-          "Setting new index:",
-          newIndex,
-          "Question:",
-          searchHistory[newIndex]
-        );
         setHistoryIndex(newIndex);
         setQuestion(searchHistory[newIndex] || "");
       }
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      console.log("ArrowDown pressed", { historyIndex });
       if (historyIndex > 0) {
         // Navigate down in history
         const newIndex = historyIndex - 1;
@@ -796,7 +781,7 @@ export default function DocumentQA({
     setIsLoading(true);
 
     try {
-      const response = await apiClient.askDocumentQuestion(suggestion, context);
+      const response = await apiClient.queryDocuments(suggestion, context);
 
       const answerMessage: QAMessage = {
         id: (Date.now() + 1).toString(),

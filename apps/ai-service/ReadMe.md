@@ -138,14 +138,6 @@ POST /api/v1/documents/upload
 
 Upload and process documents for AI Q&A.
 
-### Document Query
-
-```
-POST /api/v1/documents/query
-```
-
-Ask questions about uploaded documents.
-
 ### Embedding Generation
 
 ```

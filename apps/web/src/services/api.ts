@@ -480,26 +480,10 @@ class ApiClient {
     context?: string,
     limit: number = 10
   ): Promise<any> {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    const response = await fetch(`${API_BASE_URL}/documents/query`, {
+    return this.request("/documents/query", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify({ query, context, limit }),
     });
-
-    if (!response.ok) {
-      throw new Error("Failed to query documents");
-    }
-
-    return response.json();
-  }
-
-  async askDocumentQuestion(question: string, context?: string): Promise<any> {
-    return this.queryDocuments(question, context);
   }
 
   async submitFeedback(feedbackData: {
