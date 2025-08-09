@@ -38,13 +38,6 @@ export default function NotificationBell() {
   const pushNotificationsEnabled = getSetting("pushNotifications") ?? true;
   const emailNotificationsEnabled = getSetting("emailNotifications") ?? true;
 
-  useEffect(() => {
-    if (pushNotificationsEnabled && user) {
-      fetchNotifications();
-      fetchUnreadCount();
-    }
-  }, [pushNotificationsEnabled, user]);
-
   const fetchNotifications = async () => {
     if (!user) return;
 
@@ -134,27 +127,25 @@ export default function NotificationBell() {
     if (!user) return;
 
     try {
-      // Replace with actual API call
       const response = await apiClient.getUnreadNotificationCount();
-      if (response && typeof response === "object" && "count" in response) {
-        setUnreadCount(response.count as number);
+      if (typeof response === "number") {
+        setUnreadCount(response);
+      } else {
+        // Fallback: calculate from notifications
+        setUnreadCount(notifications.filter((n) => !n.isRead).length);
       }
     } catch (error) {
       console.error("Error fetching unread count:", error);
+      // Fallback: calculate from notifications
+      setUnreadCount(notifications.filter((n) => !n.isRead).length);
     }
   };
 
   const markAsRead = async (notificationId: string) => {
     try {
-      // Replace with actual API call
       await apiClient.markNotificationAsRead(notificationId);
-
       setNotifications((prev) =>
-        prev.map((notification) =>
-          notification.id === notificationId
-            ? { ...notification, isRead: true }
-            : notification
-        )
+        prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
@@ -164,12 +155,8 @@ export default function NotificationBell() {
 
   const markAllAsRead = async () => {
     try {
-      // Replace with actual API call
       await apiClient.markAllNotificationsAsRead();
-
-      setNotifications((prev) =>
-        prev.map((notification) => ({ ...notification, isRead: true }))
-      );
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
@@ -178,14 +165,12 @@ export default function NotificationBell() {
 
   const deleteNotification = async (notificationId: string) => {
     try {
-      // Replace with actual API call
       await apiClient.deleteNotification(notificationId);
-
+      const notification = notifications.find((n) => n.id === notificationId);
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-      setUnreadCount((prev) => {
-        const notification = notifications.find((n) => n.id === notificationId);
-        return notification && !notification.isRead ? prev - 1 : prev;
-      });
+      if (notification && !notification.isRead) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
     } catch (error) {
       console.error("Error deleting notification:", error);
     }
@@ -213,14 +198,37 @@ export default function NotificationBell() {
         return "📅";
       case "DOCUMENT_UPLOADED":
         return "📄";
-      case "CASE_UPDATE":
-        return "⚖️";
-      case "BILLING_ALERT":
-        return "💰";
+      case "VIDEO_CALL_INSTANT":
+        return "📹";
+      case "VIDEO_CALL_STARTED":
+        return "🎥";
       default:
         return "🔔";
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      fetchUnreadCount();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      const interval = setInterval(() => {
+        fetchUnreadCount();
+      }, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  // Don't render if notifications are disabled or user is not authenticated
+  // Allow rendering if settings are still loading (pushNotificationsEnabled is null)
+  if (pushNotificationsEnabled === false || !user) {
+    return null;
+  }
 
   const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id);
@@ -275,16 +283,13 @@ export default function NotificationBell() {
     setSelectedVideoCallNotification(null);
   };
 
-  // Don't render if notifications are disabled or user is not authenticated
-  if (!pushNotificationsEnabled || !user) {
-    return null;
-  }
-
   return (
-    <div className="relative" data-notification-bell>
+    <div className="relative overflow-visible" data-notification-bell>
       {/* Notification Bell Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+        }}
         className="relative p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
       >
         <Bell className="w-5 h-5" />
@@ -297,7 +302,7 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-[9999] transform -translate-x-64">
+        <div className="absolute left-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-[99999] transform -translate-x-0">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -381,7 +386,24 @@ export default function NotificationBell() {
           <div className="p-4 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={() => {
-                router.push("/notifications");
+                // Navigate to role-specific notifications page
+                if (user?.role === "CLIENT") {
+                  router.push("/client/notifications");
+                } else if (
+                  user?.role === "LAWYER" ||
+                  user?.role === "ASSOCIATE" ||
+                  user?.role === "PARALEGAL"
+                ) {
+                  router.push("/lawyer/notifications");
+                } else if (
+                  user?.role === "SUPER_ADMIN" ||
+                  user?.role === "ADMIN"
+                ) {
+                  router.push("/admin/notifications");
+                } else {
+                  // Fallback to lawyer notifications for unknown roles
+                  router.push("/lawyer/notifications");
+                }
                 setIsOpen(false);
               }}
               className="w-full text-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"

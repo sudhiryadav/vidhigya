@@ -29,11 +29,11 @@ interface ClientVideoCall {
   endTime: string;
   meetingId: string;
   status: string;
-  case: {
+  case?: {
     id: string;
     caseNumber: string;
     title: string;
-  };
+  } | null;
   host: {
     id: string;
     name: string;
@@ -251,7 +251,8 @@ export default function ClientVideoCalls() {
     const matchesSearch =
       call.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       call.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      call.case.caseNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      (call.case &&
+        call.case.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesStatus =
       selectedStatus === "all" ||
@@ -488,7 +489,9 @@ export default function ClientVideoCalls() {
                             Case:{" "}
                           </span>
                           <span className="font-medium text-gray-900 dark:text-white">
-                            {call.case.caseNumber}
+                            {call.case
+                              ? call.case.caseNumber
+                              : "No case assigned"}
                           </span>
                         </div>
 
@@ -645,7 +648,9 @@ export default function ClientVideoCalls() {
                             Case:{" "}
                           </span>
                           <span className="font-medium text-gray-900 dark:text-white">
-                            {call.case.caseNumber}
+                            {call.case
+                              ? call.case.caseNumber
+                              : "No case assigned"}
                           </span>
                         </div>
 
@@ -797,7 +802,9 @@ export default function ClientVideoCalls() {
                             Case:{" "}
                           </span>
                           <span className="font-medium text-gray-900 dark:text-white">
-                            {call.case.caseNumber}
+                            {call.case
+                              ? call.case.caseNumber
+                              : "No case assigned"}
                           </span>
                         </div>
 

@@ -24,11 +24,11 @@ interface ClientVideoCall {
   endTime: string;
   meetingId: string;
   status: string;
-  case: {
+  case?: {
     id: string;
     caseNumber: string;
     title: string;
-  };
+  } | null;
   host: {
     id: string;
     name: string;
@@ -154,7 +154,8 @@ export default function ClientVideoCallsScreen() {
     const matchesSearch =
       call.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       call.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      call.case.caseNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      (call.case &&
+        call.case.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesStatus =
       selectedStatus === "all" ||
@@ -337,7 +338,7 @@ export default function ClientVideoCallsScreen() {
           >
             Case:{" "}
             <Text style={[styles.detailText, { color: theme.colors.text }]}>
-              {call.case.caseNumber}
+              {call.case ? call.case.caseNumber : "No case assigned"}
             </Text>
           </Text>
         </View>

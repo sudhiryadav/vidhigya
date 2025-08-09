@@ -43,7 +43,7 @@ interface VideoCall {
     id: string;
     caseNumber: string;
     title: string;
-  };
+  } | null;
   participants: Array<{
     id: string;
     status: string;
