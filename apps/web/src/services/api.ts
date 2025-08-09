@@ -478,11 +478,16 @@ class ApiClient {
   async queryDocuments(
     query: string,
     context?: string,
-    limit: number = 10
+    limit: number = 10,
+    conversationHistory?: Array<{
+      question: string;
+      answer: string;
+      timestamp?: string;
+    }>
   ): Promise<any> {
     return this.request("/documents/query", {
       method: "POST",
-      body: JSON.stringify({ query, context, limit }),
+      body: JSON.stringify({ query, context, limit, conversationHistory }),
     });
   }
 

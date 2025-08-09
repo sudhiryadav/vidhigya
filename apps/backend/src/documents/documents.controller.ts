@@ -37,6 +37,11 @@ interface QueryRequest {
   mode?: 'search' | 'qa';
   context?: string;
   limit?: number;
+  conversationHistory?: Array<{
+    question: string;
+    answer: string;
+    timestamp?: string;
+  }>;
 }
 
 // Define proper types for request objects
@@ -434,13 +439,20 @@ export class DocumentsController {
     @Request() req: AuthenticatedRequest,
   ) {
     try {
-      const { query, mode = 'qa', context, limit = 10 } = queryDto;
+      const {
+        query,
+        mode = 'qa',
+        context,
+        limit = 10,
+        conversationHistory = [],
+      } = queryDto;
 
       console.log('Document query request:', {
         query,
         mode,
         context,
         limit,
+        conversationHistoryLength: conversationHistory.length,
         userId: req.user.sub,
       });
 
@@ -456,12 +468,15 @@ export class DocumentsController {
         throw new BadRequestException('Modal.com endpoint not configured');
       }
 
-      console.log('Using direct Modal.com integration');
+      console.log(
+        'Using direct Modal.com integration with conversation context',
+      );
       return await this.queryDocumentsDirect(
         query,
         req.user.sub,
         limit,
         context,
+        conversationHistory,
       );
     } catch (error) {
       console.error('Error processing document query:', error);
@@ -477,6 +492,11 @@ export class DocumentsController {
     userId: string,
     limit: number,
     _context?: string, // Unused parameter, prefixed with _
+    conversationHistory: Array<{
+      question: string;
+      answer: string;
+      timestamp?: string;
+    }> = [],
   ): Promise<{
     question: string;
     answer: string;
@@ -510,10 +530,17 @@ export class DocumentsController {
         };
       }
 
-      // Build context from search results
-      const contextText = searchResults
+      // Build context from search results only (separate from conversation history)
+      const documentContext = searchResults
         .map((result, index) => `Source ${index + 1}:\n${result.content}`)
         .join('\n\n');
+
+      console.log('Document context length:', documentContext.length);
+      if (conversationHistory && conversationHistory.length > 0) {
+        console.log(
+          `Sending ${conversationHistory.length} previous Q&A pairs as separate history`,
+        );
+      }
 
       // Call Modal.com directly
       const modalResponse = await fetch(
@@ -528,7 +555,8 @@ export class DocumentsController {
           body: JSON.stringify({
             query,
             user_id: userId,
-            context: contextText,
+            context: documentContext,
+            history: conversationHistory,
             limit,
             collection_name: this.configService.get('QDRANT_COLLECTION'),
           }),

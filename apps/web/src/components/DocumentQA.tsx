@@ -9,6 +9,7 @@ import {
   Copy,
   FileText,
   Loader2,
+  MessageSquare,
   Send,
   ThumbsDown,
   ThumbsUp,
@@ -614,6 +615,24 @@ export default function DocumentQA({
     );
   };
 
+  // Helper function to build conversation history from messages
+  const buildConversationHistory = () => {
+    const conversationHistory = [];
+    for (let i = 0; i < messages.length; i += 2) {
+      const questionMsg = messages[i];
+      const answerMsg = messages[i + 1];
+
+      if (questionMsg?.type === "question" && answerMsg?.type === "answer") {
+        conversationHistory.push({
+          question: questionMsg.content,
+          answer: answerMsg.content,
+          timestamp: questionMsg.timestamp.toISOString(),
+        });
+      }
+    }
+    return conversationHistory;
+  };
+
   const handleAskQuestion = async () => {
     if (!question.trim()) return;
 
@@ -641,10 +660,12 @@ export default function DocumentQA({
     setError(null);
 
     try {
+      const conversationHistory = buildConversationHistory();
       const response = await apiClient.queryDocuments(
         currentQuestion,
         context,
-        10
+        10,
+        conversationHistory
       );
 
       const aiMessage: QAMessage = {
@@ -781,7 +802,13 @@ export default function DocumentQA({
     setIsLoading(true);
 
     try {
-      const response = await apiClient.queryDocuments(suggestion, context);
+      const conversationHistory = buildConversationHistory();
+      const response = await apiClient.queryDocuments(
+        suggestion,
+        context,
+        10,
+        conversationHistory
+      );
 
       const answerMessage: QAMessage = {
         id: (Date.now() + 1).toString(),
@@ -835,6 +862,12 @@ export default function DocumentQA({
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Document AI Assistant
                 </h2>
+                {buildConversationHistory().length > 0 && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    <MessageSquare className="w-3 h-3 mr-1" />
+                    Context: {buildConversationHistory().length} Q&A
+                  </span>
+                )}
               </div>
               <div className="flex items-center space-x-2">
                 <button

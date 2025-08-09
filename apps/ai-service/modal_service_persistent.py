@@ -249,7 +249,14 @@ async def query_documents_endpoint(
     try:
         query = request.query
         user_id = request.user_id
+        history = request.history
         print(f"Processing query: '{query}' for user: {user_id}")
+        if history and len(history) > 0:
+            print(
+                f"Received conversation history with {len(history)} previous Q&A pairs"
+            )
+        else:
+            print("No conversation history provided")
 
         # Get Qdrant configuration from environment
         qdrant_url = os.environ.get("QDRANT_URL")
@@ -476,23 +483,41 @@ async def query_documents_endpoint(
             print(f"Error loading LLM model: {e}")
             raise RuntimeError(f"Failed to load LLM model: {e}")
 
+        # Build conversation history context if available
+        conversation_context = ""
+        if request.history and len(request.history) > 0:
+            print(
+                f"Building conversation context with {len(request.history)} previous Q&A pairs"
+            )
+            conversation_context = "\n\n=== Previous Conversation ===\n"
+            for i, item in enumerate(request.history):
+                conversation_context += f"Q{i + 1}: {item.get('question', '')}\n"
+                conversation_context += f"A{i + 1}: {item.get('answer', '')}\n\n"
+            conversation_context += "=== Current Question ===\n"
+            print(f"Conversation context length: {len(conversation_context)}")
+
         # Create an enhanced prompt that works well for all types of queries
-        prompt = f"""[INST] You are a helpful AI assistant. Answer the following question based on the provided context. Be thorough and provide complete information.
+        prompt = f"""[INST] You are a helpful AI assistant. Answer the following question based on the provided document context and conversation history. Be thorough and provide complete information.
 
-Context: {context}
+Document Context: {context}
 
-Question: {query}
+{conversation_context}Question: {query}
 
 Instructions:
-- Provide comprehensive and accurate information based ONLY on the provided context
+- Provide comprehensive and accurate information based on the document context and conversation history
+- If this is a follow-up question, reference the previous conversation appropriately
 - If asked about contact details, include all available phone numbers, emails, addresses, and websites
 - If asked about services or company information, be detailed and clear
 - If the context doesn't contain relevant information, say "I don't have information about that in the provided documents"
 - Structure your response logically and be concise
 - Do not make up information that's not in the context
+- For follow-up questions, build upon previous answers when relevant
 [/INST]"""
 
         print(f"Generating response with prompt length: {len(prompt)}")
+        print(
+            f"Prompt structure - Document context: {len(context)} chars, Conversation context: {len(conversation_context)} chars"
+        )
 
         try:
             # Try streaming first, fallback to non-streaming if it fails
