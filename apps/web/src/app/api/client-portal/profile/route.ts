@@ -9,8 +9,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Forward request to backend
-    const backendUrl =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL;
     const response = await fetch(`${backendUrl}/client-portal/profile`, {
       headers: {
         Authorization: token,
@@ -43,8 +42,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Forward request to backend
-    const backendUrl =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL;
     const response = await fetch(`${backendUrl}/client-portal/profile`, {
       method: "PATCH",
       headers: {

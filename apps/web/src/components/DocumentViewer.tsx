@@ -28,7 +28,7 @@ export default function DocumentViewer({
 
         // Get the document download URL
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/documents/${documentId}/download`,
+          `${process.env.NEXT_PUBLIC_API_URL}/documents/${documentId}/download`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

@@ -20,6 +20,17 @@ interface ChatNotification {
   senderName: string;
 }
 
+interface VideoCallNotification {
+  type: "VIDEO_CALL_INSTANT" | "VIDEO_CALL_STARTED";
+  title: string;
+  message: string;
+  meetingId: string;
+  meetingUrl: string;
+  callId: string;
+  hostName: string;
+  callTitle: string;
+}
+
 class SocketService {
   private socket: Socket | null = null;
   private isConnected = false;
@@ -84,6 +95,13 @@ class SocketService {
     this.socket.on("chat_notification", (notification: ChatNotification) => {
       this.handleChatNotification(notification);
     });
+
+    this.socket.on(
+      "video_call_notification",
+      (notification: VideoCallNotification) => {
+        this.handleVideoCallNotification(notification);
+      }
+    );
 
     this.socket.on(
       "new_message",
@@ -239,6 +257,80 @@ class SocketService {
         `[${this.connectionId}] Not showing toast - conditions not met`
       );
     }
+  }
+
+  private handleVideoCallNotification(notification: VideoCallNotification) {
+    console.log(`[${this.connectionId}] Handling video call notification:`, {
+      type: notification.type,
+      callId: notification.callId,
+      meetingId: notification.meetingId,
+      hostName: notification.hostName,
+    });
+
+    const currentPath = window.location.pathname;
+    const isOnVideoCallPage = currentPath.includes("/video-call-room/");
+
+    // Don't show toast if user is already in the video call room
+    if (isOnVideoCallPage) {
+      console.log(
+        `[${this.connectionId}] Not showing video call toast - user is in video call room`
+      );
+      return;
+    }
+
+    // Create a unique toast key for this notification
+    const toastKey = `video-call-toast-${notification.callId}-${Date.now()}`;
+
+    // Check if we're already processing this notification
+    if (this.processingNotifications.has(toastKey)) {
+      console.log(
+        `[${this.connectionId}] Already processing this video call notification, skipping`
+      );
+      return;
+    }
+
+    // Mark this notification as being processed
+    this.processingNotifications.add(toastKey);
+
+    // Create a simple toast with join link
+    const message = `${notification.hostName} has started a video call: ${notification.callTitle}`;
+
+    toast.success(message, {
+      duration: Infinity, // Toast will not auto-close
+      id: toastKey,
+    });
+
+    // Add click handler to the toast element after a short delay
+    setTimeout(() => {
+      const toastElement =
+        document.querySelector(`[data-testid="toast-${toastKey}"]`) ||
+        document.querySelector(".react-hot-toast");
+      if (toastElement) {
+        const htmlElement = toastElement as HTMLElement;
+        htmlElement.addEventListener("click", () => {
+          // Store pre-call settings
+          localStorage.setItem("preCallAudioEnabled", "true");
+          localStorage.setItem("preCallVideoEnabled", "true");
+
+          // Navigate to video call room
+          window.open(`/video-call-room/${notification.meetingId}`, "_blank");
+          toast.dismiss(toastKey);
+        });
+
+        // Add a visual indicator that it's clickable
+        htmlElement.style.cursor = "pointer";
+        htmlElement.title = "Click to join the video call";
+      }
+    }, 100);
+
+    // Clean up the processing flag after 30 seconds
+    setTimeout(() => {
+      this.processingNotifications.delete(toastKey);
+      console.log(
+        `[${this.connectionId}] Cleaned up video call notification processing flag:`,
+        toastKey
+      );
+    }, 30000);
   }
 
   private handleNewMessage(data: { chatId: string; message: ChatMessage }) {

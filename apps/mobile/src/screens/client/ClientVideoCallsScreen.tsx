@@ -135,11 +135,19 @@ export default function ClientVideoCallsScreen() {
     return today.toDateString() === callDate.toDateString();
   };
 
-  const isInProgress = (startTime: string, endTime: string) => {
+  const isInProgress = (startTime: string, endTime: string, status: string) => {
     const now = new Date();
     const start = new Date(startTime);
     const end = new Date(endTime);
-    return now >= start && now <= end;
+
+    // Check if the meeting is actually in progress based on status and time
+    // Handle both uppercase (IN_PROGRESS) and lowercase (in_progress) status values
+    const isStatusInProgress =
+      status.toLowerCase() === "in_progress" || status === "IN_PROGRESS";
+    const isWithinTimeRange = now >= start && now <= end;
+
+    // Meeting is in progress only if status is in_progress AND we're within the time range
+    return isStatusInProgress && isWithinTimeRange;
   };
 
   const filteredVideoCalls = videoCalls.filter((call) => {
@@ -161,12 +169,36 @@ export default function ClientVideoCallsScreen() {
     isUpcoming(call.startTime)
   );
   const inProgressCalls = filteredVideoCalls.filter((call) =>
-    isInProgress(call.startTime, call.endTime)
+    isInProgress(call.startTime, call.endTime, call.status)
   );
   const pastCalls = filteredVideoCalls.filter(
     (call) =>
-      !isUpcoming(call.startTime) && !isInProgress(call.startTime, call.endTime)
+      !isUpcoming(call.startTime) &&
+      !isInProgress(call.startTime, call.endTime, call.status)
   );
+
+  const getDisplayStatus = (
+    startTime: string,
+    endTime: string,
+    status: string
+  ) => {
+    const now = new Date();
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    // If the meeting hasn't started yet, show as "SCHEDULED"
+    if (now < start) {
+      return "SCHEDULED";
+    }
+
+    // If the meeting has ended, show as "COMPLETED" regardless of backend status
+    if (now > end) {
+      return "COMPLETED";
+    }
+
+    // If we're within the time range, show the backend status
+    return status;
+  };
 
   const VideoCallCard = ({
     call,
@@ -183,7 +215,9 @@ export default function ClientVideoCallsScreen() {
           <Ionicons
             name="videocam"
             size={24}
-            color={getStatusColor(call.status)}
+            color={getStatusColor(
+              getDisplayStatus(call.startTime, call.endTime, call.status)
+            )}
           />
         </View>
         <View style={styles.callInfo}>
@@ -194,21 +228,44 @@ export default function ClientVideoCallsScreen() {
             <View
               style={[
                 styles.statusTag,
-                { backgroundColor: getStatusColor(call.status) + "20" },
+                {
+                  backgroundColor:
+                    getStatusColor(
+                      getDisplayStatus(
+                        call.startTime,
+                        call.endTime,
+                        call.status
+                      )
+                    ) + "20",
+                },
               ]}
             >
               <Ionicons
-                name={getStatusIcon(call.status) as any}
+                name={
+                  getStatusIcon(
+                    getDisplayStatus(call.startTime, call.endTime, call.status)
+                  ) as any
+                }
                 size={12}
-                color={getStatusColor(call.status)}
+                color={getStatusColor(
+                  getDisplayStatus(call.startTime, call.endTime, call.status)
+                )}
               />
               <Text
                 style={[
                   styles.statusText,
-                  { color: getStatusColor(call.status) },
+                  {
+                    color: getStatusColor(
+                      getDisplayStatus(
+                        call.startTime,
+                        call.endTime,
+                        call.status
+                      )
+                    ),
+                  },
                 ]}
               >
-                {call.status
+                {getDisplayStatus(call.startTime, call.endTime, call.status)
                   .replace(/_/g, " ")
                   .replace(/\b\w/g, (l) => l.toUpperCase())}
               </Text>
@@ -386,7 +443,7 @@ export default function ClientVideoCallsScreen() {
           </TouchableOpacity>
         )}
 
-        {call.status.toLowerCase() === "in_progress" && (
+        {isInProgress(call.startTime, call.endTime, call.status) && (
           <TouchableOpacity
             style={[
               styles.actionButton,

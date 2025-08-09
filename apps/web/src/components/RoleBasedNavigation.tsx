@@ -193,13 +193,19 @@ export function RoleBasedNavigation() {
                 विधीज्ञ
               </span>
             </Link>
-            {hasRole(["SUPER_ADMIN", "ADMIN"]) && (
-              <span
-                className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadge()}`}
-              >
-                {user.role.replace("_", " ")}
-              </span>
-            )}
+            <div className="flex items-center space-x-2">
+              {hasRole(["SUPER_ADMIN", "ADMIN"]) && (
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadge()}`}
+                >
+                  {user.role.replace("_", " ")}
+                </span>
+              )}
+              {/* Notification Bell for Desktop */}
+              <div className="hidden md:block">
+                <NotificationBell />
+              </div>
+            </div>
           </div>
 
           {/* Navigation Links */}

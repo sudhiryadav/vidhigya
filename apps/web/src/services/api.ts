@@ -1,5 +1,4 @@
-const API_BASE_URL =
-  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001") + "/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 class ApiClient {
   private getAuthHeaders(): HeadersInit {
@@ -1025,9 +1024,16 @@ class ApiClient {
     caseId?: string;
     participantIds?: string[];
   }) {
+    // Filter out empty caseId to avoid foreign key constraint issues
+    const videoCallData = {
+      ...data,
+      // Only include caseId if it's not empty
+      ...(data.caseId && data.caseId.trim() !== "" && { caseId: data.caseId }),
+    };
+
     return this.request("/video-calls", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(videoCallData),
     });
   }
 
@@ -1037,9 +1043,17 @@ class ApiClient {
     caseId?: string;
     participantIds?: string[];
   }) {
+    // Filter out empty caseId to avoid foreign key constraint issues
+    const instantCallData = {
+      ...data,
+      startTime: new Date().toISOString(),
+      // Only include caseId if it's not empty
+      ...(data.caseId && data.caseId.trim() !== "" && { caseId: data.caseId }),
+    };
+
     return this.request("/video-calls/instant", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(instantCallData),
     });
   }
 
@@ -1086,6 +1100,12 @@ class ApiClient {
 
   async sendVideoCallNotification(callId: string) {
     return this.request(`/video-calls/${callId}/notify`, {
+      method: "POST",
+    });
+  }
+
+  async sendVideoCallStartedNotification(callId: string) {
+    return this.request(`/video-calls/${callId}/notify-started`, {
       method: "POST",
     });
   }

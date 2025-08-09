@@ -129,6 +129,17 @@ export class VideoCallsController {
     return this.videoCallsService.notifyParticipants(id, req.user.sub);
   }
 
+  @Post(':id/notify-started')
+  notifyParticipantsCallStarted(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.videoCallsService.notifyParticipantsCallStarted(
+      id,
+      req.user.sub,
+    );
+  }
+
   @Post('join')
   joinCall(
     @Body() joinCallDto: JoinCallDto,

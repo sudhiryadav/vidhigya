@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { NotificationType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationEmitterService } from './notification-emitter.service';
 
 interface CreateNotificationDto {
   title: string;
@@ -11,7 +12,10 @@ interface CreateNotificationDto {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationEmitter: NotificationEmitterService,
+  ) {}
 
   async create(data: CreateNotificationDto) {
     return this.prisma.notification.create({
@@ -20,15 +24,6 @@ export class NotificationsService {
         message: data.message,
         type: data.type,
         userId: data.userId,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
       },
     });
   }
@@ -46,18 +41,7 @@ export class NotificationsService {
 
     return this.prisma.notification.findMany({
       where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -79,7 +63,7 @@ export class NotificationsService {
     });
 
     if (!notification) {
-      throw new NotFoundException('Notification not found');
+      throw new Error('Notification not found');
     }
 
     return notification;
@@ -94,7 +78,7 @@ export class NotificationsService {
     });
 
     if (!notification) {
-      throw new NotFoundException('Notification not found');
+      throw new Error('Notification not found');
     }
 
     return this.prisma.notification.update({
@@ -133,7 +117,7 @@ export class NotificationsService {
     });
 
     if (!notification) {
-      throw new NotFoundException('Notification not found');
+      throw new Error('Notification not found');
     }
 
     return this.prisma.notification.delete({
@@ -318,11 +302,69 @@ export class NotificationsService {
     message += `\nMeeting URL: ${call.meetingUrl}`;
     message += `\n\nClick the link above to join immediately!`;
 
-    return this.create({
+    const notification = await this.create({
       title: 'Instant Video Call Created',
       message,
       type: NotificationType.SYSTEM,
       userId: participantId,
     });
+
+    // Emit socket event for real-time notification
+    this.notificationEmitter.emitVideoCallNotification(participantId, {
+      type: 'VIDEO_CALL_INSTANT',
+      title: notification.title,
+      message: notification.message,
+      meetingId: call.meetingId,
+      meetingUrl: call.meetingUrl,
+      callId: call.id,
+      hostName: call.host.name,
+      callTitle: call.title,
+    });
+
+    return notification;
+  }
+
+  async createVideoCallStartedNotification(
+    callId: string,
+    participantId: string,
+  ) {
+    const call = await this.prisma.videoCall.findUnique({
+      where: { id: callId },
+      include: {
+        case: true,
+        host: true,
+      },
+    });
+
+    if (!call) return;
+
+    let message = `${call.host.name} has started the video call: ${call.title}`;
+    if (call.case) {
+      message += ` (Case: ${call.case.caseNumber})`;
+    }
+    message += `\n\nMeeting ID: ${call.meetingId}`;
+    message += `\nMeeting URL: ${call.meetingUrl}`;
+    message += `\n\nClick the link above to join now!`;
+
+    const notification = await this.create({
+      title: 'Video Call Started',
+      message,
+      type: NotificationType.SYSTEM,
+      userId: participantId,
+    });
+
+    // Emit socket event for real-time notification
+    this.notificationEmitter.emitVideoCallNotification(participantId, {
+      type: 'VIDEO_CALL_STARTED',
+      title: notification.title,
+      message: notification.message,
+      meetingId: call.meetingId,
+      meetingUrl: call.meetingUrl,
+      callId: call.id,
+      hostName: call.host.name,
+      callTitle: call.title,
+    });
+
+    return notification;
   }
 }

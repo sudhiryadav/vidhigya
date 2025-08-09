@@ -141,7 +141,11 @@ export default function ClientVideoCalls() {
   };
 
   const isUpcoming = (startTime: string) => {
-    return new Date(startTime) > new Date();
+    const now = new Date();
+    const start = new Date(startTime);
+    const result = start > now;
+
+    return result;
   };
 
   const isToday = (startTime: string) => {
@@ -150,11 +154,19 @@ export default function ClientVideoCalls() {
     return today.toDateString() === callDate.toDateString();
   };
 
-  const isInProgress = (startTime: string, endTime: string) => {
+  const isInProgress = (startTime: string, endTime: string, status: string) => {
     const now = new Date();
     const start = new Date(startTime);
     const end = new Date(endTime);
-    return now >= start && now <= end;
+
+    // Check if the meeting is actually in progress based on status and time
+    // Handle both uppercase (IN_PROGRESS) and lowercase (in_progress) status values
+    const isStatusInProgress =
+      status.toLowerCase() === "in_progress" || status === "IN_PROGRESS";
+    const isWithinTimeRange = now >= start && now <= end;
+
+    // Meeting is in progress only if status is in_progress AND we're within the time range
+    return isStatusInProgress && isWithinTimeRange;
   };
 
   const handleScheduleCall = () => {
@@ -207,6 +219,29 @@ export default function ClientVideoCalls() {
     setJoinMeetingId("");
   };
 
+  const getDisplayStatus = (
+    startTime: string,
+    endTime: string,
+    status: string
+  ) => {
+    const now = new Date();
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    // If the meeting hasn't started yet, show as "Scheduled"
+    if (now < start) {
+      return "SCHEDULED";
+    }
+
+    // If the meeting has ended, show as "COMPLETED" regardless of backend status
+    if (now > end) {
+      return "COMPLETED";
+    }
+
+    // If we're within the time range, show the backend status
+    return status;
+  };
+
   const formatParticipantStatus = (status: string | undefined) => {
     if (!status) return "Invited";
     return status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
@@ -231,11 +266,12 @@ export default function ClientVideoCalls() {
     isUpcoming(call.startTime)
   );
   const inProgressCalls = filteredVideoCalls.filter((call) =>
-    isInProgress(call.startTime, call.endTime)
+    isInProgress(call.startTime, call.endTime, call.status)
   );
   const pastCalls = filteredVideoCalls.filter(
     (call) =>
-      !isUpcoming(call.startTime) && !isInProgress(call.startTime, call.endTime)
+      !isUpcoming(call.startTime) &&
+      !isInProgress(call.startTime, call.endTime, call.status)
   );
 
   if (loading) {
@@ -402,11 +438,21 @@ export default function ClientVideoCalls() {
                             </h3>
                             <div className="flex items-center mt-1">
                               <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(call.status)}`}
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(getDisplayStatus(call.startTime, call.endTime, call.status))}`}
                               >
-                                {getStatusIcon(call.status)}
+                                {getStatusIcon(
+                                  getDisplayStatus(
+                                    call.startTime,
+                                    call.endTime,
+                                    call.status
+                                  )
+                                )}
                                 <span className="ml-1">
-                                  {call.status
+                                  {getDisplayStatus(
+                                    call.startTime,
+                                    call.endTime,
+                                    call.status
+                                  )
                                     .replace(/_/g, " ")
                                     .replace(/\b\w/g, (l) => l.toUpperCase())}
                                 </span>
@@ -544,11 +590,21 @@ export default function ClientVideoCalls() {
                             </h3>
                             <div className="flex items-center mt-1">
                               <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(call.status)}`}
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(getDisplayStatus(call.startTime, call.endTime, call.status))}`}
                               >
-                                {getStatusIcon(call.status)}
+                                {getStatusIcon(
+                                  getDisplayStatus(
+                                    call.startTime,
+                                    call.endTime,
+                                    call.status
+                                  )
+                                )}
                                 <span className="ml-1">
-                                  {call.status
+                                  {getDisplayStatus(
+                                    call.startTime,
+                                    call.endTime,
+                                    call.status
+                                  )
                                     .replace(/_/g, " ")
                                     .replace(/\b\w/g, (l) => l.toUpperCase())}
                                 </span>
@@ -691,11 +747,21 @@ export default function ClientVideoCalls() {
                             </h3>
                             <div className="flex items-center mt-1">
                               <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(call.status)}`}
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(getDisplayStatus(call.startTime, call.endTime, call.status))}`}
                               >
-                                {getStatusIcon(call.status)}
+                                {getStatusIcon(
+                                  getDisplayStatus(
+                                    call.startTime,
+                                    call.endTime,
+                                    call.status
+                                  )
+                                )}
                                 <span className="ml-1">
-                                  {call.status
+                                  {getDisplayStatus(
+                                    call.startTime,
+                                    call.endTime,
+                                    call.status
+                                  )
                                     .replace(/_/g, " ")
                                     .replace(/\b\w/g, (l) => l.toUpperCase())}
                                 </span>

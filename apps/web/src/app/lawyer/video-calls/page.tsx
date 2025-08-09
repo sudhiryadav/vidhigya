@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
   Calendar,
+  CheckCircle,
   Clock,
   Copy,
   Edit,
@@ -18,6 +19,7 @@ import {
   Video,
   VideoOff,
   X,
+  XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -57,6 +59,7 @@ interface Case {
   id: string;
   caseNumber: string;
   title: string;
+  clientId: string;
 }
 
 interface User {
@@ -74,6 +77,8 @@ interface VideoCallCardProps {
   onJoin: (videoCall: VideoCall) => void;
   onCopy: (meetingId: string, videoCall?: VideoCall) => void;
   getStatusBadge: (status: string) => string;
+  getStatusColor: (status: string) => string;
+  getStatusIcon: (status: string) => React.ReactNode;
   formatDate: (dateString: string) => string;
   formatTime: (dateString: string) => string;
 }
@@ -86,11 +91,51 @@ function VideoCallCard({
   onJoin,
   onCopy,
   getStatusBadge,
+  getStatusColor,
+  getStatusIcon,
   formatDate,
   formatTime,
 }: VideoCallCardProps) {
   const isUpcoming = (startTime: string) => {
     return new Date(startTime) > new Date();
+  };
+
+  const isLive = (startTime: string, endTime: string, status: string) => {
+    const now = new Date();
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    // Check if the meeting is actually live based on status and time
+    // Handle both uppercase (IN_PROGRESS) and lowercase (in_progress) status values
+    const isStatusInProgress =
+      status.toLowerCase() === "in_progress" || status === "IN_PROGRESS";
+    const isWithinTimeRange = now >= start && now <= end;
+
+    // Meeting is live only if status is in_progress AND we're within the time range
+    return isStatusInProgress && isWithinTimeRange;
+  };
+
+  const getDisplayStatus = (
+    startTime: string,
+    endTime: string,
+    status: string
+  ) => {
+    const now = new Date();
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    // If the meeting hasn't started yet, show as "SCHEDULED"
+    if (now < start) {
+      return "SCHEDULED";
+    }
+
+    // If the meeting has ended, show as "COMPLETED" regardless of backend status
+    if (now > end) {
+      return "COMPLETED";
+    }
+
+    // If we're within the time range, show the backend status
+    return status;
   };
 
   return (
@@ -107,12 +152,30 @@ function VideoCallCard({
             </h3>
             <div className="flex items-center mt-1">
               <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(videoCall.status)}`}
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(getDisplayStatus(videoCall.startTime, videoCall.endTime, videoCall.status))}`}
               >
-                {videoCall.status.replace(/_/g, " ")}
+                {getStatusIcon(
+                  getDisplayStatus(
+                    videoCall.startTime,
+                    videoCall.endTime,
+                    videoCall.status
+                  )
+                )}
+                <span className="ml-1">
+                  {getDisplayStatus(
+                    videoCall.startTime,
+                    videoCall.endTime,
+                    videoCall.status
+                  )
+                    .replace(/_/g, " ")
+                    .replace(/\b\w/g, (l) => l.toUpperCase())}
+                </span>
               </span>
-              {(videoCall.status === "IN_PROGRESS" ||
-                videoCall.status === "IN PROGRESS") && (
+              {isLive(
+                videoCall.startTime,
+                videoCall.endTime,
+                videoCall.status
+              ) && (
                 <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
                   Live Now
                 </span>
@@ -178,12 +241,11 @@ function VideoCallCard({
       <div className="flex space-x-2">
         {/* Show Join button for:
             - Scheduled calls that are upcoming
-            - In-progress calls
+            - Live calls (in progress within time range)
         */}
         {(isUpcoming(videoCall.startTime) &&
           videoCall.status === "SCHEDULED") ||
-        videoCall.status === "IN_PROGRESS" ||
-        videoCall.status === "IN PROGRESS" ? (
+        isLive(videoCall.startTime, videoCall.endTime, videoCall.status) ? (
           <button
             onClick={() => onJoin(videoCall)}
             className="flex-1 flex items-center justify-center px-3 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
@@ -510,6 +572,19 @@ export default function VideoCallsPage() {
         });
       }
 
+      // Send notifications to participants that the call has started
+      if (selectedVideoCall.participants.length > 0) {
+        try {
+          await apiClient.sendVideoCallStartedNotification(
+            selectedVideoCall.id
+          );
+          console.log("Call started notifications sent to participants");
+        } catch (error) {
+          console.error("Failed to send call started notifications:", error);
+          // Don't block the call start if notification fails
+        }
+      }
+
       // Store pre-call settings in localStorage
       localStorage.setItem(
         "preCallAudioEnabled",
@@ -605,7 +680,9 @@ export default function VideoCallsPage() {
     setIsLoading(true);
 
     try {
-      const response = await apiClient.startInstantCall(instantCallData);
+      const response = (await apiClient.startInstantCall(instantCallData)) as {
+        meetingId: string;
+      };
 
       // Save pre-call settings
       localStorage.setItem(
@@ -651,6 +728,36 @@ export default function VideoCallsPage() {
     });
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "scheduled":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400";
+      case "in_progress":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400";
+      case "completed":
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400";
+      case "cancelled":
+        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "scheduled":
+        return <Clock className="h-4 w-4 text-blue-600" />;
+      case "in_progress":
+        return <Video className="h-4 w-4 text-yellow-600" />;
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "cancelled":
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "SCHEDULED":
@@ -681,15 +788,23 @@ export default function VideoCallsPage() {
     return new Date(startTime) > new Date();
   };
 
-  const isInProgress = (startTime: string, endTime: string) => {
+  const isInProgress = (startTime: string, endTime: string, status: string) => {
     const now = new Date();
     const start = new Date(startTime);
     const end = new Date(endTime);
-    const result = now >= start && now <= end;
+
+    // Check if the meeting is actually in progress based on status and time
+    // Handle both uppercase (IN_PROGRESS) and lowercase (in_progress) status values
+    const isStatusInProgress =
+      status.toLowerCase() === "in_progress" || status === "IN_PROGRESS";
+    const isWithinTimeRange = now >= start && now <= end;
+
+    // Meeting is in progress only if status is in_progress AND we're within the time range
+    const result = isStatusInProgress && isWithinTimeRange;
 
     // Debug time comparison
     console.log(
-      `Time check: now=${now.toISOString()}, start=${start.toISOString()}, end=${end.toISOString()}, result=${result}`
+      `Time check: now=${now.toISOString()}, start=${start.toISOString()}, end=${end.toISOString()}, status=${status}, isStatusInProgress=${isStatusInProgress}, isWithinTimeRange=${isWithinTimeRange}, result=${result}`
     );
 
     return result;
@@ -710,11 +825,12 @@ export default function VideoCallsPage() {
     isUpcoming(call.startTime)
   );
   const inProgressCalls = filteredVideoCalls.filter((call) =>
-    isInProgress(call.startTime, call.endTime)
+    isInProgress(call.startTime, call.endTime, call.status)
   );
   const pastCalls = filteredVideoCalls.filter(
     (call) =>
-      !isUpcoming(call.startTime) && !isInProgress(call.startTime, call.endTime)
+      !isUpcoming(call.startTime) &&
+      !isInProgress(call.startTime, call.endTime, call.status)
   );
 
   if (loading) {
@@ -858,6 +974,8 @@ export default function VideoCallsPage() {
                       onJoin={handleJoinCall}
                       onCopy={handleCopyMeetingId}
                       getStatusBadge={getStatusBadge}
+                      getStatusColor={getStatusColor}
+                      getStatusIcon={getStatusIcon}
                       formatDate={formatDate}
                       formatTime={formatTime}
                     />
@@ -883,6 +1001,8 @@ export default function VideoCallsPage() {
                       onJoin={handleJoinCall}
                       onCopy={handleCopyMeetingId}
                       getStatusBadge={getStatusBadge}
+                      getStatusColor={getStatusColor}
+                      getStatusIcon={getStatusIcon}
                       formatDate={formatDate}
                       formatTime={formatTime}
                     />
@@ -908,6 +1028,8 @@ export default function VideoCallsPage() {
                       onJoin={handleJoinCall}
                       onCopy={handleCopyMeetingId}
                       getStatusBadge={getStatusBadge}
+                      getStatusColor={getStatusColor}
+                      getStatusIcon={getStatusIcon}
                       formatDate={formatDate}
                       formatTime={formatTime}
                     />
@@ -1374,7 +1496,11 @@ export default function VideoCallsPage() {
       <ModalDialog
         isOpen={showDeleteConfirm}
         onClose={handleDeleteCancel}
-        header="Delete Video Call"
+        header={
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Delete Video Call
+          </h2>
+        }
         footer={
           <div className="flex space-x-3">
             <button
@@ -1551,8 +1677,12 @@ export default function VideoCallsPage() {
       <ModalDialog
         isOpen={showJoinWithIdModal}
         onClose={handleJoinWithMeetingIdCancel}
-        title="Join Video Call"
-        size="md"
+        header={
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Join Video Call
+          </h2>
+        }
+        maxWidth="md"
       >
         <div className="p-6">
           <div className="mb-6">
@@ -1680,8 +1810,12 @@ export default function VideoCallsPage() {
       <ModalDialog
         isOpen={showInstantCallModal}
         onClose={handleInstantCallCancel}
-        title="Start Instant Video Call"
-        size="lg"
+        header={
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Start Instant Video Call
+          </h2>
+        }
+        maxWidth="lg"
       >
         <div className="p-6">
           <div className="mb-6">
@@ -1765,14 +1899,37 @@ export default function VideoCallsPage() {
                             ?.title
                         : "No case selected",
                     }}
-                    onChange={(option) =>
+                    onChange={(option) => {
+                      const selectedCaseId = option?.value || "";
+                      const selectedCase = cases.find(
+                        (c) => c.id === selectedCaseId
+                      );
+
+                      // Auto-add case client as participant if case is selected
+                      const updatedParticipantIds = [
+                        ...instantCallData.participantIds,
+                      ];
+                      if (selectedCase && selectedCase.clientId) {
+                        if (
+                          !updatedParticipantIds.includes(selectedCase.clientId)
+                        ) {
+                          updatedParticipantIds.push(selectedCase.clientId);
+                        }
+                      }
+
                       setInstantCallData({
                         ...instantCallData,
-                        caseId: option?.value || "",
-                      })
-                    }
+                        caseId: selectedCaseId,
+                        participantIds: updatedParticipantIds,
+                      });
+                    }}
                     placeholder="Select a case"
                   />
+                  {instantCallData.caseId && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      Case client will be automatically added as a participant
+                    </p>
+                  )}
                 </div>
 
                 {/* Participants */}

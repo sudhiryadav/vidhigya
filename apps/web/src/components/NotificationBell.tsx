@@ -3,9 +3,10 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { apiClient } from "@/services/api";
-import { Bell, Trash2, X } from "lucide-react";
+import { Bell, Mic, MicOff, Trash2, Video, VideoOff, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import ModalDialog from "./ui/ModalDialog";
 
 interface Notification {
   id: string;
@@ -25,6 +26,13 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { getSetting } = useSettings();
+
+  // Pre-call settings state
+  const [showPreCallModal, setShowPreCallModal] = useState(false);
+  const [preCallAudioEnabled, setPreCallAudioEnabled] = useState(true);
+  const [preCallVideoEnabled, setPreCallVideoEnabled] = useState(true);
+  const [selectedVideoCallNotification, setSelectedVideoCallNotification] =
+    useState<Notification | null>(null);
 
   // Check if notifications are enabled based on user settings
   const pushNotificationsEnabled = getSetting("pushNotifications") ?? true;
@@ -216,10 +224,55 @@ export default function NotificationBell() {
 
   const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id);
-    if (notification.actionUrl) {
+
+    // Check if this is a video call notification
+    if (
+      notification.type === "VIDEO_CALL_INSTANT" ||
+      notification.type === "VIDEO_CALL_STARTED"
+    ) {
+      // Show pre-call settings modal for video call notifications
+      setSelectedVideoCallNotification(notification);
+      setShowPreCallModal(true);
+      setIsOpen(false); // Close the notification dropdown
+    } else if (notification.actionUrl) {
+      // For other notifications, navigate directly
       router.push(notification.actionUrl);
     }
-    setIsOpen(false);
+  };
+
+  const handleJoinVideoCall = () => {
+    if (!selectedVideoCallNotification) return;
+
+    // Store pre-call settings in localStorage
+    localStorage.setItem("preCallAudioEnabled", preCallAudioEnabled.toString());
+    localStorage.setItem("preCallVideoEnabled", preCallVideoEnabled.toString());
+
+    // Extract meeting ID from the notification message or actionUrl
+    let meetingId = "";
+    if (selectedVideoCallNotification.actionUrl) {
+      // If actionUrl contains the meeting ID
+      const urlParts = selectedVideoCallNotification.actionUrl.split("/");
+      meetingId = urlParts[urlParts.length - 1];
+    } else {
+      // Try to extract from message (fallback)
+      const message = selectedVideoCallNotification.message;
+      const meetingIdMatch = message.match(/Meeting ID: ([A-Z0-9-]+)/);
+      if (meetingIdMatch) {
+        meetingId = meetingIdMatch[1];
+      }
+    }
+
+    if (meetingId) {
+      // Navigate to video call room
+      window.open(`/video-call-room/${meetingId}`, "_blank");
+    } else {
+      // Fallback: navigate to video calls page
+      router.push("/video-calls");
+    }
+
+    // Close modal and reset
+    setShowPreCallModal(false);
+    setSelectedVideoCallNotification(null);
   };
 
   // Don't render if notifications are disabled or user is not authenticated
@@ -244,7 +297,7 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-[9999] transform -translate-x-64">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -338,6 +391,114 @@ export default function NotificationBell() {
           </div>
         </div>
       )}
+
+      {/* Pre-call Settings Modal for Video Call Notifications */}
+      <ModalDialog
+        isOpen={showPreCallModal}
+        onClose={() => {
+          setShowPreCallModal(false);
+          setSelectedVideoCallNotification(null);
+        }}
+        header={
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Join Video Call
+          </h2>
+        }
+        maxWidth="md"
+      >
+        <div className="p-6">
+          <div className="mb-6">
+            <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+              Before joining the video call, you can:
+            </h5>
+
+            <div className="space-y-3">
+              {/* Audio Setting */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  {preCallAudioEnabled ? (
+                    <Mic className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <MicOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      Microphone
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {preCallAudioEnabled
+                        ? "Will be enabled"
+                        : "Will be muted"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreCallAudioEnabled(!preCallAudioEnabled)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    preCallAudioEnabled
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                      : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                  }`}
+                >
+                  {preCallAudioEnabled ? "ON" : "OFF"}
+                </button>
+              </div>
+
+              {/* Video Setting */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  {preCallVideoEnabled ? (
+                    <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <VideoOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      Camera
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {preCallVideoEnabled
+                        ? "Will be enabled"
+                        : "Will be turned off"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreCallVideoEnabled(!preCallVideoEnabled)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    preCallVideoEnabled
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                      : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                  }`}
+                >
+                  {preCallVideoEnabled ? "ON" : "OFF"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex space-x-3">
+            <button
+              onClick={() => {
+                setShowPreCallModal(false);
+                setSelectedVideoCallNotification(null);
+              }}
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleJoinVideoCall}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+            >
+              Join Call
+            </button>
+          </div>
+        </div>
+      </ModalDialog>
     </div>
   );
 }

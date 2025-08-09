@@ -7,6 +7,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { NotificationEmitterService } from '../notifications/notification-emitter.service';
 import { ChatService } from './chat.service';
 
 interface AuthenticatedUser {
@@ -27,7 +28,13 @@ export class ChatGateway {
   constructor(
     private readonly chatService: ChatService,
     private readonly jwtService: JwtService,
+    private readonly notificationEmitter: NotificationEmitterService,
   ) {}
+
+  afterInit() {
+    // Set the socket server in the notification emitter
+    this.notificationEmitter.setSocketServer(this.server);
+  }
 
   handleConnection(client: Socket) {
     try {
@@ -211,7 +218,7 @@ export class ChatGateway {
     @MessageBody() data: { messageId: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const user = (client.data as { user: AuthenticatedUser }).user;
+    const user = client.data.user as AuthenticatedUser;
     if (!user || user.role !== 'ADMIN') {
       return { error: 'Unauthorized' };
     }
@@ -224,5 +231,12 @@ export class ChatGateway {
       console.error('Error deleting message:', error);
       return { error: 'Failed to delete message' };
     }
+  }
+
+  // Method to emit video call notifications to specific users
+  emitVideoCallNotification(userId: string, notificationData: any) {
+    this.server
+      .to(`user_${userId}`)
+      .emit('video_call_notification', notificationData);
   }
 }

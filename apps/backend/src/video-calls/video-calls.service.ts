@@ -57,6 +57,11 @@ export class VideoCallsService {
         ...callData,
         startTime: new Date(callData.startTime),
         endTime: callData.endTime ? new Date(callData.endTime) : undefined,
+        // Convert empty string caseId to null to avoid foreign key constraint violation
+        caseId:
+          callData.caseId && callData.caseId.trim() !== ''
+            ? callData.caseId
+            : null,
       };
 
       // Validate caseId if provided
@@ -222,6 +227,11 @@ export class VideoCallsService {
         endTime: callData.endTime
           ? new Date(callData.endTime)
           : new Date(Date.now() + 60 * 60 * 1000), // Default 1 hour
+        // Convert empty string caseId to null to avoid foreign key constraint violation
+        caseId:
+          callData.caseId && callData.caseId.trim() !== ''
+            ? callData.caseId
+            : null,
       };
 
       // Validate caseId if provided
@@ -315,6 +325,7 @@ export class VideoCallsService {
               `Failed to send notification to participant ${participantId}:`,
               error,
             );
+            // Don't throw the error, just log it to prevent the entire call from failing
           }
         }
       }
@@ -564,8 +575,17 @@ export class VideoCallsService {
       );
     }
 
-    return this.prisma.videoCall.delete({
-      where: { id },
+    // Use a transaction to delete related records first, then the video call
+    return this.prisma.$transaction(async (tx) => {
+      // First, delete all call participants
+      await tx.callParticipant.deleteMany({
+        where: { callId: id },
+      });
+
+      // Then delete the video call
+      return tx.videoCall.delete({
+        where: { id },
+      });
     });
   }
 
@@ -815,6 +835,54 @@ export class VideoCallsService {
 
     return {
       message: `Notifications sent to ${videoCall.participants.length} participant(s)`,
+      participantsCount: videoCall.participants.length,
+    };
+  }
+
+  async notifyParticipantsCallStarted(callId: string, userId: string) {
+    const videoCall = await this.prisma.videoCall.findFirst({
+      where: {
+        id: callId,
+        hostId: userId,
+      },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!videoCall) {
+      throw new NotFoundException(
+        'Video call not found or you are not the host',
+      );
+    }
+
+    // Send "call started" notifications to all participants
+    for (const participant of videoCall.participants) {
+      try {
+        await this.notificationsService.createVideoCallStartedNotification(
+          callId,
+          participant.userId,
+        );
+      } catch (error) {
+        console.error(
+          `Failed to send notification to participant ${participant.userId}:`,
+          error,
+        );
+      }
+    }
+
+    return {
+      message: `Call started notifications sent to ${videoCall.participants.length} participant(s)`,
       participantsCount: videoCall.participants.length,
     };
   }

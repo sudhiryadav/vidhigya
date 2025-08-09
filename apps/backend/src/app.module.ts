@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AdminModule } from './admin/admin.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -29,6 +30,7 @@ import { VideoCallsModule } from './video-calls/video-calls.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    EventEmitterModule.forRoot(),
     PrismaModule,
     S3Module,
     QdrantModule,
