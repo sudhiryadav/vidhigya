@@ -41,6 +41,7 @@ interface CalendarFilters {
   endDate?: Date;
   eventType?: string;
   caseId?: string;
+  [key: string]: unknown;
 }
 
 @Controller('calendar')

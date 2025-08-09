@@ -52,20 +52,7 @@ export class AdminService {
   }
 
   async getRecentActivity(limit: number = 10) {
-    const where: any = {};
-
-    // Add filters if provided
-    if (where.OR) {
-      where.OR = where.OR;
-    }
-
-    if (where.role) {
-      where.role = where.role;
-    }
-
-    if (where.isActive !== undefined) {
-      where.isActive = where.isActive;
-    }
+    const where: Record<string, unknown> = {};
 
     const activities = await this.prisma.log.findMany({
       where,
@@ -90,7 +77,7 @@ export class AdminService {
     role?: string;
     isActive?: boolean;
   }) {
-    const where: any = {
+    const where: Record<string, unknown> = {
       role: { in: ['LAWYER', 'ASSOCIATE', 'PARALEGAL'] },
     };
 

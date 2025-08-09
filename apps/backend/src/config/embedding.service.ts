@@ -37,22 +37,24 @@ export class EmbeddingService {
     // This is not as sophisticated as a proper embedding model but works for basic similarity
     const normalizedText = text.toLowerCase().trim();
     const embedding = new Array(this.embeddingDimension).fill(0);
-    
+
     // Simple character-based hash
     for (let i = 0; i < normalizedText.length; i++) {
       const charCode = normalizedText.charCodeAt(i);
       const position = (charCode * (i + 1)) % this.embeddingDimension;
       embedding[position] += 1;
     }
-    
+
     // Normalize the embedding
-    const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
+    const magnitude = Math.sqrt(
+      embedding.reduce((sum, val) => sum + val * val, 0),
+    );
     if (magnitude > 0) {
       for (let i = 0; i < embedding.length; i++) {
         embedding[i] = embedding[i] / magnitude;
       }
     }
-    
+
     return embedding;
   }
 
@@ -69,12 +71,12 @@ export class EmbeddingService {
     if (embedding1.length !== embedding2.length) {
       return 0;
     }
-    
+
     let dotProduct = 0;
     for (let i = 0; i < embedding1.length; i++) {
       dotProduct += embedding1[i] * embedding2[i];
     }
-    
+
     return dotProduct; // Cosine similarity (vectors are already normalized)
   }
-} 
+}

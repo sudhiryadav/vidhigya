@@ -77,10 +77,7 @@ export class ReportsController {
   // Admin endpoints for team-wide analytics
   @Get('admin/team')
   @Roles(UserRole.ADMIN)
-  async getTeamAnalytics(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
+  getTeamAnalytics() {
     // TODO: Implement team-wide analytics
     return { message: 'Team analytics endpoint - to be implemented' };
   }

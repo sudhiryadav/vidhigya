@@ -86,6 +86,10 @@ export default function LawyerSearchPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
 
+  // Search history for up arrow navigation
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
   // Document viewer states
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(
     null
@@ -117,8 +121,37 @@ export default function LawyerSearchPage() {
     localStorage.setItem("lawyer_drafts", JSON.stringify(drafts));
   }, [drafts]);
 
+  // Load search history from localStorage
+  useEffect(() => {
+    const savedHistory = localStorage.getItem("lawyer_searchHistory");
+    if (savedHistory) {
+      try {
+        const history = JSON.parse(savedHistory);
+        setSearchHistory(history);
+      } catch (error) {
+        console.error("Error loading search history:", error);
+      }
+    }
+  }, []);
+
+  // Save search history to localStorage
+  const saveSearchHistory = (query: string) => {
+    if (!query.trim()) return;
+
+    const newHistory = [
+      query,
+      ...searchHistory.filter((item) => item !== query),
+    ].slice(0, 10);
+    setSearchHistory(newHistory);
+    localStorage.setItem("lawyer_searchHistory", JSON.stringify(newHistory));
+  };
+
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
+
+    // Save to search history
+    saveSearchHistory(searchTerm);
+    setHistoryIndex(-1); // Reset history index
 
     setSearching(true);
     try {
@@ -327,7 +360,7 @@ export default function LawyerSearchPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Search Panel */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-4">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 {/* Search Bar */}
                 <div className="mb-6">
@@ -338,7 +371,39 @@ export default function LawyerSearchPage() {
                       placeholder="Search legal documents, cases, contracts..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleSearch();
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          if (
+                            searchTerm.trim() === "" &&
+                            searchHistory.length > 0
+                          ) {
+                            // If input is empty, navigate through history
+                            const newIndex =
+                              historyIndex < searchHistory.length - 1
+                                ? historyIndex + 1
+                                : historyIndex;
+                            setHistoryIndex(newIndex);
+                            setSearchTerm(searchHistory[newIndex] || "");
+                          }
+                        } else if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          if (historyIndex > 0) {
+                            // Navigate down in history
+                            const newIndex = historyIndex - 1;
+                            setHistoryIndex(newIndex);
+                            setSearchTerm(
+                              newIndex >= 0 ? searchHistory[newIndex] : ""
+                            );
+                          } else if (historyIndex === 0) {
+                            // Clear input when reaching the end
+                            setHistoryIndex(-1);
+                            setSearchTerm("");
+                          }
+                        }
+                      }}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-lg"
                     />
                     <button
@@ -499,7 +564,7 @@ export default function LawyerSearchPage() {
             </div>
 
             {/* Sidebar */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 hidden">
               <DocumentSearchSidebar
                 onSuggestionClick={(suggestion) => {
                   if (

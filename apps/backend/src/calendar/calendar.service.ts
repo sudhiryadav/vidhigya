@@ -143,16 +143,16 @@ export class CalendarService {
     return event;
   }
 
-  async findAll(userId: string, query: any = {}) {
-    const where: any = {
+  async findAll(userId: string, query: Record<string, unknown> = {}) {
+    const where: Record<string, unknown> = {
       createdById: userId,
     };
 
     // Add date range filters
     if (query.startDate && query.endDate) {
       where.AND = [
-        { startTime: { gte: new Date(query.startDate) } },
-        { endTime: { lte: new Date(query.endDate) } },
+        { startTime: { gte: new Date(query.startDate as string) } },
+        { endTime: { lte: new Date(query.endDate as string) } },
       ];
     }
 

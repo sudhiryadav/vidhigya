@@ -1,18 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateLogDto } from './dto/create-log.dto';
 
 @Injectable()
 export class LogsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createLogDto: any) {
-    const logData = {
-      level: createLogDto.level,
-      message: createLogDto.message,
-      userId: createLogDto.userId,
-      meta: createLogDto.meta || {},
+  async create(createLogDto: Record<string, unknown>) {
+    const logData: any = {
+      level: createLogDto.level as string,
+      message: createLogDto.message as string,
+      meta: (createLogDto.meta as Record<string, unknown>) || {},
     };
+
+    if (createLogDto.userId) {
+      logData.userId = createLogDto.userId as string;
+    }
 
     const log = await this.prisma.log.create({
       data: logData,

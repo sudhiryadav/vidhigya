@@ -29,9 +29,9 @@ export class ChatGateway {
     private readonly jwtService: JwtService,
   ) {}
 
-  async handleConnection(client: Socket) {
+  handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth.token;
+      const token = client.handshake.auth.token as string;
       if (!token) {
         client.disconnect();
         return;
@@ -43,20 +43,20 @@ export class ChatGateway {
         role: payload.role,
       };
 
-      client.data.user = user;
+      (client.data as { user: AuthenticatedUser }).user = user;
       client.join(`user_${user.sub}`);
 
       // Join role-based rooms
       if (user.role === 'LAWYER') {
-        client.join('lawyers');
+        void client.join('lawyers');
       } else if (user.role === 'CLIENT') {
-        client.join('clients');
+        void client.join('clients');
       }
 
       console.log(`User ${user.sub} connected`);
     } catch (error) {
       console.error('Authentication failed:', error);
-      client.disconnect();
+      void client.disconnect();
     }
   }
 
@@ -68,11 +68,11 @@ export class ChatGateway {
   }
 
   @SubscribeMessage('sendMessage')
-  async handleMessage(
-    @MessageBody() createMessageDto: any,
+  handleMessage(
+    @MessageBody() createMessageDto: { content: string; receiverId: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const user = client.data.user as AuthenticatedUser;
+    const user = (client.data as { user: AuthenticatedUser }).user;
     if (!user) {
       return { error: 'Unauthorized' };
     }
@@ -87,10 +87,12 @@ export class ChatGateway {
       };
 
       // Emit to sender
-      client.emit('messageSent', message);
+      void client.emit('messageSent', message);
 
       // Emit to receiver
-      this.server.to(`user_${message.receiverId}`).emit('newMessage', message);
+      void this.server
+        .to(`user_${message.receiverId}`)
+        .emit('newMessage', message);
 
       return message;
     } catch (error) {
@@ -119,11 +121,11 @@ export class ChatGateway {
   }
 
   @SubscribeMessage('getConversation')
-  async handleGetConversation(
+  handleGetConversation(
     @MessageBody() data: { receiverId: string; limit?: number },
     @ConnectedSocket() client: Socket,
   ) {
-    const user = client.data.user as AuthenticatedUser;
+    const user = (client.data as { user: AuthenticatedUser }).user;
     if (!user) {
       return { error: 'Unauthorized' };
     }
@@ -138,8 +140,8 @@ export class ChatGateway {
   }
 
   @SubscribeMessage('getUnreadCount')
-  async handleGetUnreadCount(@ConnectedSocket() client: Socket) {
-    const user = client.data.user as AuthenticatedUser;
+  handleGetUnreadCount(@ConnectedSocket() client: Socket) {
+    const user = (client.data as { user: AuthenticatedUser }).user;
     if (!user) {
       return { error: 'Unauthorized' };
     }
@@ -154,43 +156,43 @@ export class ChatGateway {
   }
 
   @SubscribeMessage('typing')
-  async handleTyping(
+  handleTyping(
     @MessageBody() data: { receiverId: string; isTyping: boolean },
     @ConnectedSocket() client: Socket,
   ) {
-    const user = client.data.user as AuthenticatedUser;
+    const user = (client.data as { user: AuthenticatedUser }).user;
     if (!user) {
       return;
     }
 
-    this.server.to(`user_${data.receiverId}`).emit('userTyping', {
+    void this.server.to(`user_${data.receiverId}`).emit('userTyping', {
       userId: user.sub,
       isTyping: data.isTyping,
     });
   }
 
   @SubscribeMessage('stopTyping')
-  async handleStopTyping(
+  handleStopTyping(
     @MessageBody() data: { receiverId: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const user = client.data.user as AuthenticatedUser;
+    const user = (client.data as { user: AuthenticatedUser }).user;
     if (!user) {
       return;
     }
 
-    this.server.to(`user_${data.receiverId}`).emit('userStoppedTyping', {
+    void this.server.to(`user_${data.receiverId}`).emit('userStoppedTyping', {
       userId: user.sub,
     });
   }
 
   // Admin methods
   @SubscribeMessage('getAllMessages')
-  async handleGetAllMessages(
+  handleGetAllMessages(
     @MessageBody() data: { limit?: number; offset?: number },
     @ConnectedSocket() client: Socket,
   ) {
-    const user = client.data.user as AuthenticatedUser;
+    const user = (client.data as { user: AuthenticatedUser }).user;
     if (!user || user.role !== 'ADMIN') {
       return { error: 'Unauthorized' };
     }
@@ -205,11 +207,11 @@ export class ChatGateway {
   }
 
   @SubscribeMessage('deleteMessage')
-  async handleDeleteMessage(
+  handleDeleteMessage(
     @MessageBody() data: { messageId: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const user = client.data.user as AuthenticatedUser;
+    const user = (client.data as { user: AuthenticatedUser }).user;
     if (!user || user.role !== 'ADMIN') {
       return { error: 'Unauthorized' };
     }

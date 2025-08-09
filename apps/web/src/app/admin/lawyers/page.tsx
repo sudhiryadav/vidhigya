@@ -6,7 +6,6 @@ import {
   FormFieldWrapper,
   ValidatedInput,
 } from "@/components/ui/ValidationMessage";
-import { useAuth } from "@/contexts/AuthContext";
 import { userProfileSchema } from "@/lib/validation";
 import { apiClient } from "@/services/api";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -42,7 +41,6 @@ interface LawyerFormData {
 }
 
 export default function LawyersManagement() {
-  const { user } = useAuth();
   const [lawyers, setLawyers] = useState<Lawyer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -53,13 +51,13 @@ export default function LawyersManagement() {
 
   const resolver = yupResolver(userProfileSchema) as unknown as Resolver<
     LawyerFormData,
-    any
+    unknown
   >;
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid, isDirty },
+    formState: { errors },
     reset,
     setValue,
     watch,
@@ -82,7 +80,7 @@ export default function LawyersManagement() {
     try {
       const data = await apiClient.getLawyers();
       setLawyers(data as Lawyer[]);
-    } catch (error) {
+    } catch {
       toast.error("Failed to fetch lawyers");
     } finally {
       setLoading(false);
@@ -100,7 +98,7 @@ export default function LawyersManagement() {
       setShowCreateModal(false);
       reset();
       fetchLawyers();
-    } catch (error) {
+    } catch {
       toast.error("Failed to create lawyer");
     }
   };
@@ -117,7 +115,7 @@ export default function LawyersManagement() {
       setSelectedLawyer(null);
       reset();
       fetchLawyers();
-    } catch (error) {
+    } catch {
       toast.error("Failed to update lawyer");
     }
   };
@@ -130,7 +128,7 @@ export default function LawyersManagement() {
       setShowDeleteConfirm(false);
       setSelectedLawyer(null);
       fetchLawyers();
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete lawyer");
     }
   };

@@ -56,8 +56,8 @@ export class BillingService {
     });
   }
 
-  async findAll(userId: string, query: any = {}) {
-    const where: any = {
+  async findAll(userId: string, query: Record<string, unknown> = {}) {
+    const where: Record<string, unknown> = {
       userId,
     };
 

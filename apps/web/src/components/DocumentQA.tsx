@@ -480,6 +480,11 @@ export default function DocumentQA({
   const [currentPage, setCurrentPage] = useState(1);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Search history for up arrow navigation
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [tempInput, setTempInput] = useState("");
+
   // Load chat history from localStorage and backend
   useEffect(() => {
     const loadChatHistory = async () => {
@@ -502,6 +507,19 @@ export default function DocumentQA({
     };
 
     loadChatHistory();
+  }, []);
+
+  // Load search history from localStorage
+  useEffect(() => {
+    const savedHistory = localStorage.getItem("documentQA_searchHistory");
+    if (savedHistory) {
+      try {
+        const history = JSON.parse(savedHistory);
+        setSearchHistory(history);
+      } catch (error) {
+        console.error("Error loading search history:", error);
+      }
+    }
   }, []);
 
   // Load more messages function
@@ -581,8 +599,26 @@ export default function DocumentQA({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Save search history to localStorage
+  const saveSearchHistory = (query: string) => {
+    if (!query.trim()) return;
+
+    const newHistory = [
+      query,
+      ...searchHistory.filter((item) => item !== query),
+    ].slice(0, 10);
+    setSearchHistory(newHistory);
+    localStorage.setItem(
+      "documentQA_searchHistory",
+      JSON.stringify(newHistory)
+    );
+  };
+
   const handleAskQuestion = async () => {
     if (!question.trim()) return;
+
+    // Save to search history
+    saveSearchHistory(question);
 
     // Add user message immediately
     const userMessage: QAMessage = {
@@ -599,6 +635,7 @@ export default function DocumentQA({
     const currentQuestion = question;
     setQuestion("");
     setContext("");
+    setHistoryIndex(-1); // Reset history index
 
     setIsLoading(true);
     setError(null);
@@ -641,6 +678,29 @@ export default function DocumentQA({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleAskQuestion();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (question.trim() === "" && searchHistory.length > 0) {
+        // If input is empty, navigate through history
+        const newIndex =
+          historyIndex < searchHistory.length - 1
+            ? historyIndex + 1
+            : historyIndex;
+        setHistoryIndex(newIndex);
+        setQuestion(searchHistory[newIndex] || "");
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        // Navigate down in history
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setQuestion(newIndex >= 0 ? searchHistory[newIndex] : "");
+      } else if (historyIndex === 0) {
+        // Clear input when reaching the end
+        setHistoryIndex(-1);
+        setQuestion("");
+      }
     }
   };
 
@@ -705,6 +765,9 @@ export default function DocumentQA({
     // Close the overlay
     setShowWordCloudOverlay(false);
 
+    // Save to search history
+    saveSearchHistory(suggestion);
+
     // Create the question message and add it immediately
     const questionMessage: QAMessage = {
       id: Date.now().toString(),
@@ -761,13 +824,12 @@ export default function DocumentQA({
     <>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
         {/* Main Chat Area */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-4 h-full">
           <div
             className={`flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}
-            style={{ height: "100vh" }}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            {/* Header - Fixed */}
+            <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-2">
                 <Bot className="w-6 h-6 text-blue-600" />
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -794,8 +856,8 @@ export default function DocumentQA({
               </div>
             </div>
 
-            {/* Context Input */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 hidden">
+            {/* Context Input - Hidden but keeping structure */}
+            <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700 hidden">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Context (Optional)
               </label>
@@ -808,10 +870,13 @@ export default function DocumentQA({
               />
             </div>
 
-            {/* Messages */}
+            {/* Messages - Scrollable Area */}
             <div
-              className="flex-1 overflow-y-auto p-4 space-y-4"
-              style={{ minHeight: 0 }}
+              className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-gray-400 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600 dark:[&::-webkit-scrollbar-thumb:hover]:bg-gray-500"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "rgba(156, 163, 175, 0.5) transparent",
+              }}
             >
               {/* Load Previous Messages Button */}
               {hasMoreMessages && (
@@ -834,7 +899,6 @@ export default function DocumentQA({
                   </button>
                 </div>
               )}
-
               {messages.length === 0 ? (
                 <div className="text-center text-gray-500 dark:text-gray-400 py-8">
                   <Bot className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -978,7 +1042,6 @@ export default function DocumentQA({
                   </div>
                 ))
               )}
-
               {isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
@@ -991,13 +1054,12 @@ export default function DocumentQA({
                   </div>
                 </div>
               )}
-
               {/* Scroll to bottom reference */}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+            {/* Input - Fixed Footer */}
+            <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex space-x-2">
                 <div className="flex-1 relative">
                   <textarea
@@ -1023,14 +1085,15 @@ export default function DocumentQA({
                 </div>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Press Enter to send, Shift+Enter for new line
+                Press Enter to send, Shift+Enter for new line, ↑/↓ to browse
+                history
               </p>
             </div>
           </div>
         </div>
 
         {/* Sidebar */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 hidden">
           <DocumentSearchSidebar
             onSuggestionClick={handleSuggestedQuestionClick}
             onUploadClick={() => window.open("/lawyer/documents", "_blank")}

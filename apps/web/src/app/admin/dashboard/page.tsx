@@ -98,7 +98,7 @@ export default function AdminDashboard() {
   }: {
     title: string;
     value: string | number;
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     color: string;
     change?: string;
     subtitle?: string;
@@ -140,7 +140,7 @@ export default function AdminDashboard() {
   }: {
     title: string;
     description: string;
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     onClick: () => void;
     color: string;
   }) => (
@@ -178,7 +178,7 @@ export default function AdminDashboard() {
             Welcome back, {user?.name}!
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Here's an overview of your legal practice management system.
+            Here&apos;s an overview of your legal practice management system.
           </p>
         </div>
 

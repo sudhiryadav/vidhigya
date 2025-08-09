@@ -258,7 +258,7 @@ export class AuthController {
           error &&
           typeof error === 'object' &&
           'name' in error &&
-          error.name === 'NoSuchKey'
+          (error as { name: string }).name === 'NoSuchKey'
         ) {
           console.log(`Avatar file not found in S3 for user ${userId}`);
           return res.status(404).json({
@@ -433,7 +433,7 @@ export class AuthController {
       try {
         await this.s3Service.deleteAvatar(currentUser.avatarS3Key);
         console.log(`Deleted avatar from S3: ${currentUser.avatarS3Key}`);
-      } catch (error) {
+      } catch {
         console.log(`Avatar not found in S3: ${currentUser.avatarS3Key}`);
         // Continue even if S3 deletion fails
       }
@@ -449,8 +449,8 @@ export class AuthController {
       );
 
       return { message: 'Avatar removed successfully' };
-    } catch (error) {
-      console.error('Error removing avatar:', error);
+    } catch {
+      console.error('Error removing avatar');
       throw new BadRequestException('Failed to remove avatar');
     }
   }

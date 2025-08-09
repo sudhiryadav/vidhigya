@@ -205,7 +205,15 @@ export class DocumentsController {
           );
         }
 
-        const result = await response.json();
+        const result = (await response.json()) as {
+          processing_status: string;
+          documents: Array<{
+            document_id: string;
+            status: string;
+            chunks?: number;
+            content?: string;
+          }>;
+        };
 
         // Check if processing is in background
         if (result.processing_status === 'BACKGROUND') {
@@ -440,65 +448,183 @@ export class DocumentsController {
         throw new BadRequestException('Vector database not available');
       }
 
-      // Use FastAPI service for document querying
-      console.log('Using FastAPI service for document querying');
+      // Check if Modal.com endpoint is configured
+      const modalEndpointUrl = this.configService.get('MODAL_ENDPOINT_URL');
+      const modalApiKey = this.configService.get('MODAL_API_KEY');
 
-      try {
-        const formData = new FormData();
-        formData.append('query', query);
-        formData.append('userId', req.user.sub);
-        formData.append('limit', limit.toString());
-        if (context) {
-          formData.append('context', context);
-        }
-
-        const response = await fetch(
-          `${this.configService.get('AI_SERVICE_URL')}/api/v1/admin/documents/query`,
-          {
-            method: 'POST',
-            headers: {
-              'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
-            },
-            body: formData,
-          },
-        );
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('FastAPI service error:', response.status, errorText);
-          throw new Error(
-            `FastAPI service error: ${response.status} - ${errorText}`,
-          );
-        }
-
-        const result = await response.json();
-
-        // Log the Q&A query
-        await this.documentsService.logDocumentQuery(
-          req.user.sub,
-          query,
-          result.answer,
-          undefined,
-          result.sources,
-          undefined,
-          undefined,
-          QueryType.GENERAL,
-        );
-
-        return {
-          ...result,
-          generated_at: new Date().toISOString(),
-        };
-      } catch (error) {
-        console.error('FastAPI service error:', error);
-        throw new BadRequestException('Failed to process document query');
+      if (!modalEndpointUrl || !modalApiKey) {
+        throw new BadRequestException('Modal.com endpoint not configured');
       }
+
+      console.log('Using direct Modal.com integration');
+      return await this.queryDocumentsDirect(
+        query,
+        req.user.sub,
+        limit,
+        context,
+      );
     } catch (error) {
       console.error('Error processing document query:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
       throw new BadRequestException('Failed to process query');
+    }
+  }
+
+  private async queryDocumentsDirect(
+    query: string,
+    userId: string,
+    limit: number,
+    _context?: string, // Unused parameter, prefixed with _
+  ): Promise<{
+    question: string;
+    answer: string;
+    sources: Array<{
+      document_id: string;
+      content: string;
+      score: number;
+      page_number?: number;
+      start_char?: number;
+      end_char?: number;
+    }>;
+    confidence: number;
+    generated_at: string;
+  }> {
+    try {
+      // First, search Qdrant for relevant documents
+      const searchResults = await this.qdrantService.searchDocuments(
+        query,
+        userId,
+        limit,
+      );
+
+      if (!searchResults || searchResults.length === 0) {
+        return {
+          question: query,
+          answer:
+            "I couldn't find any relevant documents to answer your question. Please make sure you have uploaded documents and try asking a different question.",
+          sources: [],
+          confidence: 0.0,
+          generated_at: new Date().toISOString(),
+        };
+      }
+
+      // Build context from search results
+      const contextText = searchResults
+        .map((result, index) => `Source ${index + 1}:\n${result.content}`)
+        .join('\n\n');
+
+      // Call Modal.com directly
+      const modalResponse = await fetch(
+        this.configService.get('MODAL_ENDPOINT_URL'),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': this.configService.get('MODAL_API_KEY'),
+            'X-Collection': this.configService.get('QDRANT_COLLECTION'),
+          },
+          body: JSON.stringify({
+            query,
+            user_id: userId,
+            context: contextText,
+            limit,
+            collection_name: this.configService.get('QDRANT_COLLECTION'),
+          }),
+        },
+      );
+
+      if (!modalResponse.ok) {
+        throw new Error(`Modal.com error: ${modalResponse.status}`);
+      }
+
+      // Modal.com returns streaming response, so we need to handle it differently
+      const responseText = await modalResponse.text();
+
+      console.log(
+        'Modal.com response type:',
+        modalResponse.headers.get('content-type'),
+      );
+      console.log(
+        'Modal.com response preview:',
+        responseText.substring(0, 200),
+      );
+
+      // Parse the streaming response to extract the final answer
+      let result: {
+        answer: string;
+        sources: Array<{
+          document_id: string;
+          content: string;
+          score: number;
+          page_number?: number;
+          start_char?: number;
+          end_char?: number;
+        }>;
+        confidence: number;
+      };
+
+      try {
+        // Try to parse as regular JSON first
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        // If that fails, try to parse streaming response
+        const lines = responseText.split('\n');
+        let finalResponse = '';
+        let sources: any[] = [];
+        let confidence = 0.8;
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.substring(6));
+              if (data.response) {
+                finalResponse += data.response;
+              }
+              if (data.sources) {
+                sources = data.sources;
+              }
+              if (data.confidence) {
+                confidence = data.confidence;
+              }
+            } catch (e) {
+              // Skip invalid JSON lines
+            }
+          }
+        }
+
+        result = {
+          answer:
+            finalResponse ||
+            "I couldn't generate a response. Please try again.",
+          sources: sources,
+          confidence: confidence,
+        };
+      }
+
+      // Log the Q&A query
+      await this.documentsService.logDocumentQuery(
+        userId,
+        query,
+        result.answer,
+        undefined,
+        searchResults,
+        undefined,
+        undefined,
+        QueryType.GENERAL,
+      );
+
+      return {
+        question: query,
+        answer: result.answer,
+        sources: result.sources,
+        confidence: result.confidence,
+        generated_at: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('Direct Modal.com error:', error);
+      throw new BadRequestException('Failed to process document query');
     }
   }
 

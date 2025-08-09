@@ -1,7 +1,7 @@
 "use client";
 
 import CustomSelect from "@/components/ui/select";
-import { useAuth } from "@/contexts/AuthContext";
+
 import { apiClient } from "@/services/api";
 import { Bell, Globe, Save, Settings, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -35,7 +35,6 @@ interface AdminSettings {
 }
 
 export default function AdminSettings() {
-  const { user } = useAuth();
   const [settings, setSettings] = useState<AdminSettings>({
     system: {
       maintenanceMode: false,
@@ -74,35 +73,39 @@ export default function AdminSettings() {
     try {
       setIsLoading(true);
       // Load admin settings from database
-      const dbSettings = (await apiClient.getUserSettings()) as any;
+      const dbSettings = (await apiClient.getUserSettings()) as Record<
+        string,
+        unknown
+      >;
       if (dbSettings) {
         // Map database settings to admin settings structure
         // For now, we'll store admin settings as JSON in a custom field
         // This can be enhanced later with a dedicated admin settings table
         setSettings({
           system: {
-            maintenanceMode: dbSettings.maintenanceMode ?? false,
-            debugMode: dbSettings.debugMode ?? false,
-            autoBackup: dbSettings.autoBackup ?? true,
-            dataRetention: dbSettings.dataRetention ?? "90",
+            maintenanceMode: (dbSettings.maintenanceMode as boolean) ?? false,
+            debugMode: (dbSettings.debugMode as boolean) ?? false,
+            autoBackup: (dbSettings.autoBackup as boolean) ?? true,
+            dataRetention: (dbSettings.dataRetention as string) ?? "90",
           },
           security: {
-            sessionTimeout: dbSettings.sessionTimeout ?? "30",
-            passwordPolicy: dbSettings.passwordPolicy ?? "strong",
-            ipWhitelist: dbSettings.ipWhitelist ?? "",
-            auditLogging: dbSettings.auditLogging ?? true,
+            sessionTimeout: (dbSettings.sessionTimeout as string) ?? "30",
+            passwordPolicy: (dbSettings.passwordPolicy as string) ?? "strong",
+            ipWhitelist: (dbSettings.ipWhitelist as string) ?? "",
+            auditLogging: (dbSettings.auditLogging as boolean) ?? true,
           },
           notifications: {
-            systemAlerts: dbSettings.systemAlerts ?? true,
-            userActivity: dbSettings.userActivity ?? false,
-            securityEvents: dbSettings.securityEvents ?? true,
-            backupNotifications: dbSettings.backupNotifications ?? true,
+            systemAlerts: (dbSettings.systemAlerts as boolean) ?? true,
+            userActivity: (dbSettings.userActivity as boolean) ?? false,
+            securityEvents: (dbSettings.securityEvents as boolean) ?? true,
+            backupNotifications:
+              (dbSettings.backupNotifications as boolean) ?? true,
           },
           integrations: {
-            emailProvider: dbSettings.emailProvider ?? "smtp",
-            smsProvider: dbSettings.smsProvider ?? "twilio",
-            storageProvider: dbSettings.storageProvider ?? "local",
-            analyticsEnabled: dbSettings.analyticsEnabled ?? true,
+            emailProvider: (dbSettings.emailProvider as string) ?? "smtp",
+            smsProvider: (dbSettings.smsProvider as string) ?? "twilio",
+            storageProvider: (dbSettings.storageProvider as string) ?? "local",
+            analyticsEnabled: (dbSettings.analyticsEnabled as boolean) ?? true,
           },
         });
       }

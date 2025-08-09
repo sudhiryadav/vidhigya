@@ -1,3 +1,4 @@
+import { apiClient } from "@/services/api";
 import { useEffect, useState } from "react";
 
 interface ProcessingStatus {
@@ -14,13 +15,11 @@ interface DocumentProgressTrackerProps {
   filename: string;
   onComplete?: () => void;
   onError?: (error: string) => void;
-  apiClient: any;
+  apiClient: typeof apiClient;
 }
 
 export default function DocumentProgressTracker({
-  documentId,
   aiDocumentId,
-  filename,
   onComplete,
   onError,
   apiClient,
@@ -32,7 +31,7 @@ export default function DocumentProgressTracker({
     const pollStatus = async () => {
       try {
         const response = await apiClient.getDocumentStatus(aiDocumentId);
-        const currentStatus = response.status;
+        const currentStatus = (response as { status: ProcessingStatus }).status;
 
         setStatus(currentStatus);
 

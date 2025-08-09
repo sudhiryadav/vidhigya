@@ -193,7 +193,7 @@ export default function Dashboard() {
   }: {
     title: string;
     value: number;
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     color: string;
     change?: string;
     onClick?: () => void;
@@ -241,7 +241,7 @@ export default function Dashboard() {
   }: {
     title: string;
     description: string;
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     onClick: () => void;
     color?: string;
   }) => {
@@ -372,7 +372,7 @@ export default function Dashboard() {
             Welcome back, {user?.name}!
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Here's what's happening with your practice today.
+            Here&apos;s what&apos;s happening with your practice today.
           </p>
         </div>
 

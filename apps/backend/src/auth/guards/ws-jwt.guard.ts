@@ -3,20 +3,14 @@ import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 
-interface AuthenticatedUser {
-  sub: string;
-  role: string;
-  [key: string]: any;
-}
-
 @Injectable()
 export class WsJwtGuard implements CanActivate {
   constructor(private jwtService: JwtService) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     try {
       const client: Socket = context.switchToWs().getClient();
-      const token = client.handshake.auth.token;
+      const token = client.handshake.auth.token as string;
 
       if (!token) {
         throw new WsException('Token not provided');
@@ -28,9 +22,9 @@ export class WsJwtGuard implements CanActivate {
         role: payload.role,
       };
 
-      client.data.user = user;
+      (client.data as { user: { sub: string; role: string } }).user = user;
       return true;
-    } catch (err) {
+    } catch {
       throw new WsException('Invalid token');
     }
   }

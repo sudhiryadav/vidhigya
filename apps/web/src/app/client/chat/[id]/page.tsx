@@ -273,7 +273,7 @@ export default function ClientChatDetailPage() {
           Chat not found
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mb-4">
-          The chat you're looking for doesn't exist.
+          The chat you&apos;re looking for doesn&apos;t exist.
         </p>
         <Link
           href="/client/chat"
@@ -358,7 +358,7 @@ export default function ClientChatDetailPage() {
           <div className="flex justify-start">
             <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-lg">
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {getLawyerName()} is typing...
+                {getLawyerName()} is typing&hellip;
               </p>
             </div>
           </div>

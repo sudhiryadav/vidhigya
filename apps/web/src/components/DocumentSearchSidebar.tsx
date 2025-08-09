@@ -1,16 +1,7 @@
 "use client";
 
 import { apiClient } from "@/services/api";
-import {
-  Clock,
-  FileText,
-  Lightbulb,
-  Loader2,
-  Plus,
-  Search,
-  TrendingUp,
-  Upload,
-} from "lucide-react";
+import { Clock, FileText, Loader2, Plus, Search, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import DocumentUploadModal from "./DocumentUploadModal";
 
@@ -81,18 +72,18 @@ export default function DocumentSearchSidebar({
       icon: Upload,
       action: "Upload new documents to your library",
     },
-    {
-      title: "View Analytics",
-      description: "Usage insights",
-      icon: TrendingUp,
-      action: "View document usage analytics",
-    },
-    {
-      title: "Quick Tips",
-      description: "Helpful suggestions",
-      icon: Lightbulb,
-      action: "Get tips for better document management",
-    },
+    // {
+    //   title: "View Analytics",
+    //   description: "Usage insights",
+    //   icon: TrendingUp,
+    //   action: "View document usage analytics",
+    // },
+    // {
+    //   title: "Quick Tips",
+    //   description: "Helpful suggestions",
+    //   icon: Lightbulb,
+    //   action: "Get tips for better document management",
+    // },
   ];
 
   const suggestedQuestions = [
@@ -276,7 +267,7 @@ export default function DocumentSearchSidebar({
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hidden">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Quick Actions
         </h3>
@@ -320,7 +311,7 @@ export default function DocumentSearchSidebar({
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hidden">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Recent Activity

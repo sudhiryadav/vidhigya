@@ -33,6 +33,7 @@ interface CourtQuery {
   state?: string;
   city?: string;
   isActive?: boolean;
+  [key: string]: unknown;
 }
 
 @Controller('courts')

@@ -14,4 +14,6 @@ export class CreateLogDto {
   @IsOptional()
   @IsString()
   userId?: string;
+
+  [key: string]: unknown;
 }

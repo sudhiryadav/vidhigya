@@ -85,13 +85,11 @@ export default function CasesPage() {
     nextHearingDate: "",
   });
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editFormData, setEditFormData] = useState<any>({
+  const [editFormData, setEditFormData] = useState<Partial<Case>>({
     title: "",
     description: "",
-    clientId: "",
     category: "CIVIL",
     priority: "MEDIUM",
-    courtId: "",
     judge: "",
     opposingParty: "",
     opposingLawyer: "",
@@ -171,7 +169,7 @@ export default function CasesPage() {
       // For now, we'll extract clients from cases since we don't have a dedicated clients endpoint
       const data = await apiClient.getCases();
       const clientMap = new Map();
-      (data as any[]).forEach((caseItem) => {
+      (data as Case[]).forEach((caseItem) => {
         if (!clientMap.has(caseItem.client.id)) {
           clientMap.set(caseItem.client.id, caseItem.client);
         }
@@ -191,8 +189,8 @@ export default function CasesPage() {
         title: createFormData.title,
         description: createFormData.description,
         clientId: createFormData.clientId,
-        category: createFormData.category as any,
-        priority: createFormData.priority as any,
+        category: createFormData.category as string,
+        priority: createFormData.priority as string,
         courtId: createFormData.courtId || undefined,
         judge: createFormData.judge || undefined,
         opposingParty: createFormData.opposingParty || undefined,
@@ -229,7 +227,7 @@ export default function CasesPage() {
       status: caseItem.status,
       priority: caseItem.priority,
       category: caseItem.category,
-      courtId: caseItem.court?.id || "",
+
       judge: caseItem.judge || "",
       opposingParty: caseItem.opposingParty || "",
       opposingLawyer: caseItem.opposingLawyer || "",
@@ -252,7 +250,7 @@ export default function CasesPage() {
         status: editFormData.status,
         priority: editFormData.priority,
         category: editFormData.category,
-        courtId: editFormData.courtId || undefined,
+
         judge: editFormData.judge || undefined,
         opposingParty: editFormData.opposingParty || undefined,
         opposingLawyer: editFormData.opposingLawyer || undefined,
@@ -882,20 +880,7 @@ export default function CasesPage() {
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Court
-              </label>
-              <CourtSelector
-                value={editFormData.courtId}
-                onChange={(courtId: string) =>
-                  setEditFormData({
-                    ...editFormData,
-                    courtId: courtId,
-                  })
-                }
-              />
-            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Judge

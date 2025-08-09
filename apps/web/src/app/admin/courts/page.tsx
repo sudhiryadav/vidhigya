@@ -119,7 +119,7 @@ export default function CourtsManagementPage() {
       if (searchTerm) {
         response = await apiClient.searchCourts(searchTerm);
       } else {
-        const filters: any = {};
+        const filters: Record<string, string> = {};
         if (selectedType) filters.type = selectedType;
         if (selectedState) filters.state = selectedState;
         response = await apiClient.getCourts(filters);
@@ -450,14 +450,13 @@ function CourtModal({
 
   const resolver = yupResolver(courtFormSchema) as unknown as Resolver<
     CourtFormData,
-    any
+    unknown
   >;
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid, isDirty },
-    reset,
+    formState: { errors },
     setValue,
     watch,
   } = useForm<CourtFormData>({

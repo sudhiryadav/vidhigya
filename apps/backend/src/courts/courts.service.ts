@@ -41,8 +41,8 @@ export class CourtsService {
     });
   }
 
-  async findAll(query: any = {}) {
-    const where: any = {};
+  async findAll(query: Record<string, unknown> = {}) {
+    const where: Record<string, unknown> = {};
 
     if (query.type) {
       where.type = query.type;

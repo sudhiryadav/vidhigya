@@ -275,7 +275,7 @@ export default function ClientDashboard() {
           Client Dashboard
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Welcome back! Here's an overview of your legal matters.
+          Welcome back! Here&apos;s an overview of your legal matters.
         </p>
       </div>
 
