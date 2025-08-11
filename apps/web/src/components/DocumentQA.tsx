@@ -91,7 +91,7 @@ function CuratedSuggestions({
           <button
             key={`suggestion-${index}`}
             onClick={() => onSuggestionClick(suggestion)}
-            className="text-left p-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-white/20 rounded-lg hover:bg-white dark:hover:bg-gray-700 transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+            className="text-left p-3 bg-white/90 dark:bg-card/90 backdrop-blur-sm border border-white/20 rounded-lg hover:bg-white dark:hover:bg-muted transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
           >
             <div className="flex items-start space-x-2">
               <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -165,7 +165,7 @@ function WordCloudOverlay({
                 key={index}
                 onClick={() => onSuggestionClick(suggestion)}
                 disabled={isLoading}
-                className="text-left p-4 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="text-left p-4 text-sm bg-muted border border-border rounded-lg hover:bg-muted/80 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 <div className="flex items-start space-x-3">
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -404,7 +404,7 @@ function DocumentViewer({
                   </div>
                 )}
 
-                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="mt-4 p-3 bg-muted rounded-lg">
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     <strong>Document Info:</strong>{" "}
                     {documentContent.length.toLocaleString()} characters total
@@ -418,7 +418,7 @@ function DocumentViewer({
             ) : (
               // Fallback: show first 500 characters if no highlighting data
               <div>
-                <div className="bg-gray-50 dark:bg-gray-800 border-l-4 border-gray-400 p-4 mb-4">
+                <div className="bg-muted border-l-4 border-border p-4 mb-4">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     📄 Document Preview
                   </p>
@@ -437,7 +437,7 @@ function DocumentViewer({
                   )}
                 </div>
 
-                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="mt-4 p-3 bg-muted rounded-lg">
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     <strong>Document Length:</strong>{" "}
                     {documentContent.length.toLocaleString()} characters
@@ -853,10 +853,10 @@ export default function DocumentQA({
         {/* Main Chat Area */}
         <div className="lg:col-span-4 h-full">
           <div
-            className={`flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}
+            className={`flex flex-col h-full bg-card rounded-lg shadow-sm border border-border ${className}`}
           >
             {/* Header - Fixed */}
-            <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center space-x-2">
                 <Bot className="w-6 h-6 text-blue-600" />
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -890,7 +890,7 @@ export default function DocumentQA({
             </div>
 
             {/* Context Input - Hidden but keeping structure */}
-            <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700 hidden">
+            <div className="flex-shrink-0 p-4 border-b border-border hidden">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Context (Optional)
               </label>
@@ -898,14 +898,14 @@ export default function DocumentQA({
                 value={context}
                 onChange={(e) => setContext(e.target.value)}
                 placeholder="Provide additional context for your questions (e.g., case details, specific requirements)..."
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+                className="w-full p-3 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground resize-none"
                 rows={2}
               />
             </div>
 
             {/* Messages - Scrollable Area */}
             <div
-              className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-gray-400 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600 dark:[&::-webkit-scrollbar-thumb:hover]:bg-gray-500"
+              className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-muted/80"
               style={{
                 scrollbarWidth: "thin",
                 scrollbarColor: "rgba(156, 163, 175, 0.5) transparent",
@@ -917,7 +917,7 @@ export default function DocumentQA({
                   <button
                     onClick={() => loadMoreMessages()}
                     disabled={isLoadingHistory}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center space-x-2 px-4 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isLoadingHistory ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -949,7 +949,7 @@ export default function DocumentQA({
                       className={`max-w-[80%] rounded-lg p-3 ${
                         message.type === "question"
                           ? "bg-blue-600 text-white"
-                          : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
+                          : "bg-muted text-foreground"
                       }`}
                     >
                       <div className="flex items-start space-x-2">
@@ -979,7 +979,7 @@ export default function DocumentQA({
                                         onClick={() =>
                                           openDocumentViewer(source)
                                         }
-                                        className="w-full text-left text-xs bg-gray-200 dark:bg-gray-600 rounded p-2 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors cursor-pointer"
+                                        className="w-full text-left text-xs bg-muted rounded p-2 hover:bg-muted/80 transition-colors cursor-pointer"
                                       >
                                         <div className="flex items-center justify-between">
                                           <div className="flex-1">
@@ -1077,7 +1077,7 @@ export default function DocumentQA({
               )}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
+                  <div className="bg-muted rounded-lg p-3">
                     <div className="flex items-center space-x-2">
                       <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                       <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -1092,7 +1092,7 @@ export default function DocumentQA({
             </div>
 
             {/* Input - Fixed Footer */}
-            <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex-shrink-0 p-4 border-t border-border">
               <div className="flex space-x-2">
                 <div className="flex-1 relative">
                   <textarea
@@ -1100,7 +1100,7 @@ export default function DocumentQA({
                     onChange={(e) => setQuestion(e.target.value)}
                     onKeyDown={handleKeyPress}
                     placeholder="Ask a question about your documents..."
-                    className="w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+                    className="w-full p-3 pr-12 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground resize-none"
                     rows={1}
                     disabled={isLoading}
                   />
@@ -1129,7 +1129,7 @@ export default function DocumentQA({
         <div className="lg:col-span-1 hidden">
           <DocumentSearchSidebar
             onSuggestionClick={handleSuggestedQuestionClick}
-            onUploadClick={() => window.open("/lawyer/documents", "_blank")}
+            onUploadClick={() => window.open("/documents", "_blank")}
             onDraftClick={onDraftClick}
             onNewDraftClick={onNewDraftClick}
             drafts={drafts}
@@ -1207,7 +1207,7 @@ export default function DocumentQA({
                 {/* Query Types Breakdown */}
                 {analytics.queriesByType &&
                   analytics.queriesByType.length > 0 && (
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
+                    <div className="bg-card p-4 rounded-lg border">
                       <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                         Query Types
                       </h4>
@@ -1233,7 +1233,7 @@ export default function DocumentQA({
 
                 {/* Recent Activity */}
                 {chatHistory && chatHistory.length > 0 && (
-                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
+                  <div className="bg-card p-4 rounded-lg border">
                     <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                       Recent Queries
                     </h4>

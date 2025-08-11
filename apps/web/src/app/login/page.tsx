@@ -101,7 +101,7 @@ export default function LoginPage() {
           </div>
 
           {/* Login Form */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+          <div className="bg-card border border-border rounded-xl shadow-lg dark:shadow-xl p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
@@ -115,13 +115,13 @@ export default function LoginPage() {
               <div>
                 <label
                   htmlFor="email"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  className="block text-sm font-medium text-foreground mb-2"
                 >
                   Email address
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
+                    <Mail className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <input
                     id="email"
@@ -131,7 +131,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                    className="block w-full pl-10 pr-3 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground placeholder-muted-foreground"
                     placeholder="Enter your email"
                   />
                 </div>
@@ -141,13 +141,13 @@ export default function LoginPage() {
               <div>
                 <label
                   htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  className="block text-sm font-medium text-foreground mb-2"
                 >
                   Password
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
+                    <Lock className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <input
                     id="password"
@@ -157,7 +157,7 @@ export default function LoginPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                    className="block w-full pl-10 pr-12 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground placeholder-muted-foreground"
                     placeholder="Enter your password"
                   />
                   <button
@@ -166,9 +166,9 @@ export default function LoginPage() {
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+                      <EyeOff className="h-5 w-5 text-muted-foreground hover:text-foreground" />
                     ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+                      <Eye className="h-5 w-5 text-muted-foreground hover:text-foreground" />
                     )}
                   </button>
                 </div>
@@ -181,11 +181,11 @@ export default function LoginPage() {
                     id="remember-me"
                     name="remember-me"
                     type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-border rounded bg-background"
                   />
                   <label
                     htmlFor="remember-me"
-                    className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                    className="ml-2 block text-sm text-foreground"
                   >
                     Remember me
                   </label>
@@ -218,8 +218,8 @@ export default function LoginPage() {
             </form>
 
             {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+            <div className="mt-6 p-4 bg-muted rounded-lg">
+              <h4 className="text-sm font-medium text-foreground mb-3">
                 Demo Credentials (Click to login):
               </h4>
               <div className="space-y-2">
@@ -236,7 +236,7 @@ export default function LoginPage() {
                       <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
                         Super Admin
                       </span>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <p className="text-xs text-muted-foreground">
                         admin@vidhigya.com
                       </p>
                     </div>
@@ -244,7 +244,7 @@ export default function LoginPage() {
                       {demoLoading === "admin@vidhigya.com" && (
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
                       )}
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-xs text-muted-foreground">
                         Full access
                       </span>
                     </div>
@@ -264,7 +264,7 @@ export default function LoginPage() {
                       <span className="text-xs font-medium text-green-600 dark:text-green-400">
                         Lawyer
                       </span>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <p className="text-xs text-muted-foreground">
                         lawyer@vidhigya.com
                       </p>
                     </div>
@@ -272,7 +272,7 @@ export default function LoginPage() {
                       {demoLoading === "lawyer@vidhigya.com" && (
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
                       )}
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-xs text-muted-foreground">
                         Case management
                       </span>
                     </div>
@@ -292,7 +292,7 @@ export default function LoginPage() {
                       <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
                         Client
                       </span>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <p className="text-xs text-muted-foreground">
                         client@vidhigya.com
                       </p>
                     </div>
@@ -300,7 +300,7 @@ export default function LoginPage() {
                       {demoLoading === "client@vidhigya.com" && (
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-600"></div>
                       )}
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-xs text-muted-foreground">
                         Client portal
                       </span>
                     </div>

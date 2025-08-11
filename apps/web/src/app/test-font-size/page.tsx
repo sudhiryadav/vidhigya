@@ -8,7 +8,7 @@ export default function TestFontSizePage() {
   const { fontSize } = useFontSize();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
           Font Size Test Page
@@ -16,7 +16,7 @@ export default function TestFontSizePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Font Size Selector */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
               Font Size Settings
             </h2>
@@ -24,7 +24,7 @@ export default function TestFontSizePage() {
           </div>
 
           {/* Font Size Preview */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
               Current Font Size:{" "}
               <span className="text-blue-600 dark:text-blue-400">
@@ -90,7 +90,7 @@ export default function TestFontSizePage() {
                   <input
                     type="text"
                     placeholder="Input field text"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
                   />
                   <CustomSelect
                     value={{ value: "option1", label: "Select option text" }}
@@ -117,7 +117,7 @@ export default function TestFontSizePage() {
                   <div className="inline-block px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">
                     Badge text
                   </div>
-                  <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                  <div className="p-3 bg-muted rounded-lg">
                     <p className="text-sm text-gray-700 dark:text-gray-300">
                       Card content text. Excepteur sint occaecat cupidatat non
                       proident, sunt in culpa qui officia deserunt mollit anim
@@ -130,7 +130,7 @@ export default function TestFontSizePage() {
           </div>
         </div>
 
-        <div className="mt-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="mt-8 bg-card p-6 rounded-lg shadow-sm border border-border">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
             How It Works
           </h2>

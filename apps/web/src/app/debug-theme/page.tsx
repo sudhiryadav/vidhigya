@@ -81,7 +81,7 @@ export default function DebugThemePage() {
               </button>
               <button
                 onClick={() => testThemeChange("dark")}
-                className="w-full px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-900 transition-colors"
+                className="w-full px-4 py-2 bg-muted text-foreground rounded hover:bg-muted/80 transition-colors"
               >
                 Set Dark Theme
               </button>
@@ -102,7 +102,7 @@ export default function DebugThemePage() {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded">
+            <div className="p-4 bg-muted rounded">
               <p className="text-gray-800 dark:text-gray-200 font-medium">
                 Background Test
               </p>
@@ -139,23 +139,21 @@ export default function DebugThemePage() {
           </h2>
 
           <div className="space-y-4">
-            <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded">
+            <div className="p-4 bg-card border border-border rounded">
               <p className="text-gray-900 dark:text-white font-medium">
                 Standard Card
               </p>
               <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Using bg-white dark:bg-gray-800 and text-gray-900
-                dark:text-white
+                Using bg-card and text-foreground
               </p>
             </div>
 
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded">
+            <div className="p-4 bg-muted border border-border rounded">
               <p className="text-gray-800 dark:text-gray-200 font-medium">
                 Alternative Card
               </p>
               <p className="text-gray-500 dark:text-gray-400 text-sm">
-                Using bg-gray-50 dark:bg-gray-900 and text-gray-800
-                dark:text-gray-200
+                Using bg-muted and text-muted-foreground
               </p>
             </div>
           </div>

@@ -31,7 +31,7 @@ export default function Overlay({
 
   return (
     <div className={containerClasses}>
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 flex flex-col items-center">
+      <div className="bg-card rounded-lg shadow-xl p-8 flex flex-col items-center">
         {showSpinner && (
           <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
         )}

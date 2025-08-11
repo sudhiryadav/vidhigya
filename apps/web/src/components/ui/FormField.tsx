@@ -50,8 +50,8 @@ export const InputField: React.FC<InputFieldProps> = ({
   className = "",
   rows,
 }) => {
-  const inputClassName = `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
-    error ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+  const inputClassName = `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+    error ? "border-red-500" : "border-border"
   } ${className}`;
 
   return (
@@ -105,7 +105,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
             const option = options.find((opt) => opt.value === e.target.value);
             onChange(option || null);
           }}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+          className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
         >
           <option value="">{placeholder || "Select an option"}</option>
           {options.map((option) => (

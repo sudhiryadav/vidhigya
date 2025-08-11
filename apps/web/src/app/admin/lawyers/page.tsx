@@ -157,7 +157,7 @@ export default function LawyersManagement() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -168,7 +168,7 @@ export default function LawyersManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -189,7 +189,7 @@ export default function LawyersManagement() {
               placeholder="Search lawyers..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
           <button
@@ -202,10 +202,10 @@ export default function LawyersManagement() {
         </div>
 
         {/* Lawyers Table */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
+              <thead className="bg-muted">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Lawyer
@@ -224,12 +224,9 @@ export default function LawyersManagement() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="bg-card divide-y divide-border">
                 {filteredLawyers.map((lawyer) => (
-                  <tr
-                    key={lawyer.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700"
-                  >
+                  <tr key={lawyer.id} className="hover:bg-muted">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
@@ -300,7 +297,7 @@ export default function LawyersManagement() {
         {/* Create Lawyer Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="bg-card rounded-lg p-6 w-full max-w-md mx-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Add New Lawyer
               </h3>
@@ -384,7 +381,7 @@ export default function LawyersManagement() {
         {/* Edit Lawyer Modal */}
         {showEditModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="bg-card rounded-lg p-6 w-full max-w-md mx-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Edit Lawyer
               </h3>
@@ -399,10 +396,8 @@ export default function LawyersManagement() {
                   <input
                     type="text"
                     {...register("name")}
-                    className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.name
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                    className={`w-full px-3 py-2 border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.name ? "border-red-500" : "border-border"
                     }`}
                     placeholder="Enter lawyer name"
                   />
@@ -419,10 +414,8 @@ export default function LawyersManagement() {
                   <input
                     type="email"
                     {...register("email")}
-                    className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.email
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                    className={`w-full px-3 py-2 border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.email ? "border-red-500" : "border-border"
                     }`}
                     placeholder="Enter email address"
                   />
@@ -439,10 +432,8 @@ export default function LawyersManagement() {
                   <input
                     type="tel"
                     {...register("phone")}
-                    className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.phone
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                    className={`w-full px-3 py-2 border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.phone ? "border-red-500" : "border-border"
                     }`}
                     placeholder="Enter phone number"
                   />

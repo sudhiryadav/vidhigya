@@ -248,11 +248,9 @@ export default function CourtSelector({
             placeholder={placeholder}
             disabled={disabled}
             required={required}
-            className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
-              error
-                ? "border-red-500 focus:ring-red-500"
-                : "border-gray-300 dark:border-gray-600"
-            } ${disabled ? "bg-gray-100 dark:bg-gray-800 cursor-not-allowed" : ""}`}
+            className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+              error ? "border-red-500 focus:ring-red-500" : "border-border"
+            } ${disabled ? "bg-muted cursor-not-allowed" : ""}`}
           />
 
           <div className="absolute inset-y-0 right-0 flex items-center pr-2">
@@ -273,7 +271,7 @@ export default function CourtSelector({
         {isOpen && (courts.length > 0 || loading) && (
           <div
             ref={dropdownRef}
-            className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+            className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto"
           >
             {loading ? (
               <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
@@ -286,7 +284,7 @@ export default function CourtSelector({
                     <button
                       type="button"
                       onClick={() => handleCourtSelect(court)}
-                      className={`w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                      className={`w-full px-3 py-2 text-left hover:bg-muted ${
                         index === highlightedIndex
                           ? "bg-blue-50 dark:bg-blue-900"
                           : ""

@@ -16,10 +16,8 @@ export default function HomePage() {
         // Redirect based on role
         if (user.role === "SUPER_ADMIN" || user.role === "ADMIN") {
           router.push("/admin/dashboard");
-        } else if (user.role === "CLIENT") {
-          router.push("/client/dashboard");
         } else {
-          router.push("/lawyer/dashboard");
+          router.push("/dashboard");
         }
       }
     }

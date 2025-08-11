@@ -663,7 +663,7 @@ export class CasesService {
         },
         take: 5,
       }),
-      this.prisma.billingRecord.findMany({
+      this.prisma.billingRecord.count({
         where: {
           case: {
             assignedLawyerId: lawyerId,
@@ -673,22 +673,6 @@ export class CasesService {
             lt: new Date(),
           },
         },
-        select: {
-          id: true,
-          amount: true,
-          description: true,
-          dueDate: true,
-          case: {
-            select: {
-              caseNumber: true,
-              title: true,
-            },
-          },
-        },
-        orderBy: {
-          dueDate: 'asc',
-        },
-        take: 5,
       }),
       // Cases from last month
       this.prisma.legalCase.count({
@@ -791,5 +775,36 @@ export class CasesService {
     ];
 
     return activities.slice(0, limit);
+  }
+
+  // Get Overdue Bills Details
+  async getOverdueBills(lawyerId: string) {
+    return this.prisma.billingRecord.findMany({
+      where: {
+        case: {
+          assignedLawyerId: lawyerId,
+        },
+        status: 'PENDING',
+        dueDate: {
+          lt: new Date(),
+        },
+      },
+      select: {
+        id: true,
+        amount: true,
+        description: true,
+        dueDate: true,
+        case: {
+          select: {
+            caseNumber: true,
+            title: true,
+          },
+        },
+      },
+      orderBy: {
+        dueDate: 'asc',
+      },
+      take: 10,
+    });
   }
 }

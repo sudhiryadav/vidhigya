@@ -209,7 +209,7 @@ export default function CourtsManagementPage() {
 
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted"
           >
             <Filter className="h-4 w-4" />
             Filters
@@ -259,7 +259,7 @@ export default function CourtsManagementPage() {
 
             <button
               onClick={handleSearch}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80"
             >
               Apply Filters
             </button>
@@ -268,7 +268,7 @@ export default function CourtsManagementPage() {
       </div>
 
       {/* Courts List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-card rounded-lg shadow overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -289,7 +289,7 @@ export default function CourtsManagementPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Court
@@ -313,7 +313,7 @@ export default function CourtsManagementPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredCourts.map((court) => (
-                  <tr key={court.id} className="hover:bg-gray-50">
+                  <tr key={court.id} className="hover:bg-muted">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900">
@@ -735,7 +735,7 @@ function CourtModal({
             <button
               type="button"
               onClick={onClose}
-              className="mr-3 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              className="mr-3 px-4 py-2 bg-muted text-muted-foreground rounded hover:bg-muted/80"
               disabled={loading}
             >
               Cancel
@@ -770,7 +770,7 @@ function DeleteModal({
 }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+      <div className="bg-card rounded-lg p-6 w-full max-w-md">
         <h2 className="text-lg font-semibold mb-4">Delete Court</h2>
         <p className="mb-6">
           Are you sure you want to delete{" "}
@@ -779,7 +779,7 @@ function DeleteModal({
         <div className="flex justify-end">
           <button
             onClick={onClose}
-            className="mr-3 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+            className="mr-3 px-4 py-2 bg-muted text-muted-foreground rounded hover:bg-muted/80"
           >
             Cancel
           </button>

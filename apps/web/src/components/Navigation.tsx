@@ -37,26 +37,26 @@ const getNavigationByRole = (role: string) => {
     case "ASSOCIATE":
     case "PARALEGAL":
       return [
-        { name: "Dashboard", href: "/lawyer/dashboard", icon: Home },
-        { name: "Cases", href: "/lawyer/cases", icon: Briefcase },
-        { name: "Clients", href: "/lawyer/clients", icon: Users },
-        { name: "Calendar", href: "/lawyer/calendar", icon: Calendar },
-        { name: "Tasks", href: "/lawyer/tasks", icon: CheckSquare },
-        { name: "Documents", href: "/lawyer/documents", icon: FileText },
-        { name: "Billing", href: "/lawyer/billing", icon: CreditCard },
-        { name: "Video Calls", href: "/lawyer/video-calls", icon: Video },
-        { name: "Settings", href: "/lawyer/settings", icon: Settings },
+        { name: "Dashboard", href: "/dashboard", icon: Home },
+        { name: "Cases", href: "/cases", icon: Briefcase },
+        { name: "Clients", href: "/clients", icon: Users },
+        { name: "Calendar", href: "/calendar", icon: Calendar },
+        { name: "Tasks", href: "/tasks", icon: CheckSquare },
+        { name: "Documents", href: "/documents", icon: FileText },
+        { name: "Billing", href: "/billing", icon: CreditCard },
+        { name: "Video Calls", href: "/video-calls", icon: Video },
+        { name: "Settings", href: "/settings", icon: Settings },
       ];
     case "CLIENT":
       return [
-        { name: "Dashboard", href: "/client/dashboard", icon: Home },
-        { name: "My Cases", href: "/client/cases", icon: Briefcase },
-        { name: "Documents", href: "/client/documents", icon: FileText },
-        { name: "Billing", href: "/client/billing", icon: CreditCard },
-        { name: "Events", href: "/client/events", icon: Calendar },
-        { name: "Video Calls", href: "/client/video-calls", icon: Video },
-        { name: "Notifications", href: "/client/notifications", icon: Bell },
-        { name: "Settings", href: "/client/settings", icon: Settings },
+        { name: "Dashboard", href: "/dashboard", icon: Home },
+        { name: "My Cases", href: "/cases", icon: Briefcase },
+        { name: "Documents", href: "/documents", icon: FileText },
+        { name: "Billing", href: "/billing", icon: CreditCard },
+        { name: "Calendar", href: "/calendar", icon: Calendar },
+        { name: "Video Calls", href: "/video-calls", icon: Video },
+        { name: "Notifications", href: "/notifications", icon: Bell },
+        { name: "Settings", href: "/settings", icon: Settings },
       ];
     default:
       return [
@@ -78,7 +78,7 @@ export function Navigation() {
   const navigation = getNavigationByRole(user?.role || "");
 
   return (
-    <nav className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700">
+    <nav className="bg-background shadow-sm border-b border-border">
       <div className="container-responsive">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -87,7 +87,7 @@ export function Navigation() {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">V</span>
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">
+              <span className="text-xl font-bold text-foreground">
                 Vidhigya
               </span>
             </Link>
@@ -104,7 +104,7 @@ export function Navigation() {
                   className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
                     isActive
                       ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
-                      : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
                 >
                   <item.icon className="w-4 h-4" />
@@ -117,7 +117,7 @@ export function Navigation() {
           {/* Right side actions */}
           <div className="flex items-center space-x-4">
             {/* Search */}
-            <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200">
+            <button className="p-2 text-muted-foreground hover:text-foreground transition-colors duration-200">
               <Search className="w-5 h-5" />
             </button>
 
@@ -133,14 +133,14 @@ export function Navigation() {
             <ThemeToggle />
 
             {/* User Menu */}
-            <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200">
+            <button className="p-2 text-muted-foreground hover:text-foreground transition-colors duration-200">
               <User className="w-5 h-5" />
             </button>
 
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
+              className="md:hidden p-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
             >
               {mobileMenuOpen ? (
                 <X className="w-5 h-5" />
@@ -164,7 +164,7 @@ export function Navigation() {
                     className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-base font-medium transition-colors duration-200 ${
                       isActive
                         ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
-                        : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
                     onClick={() => setMobileMenuOpen(false)}
                   >

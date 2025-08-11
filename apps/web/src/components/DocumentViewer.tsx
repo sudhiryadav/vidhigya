@@ -221,7 +221,7 @@ export default function DocumentViewer({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-7xl h-5/6 flex flex-col">
+      <div className="bg-card rounded-lg w-full max-w-7xl h-5/6 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">

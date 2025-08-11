@@ -302,9 +302,9 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-[99999] transform -translate-x-0">
+        <div className="absolute left-0 mt-2 w-80 bg-card rounded-lg shadow-lg border border-border z-[99999] transform -translate-x-0">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between p-4 border-b border-border">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               Notifications
             </h3>
@@ -340,7 +340,7 @@ export default function NotificationBell() {
               notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0 ${
+                  className={`p-4 hover:bg-muted cursor-pointer border-b border-border last:border-b-0 ${
                     !notification.isRead ? "bg-blue-50 dark:bg-blue-900/20" : ""
                   }`}
                   onClick={() => handleNotificationClick(notification)}
@@ -383,27 +383,11 @@ export default function NotificationBell() {
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="p-4 border-t border-border">
             <button
               onClick={() => {
-                // Navigate to role-specific notifications page
-                if (user?.role === "CLIENT") {
-                  router.push("/client/notifications");
-                } else if (
-                  user?.role === "LAWYER" ||
-                  user?.role === "ASSOCIATE" ||
-                  user?.role === "PARALEGAL"
-                ) {
-                  router.push("/lawyer/notifications");
-                } else if (
-                  user?.role === "SUPER_ADMIN" ||
-                  user?.role === "ADMIN"
-                ) {
-                  router.push("/admin/notifications");
-                } else {
-                  // Fallback to lawyer notifications for unknown roles
-                  router.push("/lawyer/notifications");
-                }
+                // Navigate to shared notifications page
+                router.push("/notifications");
                 setIsOpen(false);
               }}
               className="w-full text-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
@@ -436,7 +420,7 @@ export default function NotificationBell() {
 
             <div className="space-y-3">
               {/* Audio Setting */}
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                 <div className="flex items-center space-x-3">
                   {preCallAudioEnabled ? (
                     <Mic className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -468,7 +452,7 @@ export default function NotificationBell() {
               </div>
 
               {/* Video Setting */}
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                 <div className="flex items-center space-x-3">
                   {preCallVideoEnabled ? (
                     <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -508,7 +492,7 @@ export default function NotificationBell() {
                 setShowPreCallModal(false);
                 setSelectedVideoCallNotification(null);
               }}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+              className="flex-1 px-4 py-2 border border-border rounded-md text-sm font-medium text-muted-foreground bg-background hover:bg-muted"
             >
               Cancel
             </button>

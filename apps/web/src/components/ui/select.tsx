@@ -52,7 +52,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   ) => (
     <components.DropdownIndicator {...props}>
       <svg
-        className="w-4 h-4 text-gray-400"
+        className="w-4 h-4 text-muted-foreground"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -72,7 +72,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   ) => (
     <components.Option {...props}>
       <div className="py-1">
-        <div className="text-sm font-medium text-gray-900 dark:text-white">
+        <div className="text-sm font-medium text-foreground">
           {props.data.label}
         </div>
       </div>
@@ -83,16 +83,14 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     props: SingleValueProps<SelectOption, false, GroupBase<SelectOption>>
   ) => (
     <components.SingleValue {...props}>
-      <div className="text-sm text-gray-900 dark:text-white">
-        {props.data.label}
-      </div>
+      <div className="text-sm text-foreground">{props.data.label}</div>
     </components.SingleValue>
   );
 
   return (
     <div className={`w-full ${className}`}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-foreground mb-1">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -113,64 +111,66 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
         className="react-select-container"
         classNamePrefix="react-select"
         styles={{
-                      control: (provided, state) => ({
-              ...provided,
-              backgroundColor: "var(--tw-bg-opacity, 1)",
-              borderColor: error
-                ? "#ef4444"
-                : state.isFocused
-                  ? "#3b82f6"
-                  : "#d1d5db",
-              borderWidth: "1px",
-              borderRadius: "0.5rem",
-              boxShadow: state.isFocused
-                ? "0 0 0 2px rgba(59, 130, 246, 0.5)"
-                : "none",
-              minHeight: "42px",
-              cursor: "pointer",
-              transition: "all 0.15s ease-in-out",
-              "&:hover": {
-                borderColor: error ? "#ef4444" : "#9ca3af",
-              },
-            }),
+          control: (provided, state) => ({
+            ...provided,
+            backgroundColor: "var(--tw-bg-opacity, 1)",
+            borderColor: error
+              ? "#ef4444"
+              : state.isFocused
+                ? "#3b82f6"
+                : "hsl(var(--border))",
+            borderWidth: "1px",
+            borderRadius: "0.5rem",
+            boxShadow: state.isFocused
+              ? "0 0 0 2px rgba(59, 130, 246, 0.5)"
+              : "none",
+            minHeight: "42px",
+            cursor: "pointer",
+            transition: "all 0.15s ease-in-out",
+            "&:hover": {
+              borderColor: error ? "#ef4444" : "hsl(var(--border))",
+            },
+          }),
           menu: (provided) => ({
             ...provided,
             backgroundColor: "var(--tw-bg-opacity, 1)",
-            border: "1px solid #e5e7eb",
+            border: "1px solid hsl(var(--border))",
             borderRadius: "0.5rem",
             boxShadow:
               "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
             zIndex: 9999,
           }),
-                      option: (provided, state) => ({
-              ...provided,
+          option: (provided, state) => ({
+            ...provided,
+            backgroundColor: state.isSelected
+              ? "#3b82f6"
+              : state.isFocused
+                ? "hsl(var(--muted))"
+                : "transparent",
+            color: state.isSelected ? "#ffffff" : "hsl(var(--foreground))",
+            cursor: "pointer",
+            transition: "all 0.15s ease-in-out",
+            "&:hover": {
               backgroundColor: state.isSelected
                 ? "#3b82f6"
-                : state.isFocused
-                  ? "#f3f4f6"
-                  : "transparent",
-              color: state.isSelected ? "#ffffff" : "#374151",
-              cursor: "pointer",
-              transition: "all 0.15s ease-in-out",
-              "&:hover": {
-                backgroundColor: state.isSelected ? "#3b82f6" : "#f3f4f6",
-              },
-            }),
+                : "hsl(var(--muted))",
+            },
+          }),
           singleValue: (provided) => ({
             ...provided,
-            color: "#374151",
+            color: "hsl(var(--foreground))",
           }),
           placeholder: (provided) => ({
             ...provided,
-            color: "#9ca3af",
+            color: "hsl(var(--muted-foreground))",
           }),
           input: (provided) => ({
             ...provided,
-            color: "#374151",
+            color: "hsl(var(--foreground))",
           }),
           indicatorSeparator: (provided) => ({
             ...provided,
-            backgroundColor: "#d1d5db",
+            backgroundColor: "hsl(var(--border))",
           }),
           loadingIndicator: (provided) => ({
             ...provided,

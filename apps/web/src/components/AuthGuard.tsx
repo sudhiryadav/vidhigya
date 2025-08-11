@@ -23,7 +23,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       isAuthenticated,
       user: user?.role,
       pathname,
-      hasRedirected: hasRedirected.current
+      hasRedirected: hasRedirected.current,
     });
 
     if (!loading && !hasRedirected.current) {
@@ -32,7 +32,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         console.log("AuthGuard timeout executed:", {
           isAuthenticated,
           pathname,
-          userRole: user?.role
+          userRole: user?.role,
         });
 
         // If user is not authenticated and trying to access a protected route
@@ -51,12 +51,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           if (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") {
             console.log("Redirecting to admin dashboard");
             router.push("/admin/dashboard");
-          } else if (user?.role === "CLIENT") {
-            console.log("Redirecting to client dashboard");
-            router.push("/client/dashboard");
           } else {
-            console.log("Redirecting to lawyer dashboard");
-            router.push("/lawyer/dashboard");
+            console.log("Redirecting to dashboard");
+            router.push("/dashboard");
           }
           return;
         }
@@ -68,12 +65,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           if (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") {
             console.log("Redirecting to admin dashboard");
             router.push("/admin/dashboard");
-          } else if (user?.role === "CLIENT") {
-            console.log("Redirecting to client dashboard");
-            router.push("/client/dashboard");
           } else {
-            console.log("Redirecting to lawyer dashboard");
-            router.push("/lawyer/dashboard");
+            console.log("Redirecting to dashboard");
+            router.push("/dashboard");
           }
           return;
         }

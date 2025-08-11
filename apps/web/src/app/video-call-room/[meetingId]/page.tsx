@@ -18,10 +18,6 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-interface VideoCallRoomProps {
-  meetingId: string;
-}
-
 export default function VideoCallRoom() {
   const params = useParams();
   const router = useRouter();
@@ -457,9 +453,9 @@ export default function VideoCallRoom() {
     }
 
     if (user?.role === "CLIENT") {
-      router.push("/client/video-calls");
+      router.push("/video-calls");
     } else {
-      router.push("/lawyer/video-calls");
+      router.push("/video-calls");
     }
   };
 
@@ -473,7 +469,7 @@ export default function VideoCallRoom() {
     }
 
     // Navigate back
-    router.push("/lawyer/video-calls");
+    router.push("/video-calls");
   };
 
   const testCamera = async () => {
@@ -532,7 +528,7 @@ export default function VideoCallRoom() {
 
   if (isConnecting) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-white mb-2">
@@ -550,9 +546,9 @@ export default function VideoCallRoom() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="bg-gray-800 px-6 py-4 flex items-center justify-between">
+      <div className="bg-card px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className="text-white">
             <h1 className="text-lg font-semibold">Video Call</h1>
@@ -566,7 +562,7 @@ export default function VideoCallRoom() {
         <div className="flex items-center space-x-2">
           <button
             onClick={handleToggleVideo}
-            className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700"
+            className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-muted"
             title={isVideoEnabled ? "Turn off camera" : "Turn on camera"}
           >
             {isVideoEnabled ? (
@@ -577,18 +573,18 @@ export default function VideoCallRoom() {
           </button>
           <button
             onClick={toggleFullscreen}
-            className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700"
+            className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-muted"
             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           >
             <Maximize className="w-5 h-5" />
           </button>
           <button
             onClick={() => setIsParticipantsOpen(!isParticipantsOpen)}
-            className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700"
+            className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-muted"
           >
             <Users className="w-5 h-5" />
           </button>
-          <button className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700">
+          <button className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-muted">
             <Settings className="w-5 h-5" />
           </button>
         </div>
@@ -618,7 +614,7 @@ export default function VideoCallRoom() {
         {/* Video Area */}
         <div className="flex-1 relative">
           {/* Main Video - Remote Participant */}
-          <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+          <div className="absolute inset-0 bg-card flex items-center justify-center">
             {remoteStream ? (
               <video
                 ref={setRemoteVideoRef}
@@ -629,7 +625,7 @@ export default function VideoCallRoom() {
               />
             ) : (
               <div className="text-center text-white">
-                <div className="w-32 h-32 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-32 h-32 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                   <Video className="w-12 h-12 text-gray-400" />
                 </div>
                 <p className="text-lg font-medium">
@@ -653,7 +649,7 @@ export default function VideoCallRoom() {
                       {participants.slice(0, 3).map((participant, index) => (
                         <div
                           key={participant.id}
-                          className="flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-full"
+                          className="flex items-center space-x-2 bg-muted px-3 py-1 rounded-full"
                         >
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span className="text-xs text-white">
@@ -662,7 +658,7 @@ export default function VideoCallRoom() {
                         </div>
                       ))}
                       {participants.length > 3 && (
-                        <div className="flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-full">
+                        <div className="flex items-center space-x-2 bg-muted px-3 py-1 rounded-full">
                           <span className="text-xs text-white">
                             +{participants.length - 3} more
                           </span>
@@ -676,7 +672,7 @@ export default function VideoCallRoom() {
           </div>
 
           {/* Local Video - Picture in Picture */}
-          <div className="absolute top-4 right-4 w-48 h-36 bg-gray-900 rounded-lg overflow-hidden">
+          <div className="absolute top-4 right-4 w-48 h-36 bg-muted rounded-lg overflow-hidden">
             <video
               ref={setLocalVideoRef}
               autoPlay
@@ -693,7 +689,7 @@ export default function VideoCallRoom() {
 
             {/* Loading overlay */}
             {!localStream && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+              <div className="absolute inset-0 flex items-center justify-center bg-muted">
                 <div className="text-center">
                   <Video className="w-8 h-8 text-gray-400 mx-auto mb-1" />
                   <p className="text-gray-400 text-xs">Loading camera...</p>
@@ -710,7 +706,7 @@ export default function VideoCallRoom() {
 
             {/* Video off indicator */}
             {!isVideoEnabled && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+              <div className="absolute inset-0 flex items-center justify-center bg-muted">
                 <div className="text-center">
                   <VideoOff className="w-8 h-8 text-gray-400 mx-auto mb-1" />
                   <p className="text-gray-400 text-xs">Camera Off</p>
@@ -722,9 +718,9 @@ export default function VideoCallRoom() {
 
         {/* Sidebar */}
         {isParticipantsOpen && (
-          <div className="w-80 bg-gray-800 border-l border-gray-700">
+          <div className="w-80 bg-muted border-l border-border">
             <div className="h-full flex flex-col">
-              <div className="p-4 border-b border-gray-700">
+              <div className="p-4 border-b border-border">
                 <h3 className="text-white font-semibold">
                   Participants ({participants.length + 1})
                 </h3>
@@ -791,13 +787,13 @@ export default function VideoCallRoom() {
       </div>
 
       {/* Controls */}
-      <div className="bg-gray-800 px-6 py-4">
+      <div className="bg-muted px-6 py-4">
         <div className="flex items-center justify-center space-x-4">
           <button
             onClick={handleToggleAudio}
             className={`p-3 rounded-full ${
               isAudioEnabled
-                ? "bg-gray-600 text-white hover:bg-gray-500"
+                ? "bg-muted text-white hover:bg-muted/80"
                 : "bg-red-600 text-white hover:bg-red-700"
             }`}
             title={isAudioEnabled ? "Mute microphone" : "Unmute microphone"}
@@ -813,7 +809,7 @@ export default function VideoCallRoom() {
             onClick={handleToggleVideo}
             className={`p-3 rounded-full ${
               isVideoEnabled
-                ? "bg-gray-600 text-white hover:bg-gray-500"
+                ? "bg-muted text-white hover:bg-muted/80"
                 : "bg-red-600 text-white hover:bg-red-700"
             }`}
             title={isVideoEnabled ? "Turn off camera" : "Turn on camera"}
@@ -830,7 +826,7 @@ export default function VideoCallRoom() {
             className={`p-3 rounded-full ${
               isScreenSharing
                 ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "bg-gray-600 text-white hover:bg-gray-500"
+                : "bg-muted text-white hover:bg-muted/80"
             }`}
           >
             <Share className="w-6 h-6" />

@@ -88,9 +88,7 @@ export default function ChatBubble() {
 
   // Check if on chat page
   const isOnChatPage =
-    pathname.includes("/chat/") ||
-    pathname.includes("/lawyer/chat/") ||
-    pathname.includes("/client/chat/");
+    pathname.includes("/chat/") || pathname.includes("/chat/");
 
   // Check if on auth pages (login, register)
   const isOnAuthPage =
@@ -729,7 +727,7 @@ export default function ChatBubble() {
       {/* Expanded Chat Window */}
       {isExpanded && (
         <div
-          className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 ${getBubbleSize()} flex flex-col overflow-hidden`}
+          className={`bg-card rounded-lg shadow-xl border border-border ${getBubbleSize()} flex flex-col overflow-hidden`}
           style={{ minHeight: isMaximized ? "600px" : "384px" }}
           data-chat-bubble-expanded="true"
         >
@@ -790,7 +788,7 @@ export default function ChatBubble() {
                       <div
                         key={chat.id}
                         onClick={() => openChat(chat)}
-                        className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        className="p-3 border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors"
                       >
                         <div className="flex items-center space-x-3">
                           {/* Avatar */}
@@ -866,7 +864,7 @@ export default function ChatBubble() {
                             placeholder={`Search ${user?.role === "LAWYER" ? "clients" : "lawyers"}...`}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background text-foreground text-sm"
                           />
                         </div>
                       </div>
@@ -883,7 +881,7 @@ export default function ChatBubble() {
                           <div
                             key={associatedUser.id}
                             onClick={() => startNewChat(associatedUser.id)}
-                            className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            className="p-3 border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors"
                           >
                             <div className="flex items-center space-x-3">
                               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
@@ -902,7 +900,7 @@ export default function ChatBubble() {
                                   className={`w-2 h-2 rounded-full ${
                                     associatedUser.isOnline
                                       ? "bg-green-500"
-                                      : "bg-gray-400"
+                                      : "bg-muted"
                                   }`}
                                 ></div>
                               </div>
@@ -947,7 +945,7 @@ export default function ChatBubble() {
                             />
                           ) : null}
                           <div
-                            className={`w-6 h-6 rounded-full bg-gray-400 dark:bg-gray-500 text-white flex items-center justify-center text-xs font-medium ${getMessageSenderAvatar(message) ? "hidden" : ""}`}
+                            className={`w-6 h-6 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-medium ${getMessageSenderAvatar(message) ? "hidden" : ""}`}
                           >
                             {getMessageSenderInitials(message)}
                           </div>
@@ -958,7 +956,7 @@ export default function ChatBubble() {
                         className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
                           message.senderId === user?.id
                             ? "bg-blue-600 dark:bg-blue-500 text-white"
-                            : "bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100"
+                            : "bg-muted text-foreground"
                         }`}
                       >
                         <div className="text-sm">{message.content}</div>
@@ -976,7 +974,7 @@ export default function ChatBubble() {
                   ))}
                   {isTyping && (
                     <div className="flex justify-start">
-                      <div className="bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 px-3 py-2 rounded-lg">
+                      <div className="bg-muted text-foreground px-3 py-2 rounded-lg">
                         <div className="text-sm">Typing...</div>
                       </div>
                     </div>
@@ -985,7 +983,7 @@ export default function ChatBubble() {
                 </div>
 
                 {/* Input - Fixed at bottom */}
-                <div className="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+                <div className="flex-shrink-0 p-3 border-t border-border bg-card">
                   <div className="flex space-x-2">
                     <input
                       ref={inputRef}
@@ -994,7 +992,7 @@ export default function ChatBubble() {
                       onChange={handleTyping}
                       onKeyPress={handleKeyPress}
                       placeholder="Type a message..."
-                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                      className="flex-1 px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
                     />
                     <button
                       onClick={sendMessage}

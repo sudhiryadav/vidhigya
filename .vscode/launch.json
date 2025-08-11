@@ -61,7 +61,8 @@
       "request": "launch",
       "program": "${workspaceFolder}/apps/web/node_modules/.bin/next",
       "args": [
-        "dev"
+        "dev",
+        "--turbopack"
       ],
       "cwd": "${workspaceFolder}/apps/web",
       "env": {

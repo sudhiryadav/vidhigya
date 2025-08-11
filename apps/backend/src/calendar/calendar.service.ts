@@ -440,14 +440,24 @@ export class CalendarService {
   }
 
   async getUpcomingEvents(userId: string, days: number = 7) {
+    const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + days);
 
     return this.prisma.calendarEvent.findMany({
       where: {
-        OR: [{ createdById: userId }, { participants: { some: { userId } } }],
+        OR: [
+          { createdById: userId },
+          {
+            participants: {
+              some: {
+                userId: userId,
+              },
+            },
+          },
+        ],
         startTime: {
-          gte: new Date(),
+          gte: startDate,
           lte: endDate,
         },
       },
@@ -480,6 +490,29 @@ export class CalendarService {
       },
       orderBy: {
         startTime: 'asc',
+      },
+    });
+  }
+
+  async getUsersForEvents(userId: string) {
+    // Get users that can be invited to calendar events
+    // This includes lawyers, associates, paralegals, and clients
+    return this.prisma.user.findMany({
+      where: {
+        id: { not: userId }, // Exclude the current user
+        isActive: true,
+        role: {
+          in: ['LAWYER', 'ASSOCIATE', 'PARALEGAL', 'CLIENT'],
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+      orderBy: {
+        name: 'asc',
       },
     });
   }

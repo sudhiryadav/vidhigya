@@ -34,13 +34,13 @@ export default function Error({
 
         {/* Error Details - Only show in development */}
         {process.env.NODE_ENV === "development" && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
+          <div className="bg-card rounded-xl shadow-lg p-6 mb-6 border border-border">
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
                   Error Details (Development Only)
                 </h3>
-                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+                <div className="bg-muted rounded-lg p-3">
                   <p className="text-sm text-gray-700 dark:text-gray-300 font-mono break-all">
                     {error.message || "An unexpected error occurred"}
                   </p>
@@ -56,7 +56,7 @@ export default function Error({
         )}
 
         {/* User-friendly message */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
+        <div className="bg-card rounded-xl shadow-lg p-6 mb-6 border border-border">
           <div className="text-sm text-gray-600 dark:text-gray-400">
             <p>
               Don&apos;t worry, this is usually a temporary issue. Try
@@ -77,7 +77,7 @@ export default function Error({
 
           <Link
             href="/"
-            className="w-full bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 flex items-center justify-center space-x-2"
+            className="w-full bg-background border-2 border-border text-foreground font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:bg-muted hover:border-border flex items-center justify-center space-x-2"
           >
             <Home className="w-5 h-5" />
             <span>Go Home</span>

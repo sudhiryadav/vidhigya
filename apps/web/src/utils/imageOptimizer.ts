@@ -135,14 +135,32 @@ export class ImageOptimizer {
     file: File,
     maxSize: number = 5 * 1024 * 1024
   ): string | null {
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+    // Check file type more thoroughly
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
 
+    // Check MIME type first
     if (!allowedTypes.includes(file.type)) {
-      return "Invalid file type. Please upload a JPEG or PNG image.";
+      // Also check file extension as fallback
+      const fileName = file.name.toLowerCase();
+      const hasValidExtension = [".jpg", ".jpeg", ".png", ".gif", ".webp"].some(
+        (ext) => fileName.endsWith(ext)
+      );
+
+      if (!hasValidExtension) {
+        return "Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.";
+      }
     }
 
     if (file.size > maxSize) {
-      return `File size ${(file.size / 1024 / 1024).toFixed(1)}MB exceeds maximum allowed size of ${(maxSize / 1024 / 1024).toFixed(1)}MB.`;
+      const maxSizeMB = (maxSize / 1024 / 1024).toFixed(1);
+      const actualSizeMB = (file.size / 1024 / 1024).toFixed(1);
+      return `File size ${actualSizeMB}MB exceeds maximum allowed size of ${maxSizeMB}MB.`;
     }
 
     return null; // No error

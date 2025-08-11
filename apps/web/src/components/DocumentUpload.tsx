@@ -133,7 +133,7 @@ export default function DocumentUpload({
             {selectedFiles.map((file, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                className="flex items-center justify-between p-3 bg-muted rounded-lg"
               >
                 <div className="flex items-center space-x-3">
                   <span className="text-lg">{getFileIcon(file)}</span>

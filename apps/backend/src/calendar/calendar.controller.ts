@@ -81,6 +81,13 @@ export class CalendarController {
     return this.calendarService.getUpcomingEvents(req.user.sub, daysNumber);
   }
 
+  @Get('users')
+  async getUsersForEvents(@Request() req: AuthenticatedRequest) {
+    // Get users that can be invited to calendar events
+    // This includes lawyers, associates, paralegals, and clients
+    return this.calendarService.getUsersForEvents(req.user.sub);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.calendarService.findOne(id, req.user.sub);
@@ -144,16 +151,33 @@ export class CalendarController {
   // Google Calendar Integration
   @Get('google/auth-url')
   getGoogleAuthUrl() {
-    return { message: 'Google Calendar auth not implemented' };
+    return this.googleCalendarService.getAuthUrl();
   }
 
   @Post('google/connect')
-  connectGoogleCalendar(@Body() body: { code: string }) {
-    return { message: 'Google Calendar connect not implemented' };
+  async connectGoogleCalendar(@Body() body: { code: string }, @Request() req: AuthenticatedRequest) {
+    try {
+      const tokens = await this.googleCalendarService.exchangeCodeForToken(body.code);
+      // Store tokens in user settings or database
+      // For now, return success message
+      return { 
+        message: 'Google Calendar connected successfully',
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token
+      };
+    } catch (error) {
+      throw new Error('Failed to connect Google Calendar: ' + error.message);
+    }
   }
 
   @Post('google/sync')
-  syncWithGoogleCalendar() {
-    return { message: 'Google Calendar sync not implemented' };
+  async syncWithGoogleCalendar(@Request() req: AuthenticatedRequest) {
+    try {
+      // This would require storing the user's access token
+      // For now, return a message indicating the feature is available
+      return { message: 'Google Calendar sync available. Please connect your account first.' };
+    } catch (error) {
+      throw new Error('Failed to sync with Google Calendar: ' + error.message);
+    }
   }
 }

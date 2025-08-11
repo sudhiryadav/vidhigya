@@ -172,7 +172,7 @@ export default function ChatPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">
@@ -186,9 +186,9 @@ export default function ChatPage() {
   const otherParticipant = participants.find((p) => p.id !== user?.id);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-card border-b border-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-16">
             <button
@@ -200,7 +200,7 @@ export default function ChatPage() {
 
             <div className="flex items-center space-x-3">
               <div className="relative">
-                <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
                   <User className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 </div>
                 {otherParticipant?.isOnline && (
@@ -222,7 +222,7 @@ export default function ChatPage() {
 
       {/* Chat Container */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-[calc(100vh-200px)] flex flex-col">
+        <div className="bg-card rounded-lg shadow-sm border border-border h-[calc(100vh-200px)] flex flex-col">
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {messages.length === 0 ? (
@@ -243,7 +243,7 @@ export default function ChatPage() {
                     className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                       message.senderId === user?.id
                         ? "bg-blue-600 text-white"
-                        : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
+                        : "bg-muted text-foreground"
                     }`}
                   >
                     <p className="text-sm">{message.content}</p>
@@ -264,7 +264,7 @@ export default function ChatPage() {
           </div>
 
           {/* Message Input */}
-          <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="p-6 border-t border-border">
             <div className="flex space-x-4">
               <div className="flex-1">
                 <textarea
@@ -272,7 +272,7 @@ export default function ChatPage() {
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Type your message..."
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground resize-none"
                   rows={3}
                   disabled={sending}
                 />

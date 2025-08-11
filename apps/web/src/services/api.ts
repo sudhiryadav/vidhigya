@@ -76,24 +76,62 @@ class ApiClient {
   }
 
   async uploadAvatar(file: File): Promise<any> {
-    const formData = new FormData();
-    formData.append("avatar", file);
+    try {
+      console.log("ApiClient: Starting avatar upload:", {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        apiUrl: API_BASE_URL,
+      });
 
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    const response = await fetch(`${API_BASE_URL}/auth/upload-avatar`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
+      const formData = new FormData();
+      formData.append("avatar", file);
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      console.log(
+        "ApiClient: Making request to:",
+        `${API_BASE_URL}/auth/upload-avatar`
+      );
+
+      const response = await fetch(`${API_BASE_URL}/auth/upload-avatar`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      console.log(
+        "ApiClient: Response status:",
+        response.status,
+        response.statusText
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("ApiClient: Upload failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+        });
+        throw new Error(
+          `HTTP error! status: ${response.status} - ${errorText}`
+        );
+      }
+
+      const result = await response.json();
+      console.log("ApiClient: Upload successful:", result);
+      return result;
+    } catch (error) {
+      console.error("ApiClient: Upload error:", error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async removeAvatar(): Promise<any> {
@@ -148,6 +186,12 @@ class ApiClient {
     role?: string;
     isActive?: boolean;
   }) {
+    // For calendar events, use the calendar/users endpoint that doesn't require admin privileges
+    if (!filters || Object.keys(filters).length === 0) {
+      return this.request("/calendar/users");
+    }
+
+    // For admin purposes, use the admin endpoint
     const params = new URLSearchParams();
     if (filters?.search) params.append("search", filters.search);
     if (filters?.role) params.append("role", filters.role);
@@ -203,7 +247,7 @@ class ApiClient {
   }
 
   async getOverdueBills() {
-    return this.request("/billing/overdue");
+    return this.request("/cases/overdue-bills");
   }
 
   // Cases endpoints
@@ -370,7 +414,10 @@ class ApiClient {
 
   // Google Calendar Integration
   async getGoogleAuthUrl() {
-    return this.request("/calendar/google/auth-url");
+    const response = await this.request<{ authUrl: string }>(
+      "/calendar/google/auth-url"
+    );
+    return response;
   }
 
   async connectGoogleCalendar(code: string) {
@@ -583,6 +630,10 @@ class ApiClient {
 
   // Client portal endpoints
   async getClientDashboard() {
+    return this.request("/client-portal/dashboard");
+  }
+
+  async getClientDashboardStats() {
     return this.request("/client-portal/dashboard");
   }
 

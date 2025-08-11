@@ -90,10 +90,8 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
   className = "",
   rows,
 }) => {
-  const inputClassName = `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200 ${
-    error
-      ? "border-red-500 ring-red-500"
-      : "border-gray-300 dark:border-gray-600"
+  const inputClassName = `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground transition-colors duration-200 ${
+    error ? "border-red-500 ring-red-500" : "border-border"
   } ${className}`;
 
   return (
@@ -148,10 +146,8 @@ export const ValidatedSelect: React.FC<ValidatedSelectProps> = ({
             const option = options.find((opt) => opt.value === e.target.value);
             onChange(option || null);
           }}
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200 ${
-            error
-              ? "border-red-500 ring-red-500"
-              : "border-gray-300 dark:border-gray-600"
+          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground transition-colors duration-200 ${
+            error ? "border-red-500 ring-red-500" : "border-border"
           }`}
         >
           <option value="">{placeholder || "Select an option"}</option>

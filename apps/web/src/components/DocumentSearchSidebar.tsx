@@ -164,7 +164,7 @@ export default function DocumentSearchSidebar({
   if (loading) {
     return (
       <div
-        className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 ${className}`}
+        className={`bg-card rounded-lg shadow-sm border border-border p-6 ${className}`}
       >
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
@@ -179,7 +179,7 @@ export default function DocumentSearchSidebar({
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Draft Sections */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hidden">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6 hidden">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Draft Sections
@@ -205,7 +205,7 @@ export default function DocumentSearchSidebar({
             drafts.map((draft) => (
               <div
                 key={draft.id}
-                className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                className="border border-border rounded-lg p-3 hover:bg-muted transition-colors cursor-pointer"
                 onClick={() => onDraftClick?.(draft)}
               >
                 <h4 className="font-medium text-gray-900 dark:text-white mb-1">
@@ -225,7 +225,7 @@ export default function DocumentSearchSidebar({
       </div>
 
       {/* Draft Documents */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hidden">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6 hidden">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Draft Documents
@@ -247,7 +247,7 @@ export default function DocumentSearchSidebar({
             {draftDocuments.map((draft) => (
               <div
                 key={draft.id}
-                className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                className="flex items-center space-x-3 p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors cursor-pointer"
                 onClick={() => onSuggestionClick(`Open draft: ${draft.title}`)}
               >
                 <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
@@ -267,7 +267,7 @@ export default function DocumentSearchSidebar({
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hidden">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6 hidden">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Quick Actions
         </h3>
@@ -276,7 +276,7 @@ export default function DocumentSearchSidebar({
             <button
               key={index}
               onClick={() => handleQuickActionClick(action.action)}
-              className="w-full flex items-center space-x-3 p-3 text-left bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              className="w-full flex items-center space-x-3 p-3 text-left bg-muted border border-border rounded-lg hover:bg-muted/80 transition-colors"
             >
               <action.icon className="w-5 h-5 text-blue-600 flex-shrink-0" />
               <div className="flex-1">
@@ -293,7 +293,7 @@ export default function DocumentSearchSidebar({
       </div>
 
       {/* Suggested Questions */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hidden">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6 hidden">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Suggested Questions
         </h3>
@@ -302,7 +302,7 @@ export default function DocumentSearchSidebar({
             <button
               key={index}
               onClick={() => onSuggestionClick(question)}
-              className="w-full text-left p-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+              className="w-full text-left p-2 text-sm text-muted-foreground hover:bg-muted rounded-md transition-colors"
             >
               {question}
             </button>
@@ -311,7 +311,7 @@ export default function DocumentSearchSidebar({
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hidden">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6 hidden">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Recent Activity

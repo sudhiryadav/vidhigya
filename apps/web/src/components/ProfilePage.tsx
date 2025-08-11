@@ -133,10 +133,38 @@ export default function ProfilePage({
 
   const handleAvatarUpload = async (file: File) => {
     try {
+      console.log("ProfilePage: Starting avatar upload:", {
+        fileName: file.name,
+        fileSize: file.size,
+      });
+
       const response = await apiClient.uploadAvatar(file);
+      console.log("ProfilePage: Upload response:", response);
+
       toast.success("Profile picture updated successfully");
     } catch (error) {
-      console.error("Error uploading avatar:", error);
+      console.error("ProfilePage: Avatar upload error:", error);
+
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes("Failed to fetch")) {
+          toast.error(
+            "Cannot connect to server. Please check if the backend is running."
+          );
+        } else if (
+          error.message.includes("401") ||
+          error.message.includes("403")
+        ) {
+          toast.error("Authentication failed. Please log in again.");
+        } else if (error.message.includes("413")) {
+          toast.error("File too large. Please try a smaller image.");
+        } else {
+          toast.error(`Upload failed: ${error.message}`);
+        }
+      } else {
+        toast.error("Failed to update profile picture. Please try again.");
+      }
+
       throw error;
     }
   };
@@ -184,7 +212,7 @@ export default function ProfilePage({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -192,7 +220,7 @@ export default function ProfilePage({
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 dark:text-red-400 mb-4">
             Profile not found
@@ -209,18 +237,14 @@ export default function ProfilePage({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {title}
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                {subtitle}
-              </p>
+              <h1 className="text-3xl font-bold text-foreground">{title}</h1>
+              <p className="text-muted-foreground mt-2">{subtitle}</p>
             </div>
             <button
               onClick={handleLogout}
@@ -237,7 +261,7 @@ export default function ProfilePage({
           <div className="lg:col-span-2">
             <div className="card">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h2 className="text-xl font-semibold text-foreground">
                   Profile Information
                 </h2>
                 <button
@@ -270,7 +294,7 @@ export default function ProfilePage({
                 {/* Basic Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Full Name
                     </label>
                     {isEditing ? (
@@ -280,20 +304,18 @@ export default function ProfilePage({
                         onChange={(e) =>
                           setFormData({ ...formData, name: e.target.value })
                         }
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     ) : (
                       <div className="flex items-center space-x-3">
-                        <User className="w-5 h-5 text-gray-400" />
-                        <span className="text-gray-900 dark:text-white">
-                          {profile.name}
-                        </span>
+                        <User className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-foreground">{profile.name}</span>
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Email Address
                     </label>
                     {isEditing ? (
@@ -303,20 +325,18 @@ export default function ProfilePage({
                         onChange={(e) =>
                           setFormData({ ...formData, email: e.target.value })
                         }
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     ) : (
                       <div className="flex items-center space-x-3">
-                        <Mail className="w-5 h-5 text-gray-400" />
-                        <span className="text-gray-900 dark:text-white">
-                          {profile.email}
-                        </span>
+                        <Mail className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-foreground">{profile.email}</span>
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Phone Number
                     </label>
                     {isEditing ? (
@@ -326,25 +346,23 @@ export default function ProfilePage({
                         onChange={(e) =>
                           setFormData({ ...formData, phone: e.target.value })
                         }
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     ) : (
                       <div className="flex items-center space-x-3">
-                        <Phone className="w-5 h-5 text-gray-400" />
-                        <span className="text-gray-900 dark:text-white">
-                          {profile.phone}
-                        </span>
+                        <Phone className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-foreground">{profile.phone}</span>
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Member Since
                     </label>
                     <div className="flex items-center space-x-3">
-                      <Calendar className="w-5 h-5 text-gray-400" />
-                      <span className="text-gray-900 dark:text-white">
+                      <Calendar className="w-5 h-5 text-muted-foreground" />
+                      <span className="text-foreground">
                         {formatDate(profile.createdAt)}
                       </span>
                     </div>
@@ -354,7 +372,7 @@ export default function ProfilePage({
                   {userType === "lawyer" && (
                     <>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-foreground mb-2">
                           Specialization
                         </label>
                         {isEditing ? (
@@ -367,17 +385,17 @@ export default function ProfilePage({
                                 specialization: e.target.value,
                               })
                             }
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         ) : (
-                          <span className="text-gray-900 dark:text-white">
+                          <span className="text-foreground">
                             {profile.specialization}
                           </span>
                         )}
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-foreground mb-2">
                           Years of Experience
                         </label>
                         {isEditing ? (
@@ -390,17 +408,17 @@ export default function ProfilePage({
                                 experience: e.target.value,
                               })
                             }
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         ) : (
-                          <span className="text-gray-900 dark:text-white">
+                          <span className="text-foreground">
                             {profile.experience} years
                           </span>
                         )}
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-foreground mb-2">
                           Bar Number
                         </label>
                         {isEditing ? (
@@ -413,10 +431,10 @@ export default function ProfilePage({
                                 barNumber: e.target.value,
                               })
                             }
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         ) : (
-                          <span className="text-gray-900 dark:text-white">
+                          <span className="text-foreground">
                             {profile.barNumber}
                           </span>
                         )}
@@ -427,7 +445,7 @@ export default function ProfilePage({
 
                 {/* Address */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Address
                   </label>
                   {isEditing ? (
@@ -437,18 +455,16 @@ export default function ProfilePage({
                         setFormData({ ...formData, address: e.target.value })
                       }
                       rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   ) : (
-                    <p className="text-gray-900 dark:text-white">
-                      {profile.address}
-                    </p>
+                    <p className="text-foreground">{profile.address}</p>
                   )}
                 </div>
 
                 {/* Bio */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Bio
                   </label>
                   {isEditing ? (
@@ -458,21 +474,19 @@ export default function ProfilePage({
                         setFormData({ ...formData, bio: e.target.value })
                       }
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   ) : (
-                    <p className="text-gray-900 dark:text-white">
-                      {profile.bio}
-                    </p>
+                    <p className="text-foreground">{profile.bio}</p>
                   )}
                 </div>
 
                 {/* Save/Cancel Buttons */}
                 {isEditing && (
-                  <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex justify-end space-x-3 pt-4 border-t border-border">
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                      className="px-4 py-2 text-muted-foreground hover:text-foreground"
                     >
                       Cancel
                     </button>
@@ -492,48 +506,91 @@ export default function ProfilePage({
           {/* Settings & Actions */}
           <div className="lg:col-span-1">
             <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              <h3 className="text-lg font-semibold text-foreground mb-4">
                 Settings & Actions
               </h3>
               <div className="space-y-3">
+                {/* Test API Connection Button - Development Only */}
+                {process.env.NODE_ENV === "development" && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        console.log("Testing API connection...");
+                        const token = localStorage.getItem("token");
+                        console.log("Token exists:", !!token);
+
+                        if (!token) {
+                          toast.error("No authentication token found");
+                          return;
+                        }
+
+                        // Test basic API connectivity
+                        const response = await fetch(
+                          `${process.env.NEXT_PUBLIC_API_URL}/auth/profile`,
+                          {
+                            headers: {
+                              Authorization: `Bearer ${token}`,
+                            },
+                          }
+                        );
+
+                        console.log(
+                          "API test response:",
+                          response.status,
+                          response.statusText
+                        );
+
+                        if (response.ok) {
+                          toast.success("API connection working!");
+                        } else {
+                          toast.error(
+                            `API test failed: ${response.status} ${response.statusText}`
+                          );
+                        }
+                      } catch (error) {
+                        console.error("API test error:", error);
+                        toast.error("API connection failed");
+                      }
+                    }}
+                    className="w-full flex items-center space-x-3 p-3 text-left rounded-lg hover:bg-muted transition-colors bg-blue-50 dark:bg-blue-900/20"
+                  >
+                    <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">T</span>
+                    </div>
+                    <span className="text-foreground">Test API Connection</span>
+                  </button>
+                )}
+
                 <button
                   onClick={() => setShowNotificationSettings(true)}
-                  className="w-full flex items-center space-x-3 p-3 text-left rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="w-full flex items-center space-x-3 p-3 text-left rounded-lg hover:bg-muted transition-colors"
                 >
                   <Bell className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-900 dark:text-white">
-                    Notification Settings
-                  </span>
+                  <span className="text-foreground">Notification Settings</span>
                 </button>
 
                 <button
                   onClick={() => setShowPrivacySettings(true)}
-                  className="w-full flex items-center space-x-3 p-3 text-left rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="w-full flex items-center space-x-3 p-3 text-left rounded-lg hover:bg-muted transition-colors"
                 >
                   <Shield className="w-5 h-5 text-green-600" />
-                  <span className="text-gray-900 dark:text-white">
-                    Privacy & Security
-                  </span>
+                  <span className="text-foreground">Privacy & Security</span>
                 </button>
 
                 <button
                   onClick={() => setShowHelpSupport(true)}
-                  className="w-full flex items-center space-x-3 p-3 text-left rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="w-full flex items-center space-x-3 p-3 text-left rounded-lg hover:bg-muted transition-colors"
                 >
                   <HelpCircle className="w-5 h-5 text-orange-600" />
-                  <span className="text-gray-900 dark:text-white">
-                    Help & Support
-                  </span>
+                  <span className="text-foreground">Help & Support</span>
                 </button>
 
                 <button
                   onClick={() => setShowTermsOfService(true)}
-                  className="w-full flex items-center space-x-3 p-3 text-left rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="w-full flex items-center space-x-3 p-3 text-left rounded-lg hover:bg-muted transition-colors"
                 >
                   <FileText className="w-5 h-5 text-purple-600" />
-                  <span className="text-gray-900 dark:text-white">
-                    Terms of Service
-                  </span>
+                  <span className="text-foreground">Terms of Service</span>
                 </button>
               </div>
             </div>
@@ -544,15 +601,13 @@ export default function ProfilePage({
         {/* Notification Settings Modal */}
         {showNotificationSettings && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-card rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold text-foreground mb-4">
                 Notification Settings
               </h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    Email Notifications
-                  </span>
+                  <span className="text-foreground">Email Notifications</span>
                   <button
                     onClick={() =>
                       setNotificationSettings({
@@ -561,9 +616,7 @@ export default function ProfilePage({
                       })
                     }
                     className={`w-12 h-6 rounded-full transition-colors ${
-                      notificationSettings.email
-                        ? "bg-blue-600"
-                        : "bg-gray-300 dark:bg-gray-600"
+                      notificationSettings.email ? "bg-blue-600" : "bg-muted"
                     }`}
                   >
                     <div
@@ -576,9 +629,7 @@ export default function ProfilePage({
                   </button>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    SMS Notifications
-                  </span>
+                  <span className="text-foreground">SMS Notifications</span>
                   <button
                     onClick={() =>
                       setNotificationSettings({
@@ -587,9 +638,7 @@ export default function ProfilePage({
                       })
                     }
                     className={`w-12 h-6 rounded-full transition-colors ${
-                      notificationSettings.sms
-                        ? "bg-blue-600"
-                        : "bg-gray-300 dark:bg-gray-600"
+                      notificationSettings.sms ? "bg-blue-600" : "bg-muted"
                     }`}
                   >
                     <div
@@ -614,7 +663,7 @@ export default function ProfilePage({
                 </button>
                 <button
                   onClick={() => setShowNotificationSettings(false)}
-                  className="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500"
+                  className="flex-1 px-4 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80"
                 >
                   Cancel
                 </button>
@@ -626,13 +675,13 @@ export default function ProfilePage({
         {/* Privacy & Security Modal */}
         {showPrivacySettings && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-card rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold text-foreground mb-4">
                 Privacy & Security
               </h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <span className="text-foreground">
                     Two-Factor Authentication
                   </span>
                   <button
@@ -645,7 +694,7 @@ export default function ProfilePage({
                     className={`w-12 h-6 rounded-full transition-colors ${
                       privacySettings.twoFactorEnabled
                         ? "bg-blue-600"
-                        : "bg-gray-300 dark:bg-gray-600"
+                        : "bg-muted"
                     }`}
                   >
                     <div
@@ -658,9 +707,7 @@ export default function ProfilePage({
                   </button>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    Data Sharing
-                  </span>
+                  <span className="text-foreground">Data Sharing</span>
                   <button
                     onClick={() =>
                       setPrivacySettings({
@@ -669,9 +716,7 @@ export default function ProfilePage({
                       })
                     }
                     className={`w-12 h-6 rounded-full transition-colors ${
-                      privacySettings.dataSharing
-                        ? "bg-blue-600"
-                        : "bg-gray-300 dark:bg-gray-600"
+                      privacySettings.dataSharing ? "bg-blue-600" : "bg-muted"
                     }`}
                   >
                     <div
@@ -696,7 +741,7 @@ export default function ProfilePage({
                 </button>
                 <button
                   onClick={() => setShowPrivacySettings(false)}
-                  className="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500"
+                  className="flex-1 px-4 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80"
                 >
                   Cancel
                 </button>
@@ -708,25 +753,21 @@ export default function ProfilePage({
         {/* Help & Support Modal */}
         {showHelpSupport && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-card rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold text-foreground mb-4">
                 Help & Support
               </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <p className="text-muted-foreground mb-4">
                 Need help? Contact our support team or check our documentation.
               </p>
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Mail className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-700 dark:text-gray-300">
-                    support@vidhigya.com
-                  </span>
+                  <span className="text-foreground">support@vidhigya.com</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Phone className="w-5 h-5 text-green-600" />
-                  <span className="text-gray-700 dark:text-gray-300">
-                    +1 (555) 123-4567
-                  </span>
+                  <span className="text-foreground">+1 (555) 123-4567</span>
                 </div>
               </div>
               <div className="mt-6">
@@ -744,11 +785,11 @@ export default function ProfilePage({
         {/* Terms of Service Modal */}
         {showTermsOfService && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 max-h-96 overflow-y-auto">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-card rounded-lg p-6 w-full max-w-md mx-4 max-h-96 overflow-y-auto">
+              <h3 className="text-lg font-semibold text-foreground mb-4">
                 Terms of Service
               </h3>
-              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
+              <div className="text-sm text-muted-foreground space-y-3">
                 <p>
                   By using Vidhigya, you agree to these terms and conditions.
                 </p>

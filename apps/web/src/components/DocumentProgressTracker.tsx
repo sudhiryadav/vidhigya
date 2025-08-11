@@ -73,7 +73,7 @@ export default function DocumentProgressTracker({
 
   if (!status) {
     return (
-      <div className="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
         <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-600 dark:border-t-blue-400"></div>
         <span className="text-sm text-gray-600 dark:text-gray-300">
           Checking status...
@@ -83,7 +83,7 @@ export default function DocumentProgressTracker({
   }
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800 shadow-sm">
+    <div className="border border-border rounded-lg p-3 bg-card shadow-sm">
       {status.details && (
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
           {status.details}
@@ -103,7 +103,7 @@ export default function DocumentProgressTracker({
             <span>Progress</span>
             <span>{status.progress}%</span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div className="w-full bg-muted rounded-full h-2">
             <div
               className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out"
               style={{ width: `${status.progress}%` }}

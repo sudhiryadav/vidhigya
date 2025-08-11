@@ -29,7 +29,7 @@ export default function AvatarFallback({
 
   return (
     <div
-      className={`${sizeClasses[size]} rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center font-medium text-gray-600 dark:text-gray-300 ${className}`}
+      className={`${sizeClasses[size]} rounded-full bg-muted flex items-center justify-center font-medium text-muted-foreground ${className}`}
     >
       <span>{getInitials(name)}</span>
     </div>

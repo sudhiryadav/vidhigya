@@ -26,9 +26,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Apply new theme
     root.setAttribute("data-theme", themeToApply);
 
-    // For Tailwind v4, we also add the dark class for compatibility
+    // For Tailwind compatibility, add the dark class
     if (themeToApply === "dark") {
       root.classList.add("dark");
+    } else {
+      root.classList.add("light");
     }
 
     // Force CSS recalculation
@@ -47,10 +49,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }, 10);
 
     console.log(
-      "Direct theme applied:",
+      "Theme applied:",
       themeToApply,
       "data-theme:",
-      root.getAttribute("data-theme")
+      root.getAttribute("data-theme"),
+      "classes:",
+      root.className
     );
   };
 

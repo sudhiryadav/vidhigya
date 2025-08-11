@@ -170,7 +170,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
         {/* Welcome Section */}
         <div className="mb-8">
@@ -233,7 +233,7 @@ export default function AdminDashboard() {
                 title="System Settings"
                 description="Configure system preferences"
                 icon={Settings}
-                color="bg-gray-500"
+                color="bg-muted"
                 onClick={() => console.log("System settings")}
               />
               <QuickActionCard

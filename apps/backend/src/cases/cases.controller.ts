@@ -47,6 +47,11 @@ export class CasesController {
     return this.casesService.getDashboardStats(req.user.sub);
   }
 
+  @Get('overdue-bills')
+  getOverdueBills(@Request() req: AuthenticatedRequest) {
+    return this.casesService.getOverdueBills(req.user.sub);
+  }
+
   @Get('recent-activity')
   getRecentActivity(
     @Request() req: AuthenticatedRequest,

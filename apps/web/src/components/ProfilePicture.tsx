@@ -56,7 +56,7 @@ export default function ProfilePicture({
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <div
-        className={`${sizeClasses[size]} rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center font-medium text-gray-600 dark:text-gray-300 overflow-hidden`}
+        className={`${sizeClasses[size]} rounded-full bg-muted flex items-center justify-center font-medium text-muted-foreground overflow-hidden`}
       >
         {shouldShowImage ? (
           <Image

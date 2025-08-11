@@ -36,7 +36,7 @@ export function ThemeToggle() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+        className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors duration-200 border border-border bg-card"
       >
         <Icon className="w-4 h-4" />
         <span className="hidden sm:inline">{currentTheme?.label}</span>
@@ -46,7 +46,7 @@ export function ThemeToggle() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50 backdrop-blur-sm">
+        <div className="absolute right-0 bottom-full mb-2 w-48 bg-card rounded-lg shadow-lg border border-border py-1 z-50 backdrop-blur-sm">
           {themes.map((themeOption) => {
             const ThemeIcon = themeOption.icon;
             return (
@@ -57,10 +57,10 @@ export function ThemeToggle() {
                   setTheme(themeOption.value);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center space-x-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 ${
+                className={`w-full flex items-center space-x-3 px-4 py-2 text-sm hover:bg-muted transition-colors duration-200 ${
                   theme === themeOption.value
                     ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
-                    : "text-gray-700 dark:text-gray-300"
+                    : "text-foreground"
                 }`}
               >
                 <ThemeIcon className="w-4 h-4" />

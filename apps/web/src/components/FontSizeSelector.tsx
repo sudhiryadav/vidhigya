@@ -2,7 +2,6 @@
 
 import { useFontSize } from "@/contexts/FontSizeContext";
 import { Check, Type } from "lucide-react";
-import React from "react";
 
 interface FontSizeOption {
   value: "xs" | "sm" | "base" | "lg" | "xl";
@@ -67,9 +66,10 @@ export default function FontSizeSelector() {
         </h3>
       </div>
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        Choose the font size that works best for you. Changes will apply immediately.
+        Choose the font size that works best for you. Changes will apply
+        immediately.
       </p>
-      
+
       <div className="grid grid-cols-1 gap-3">
         {fontSizeOptions.map((option) => (
           <button
@@ -106,13 +106,14 @@ export default function FontSizeSelector() {
           </button>
         ))}
       </div>
-      
-      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+
+      <div className="mt-4 p-3 bg-muted rounded-lg">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          <strong>Preview:</strong> This is how text will appear with your selected font size. 
-          The change affects all text throughout the application.
+          <strong>Preview:</strong> This is how text will appear with your
+          selected font size. The change affects all text throughout the
+          application.
         </p>
       </div>
     </div>
   );
-} 
+}

@@ -29,7 +29,7 @@ async function main() {
     create: {
       email: 'lawyer@vidhigya.com',
       password: lawyerPassword,
-      name: 'Laywer John',
+      name: 'Lawyer John',
       role: 'LAWYER',
       phone: '+1 (555) 123-4567',
       isActive: true,
