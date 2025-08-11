@@ -60,6 +60,12 @@ export class ChatGateway {
         void client.join('clients');
       }
 
+      // Track online user in ChatService
+      this.chatService.setUserOnline(user.sub);
+
+      // Emit online status to all connected clients
+      this.server.emit('userOnline', { userId: user.sub, isOnline: true });
+
       console.log(`User ${user.sub} connected`);
     } catch (error) {
       console.error('Authentication failed:', error);
@@ -70,6 +76,12 @@ export class ChatGateway {
   handleDisconnect(client: Socket) {
     const user = client.data.user as AuthenticatedUser;
     if (user) {
+      // Track offline user in ChatService
+      this.chatService.setUserOffline(user.sub);
+
+      // Emit offline status to all connected clients
+      this.server.emit('userOffline', { userId: user.sub, isOnline: false });
+
       console.log(`User ${user.sub} disconnected`);
     }
   }
@@ -79,31 +91,81 @@ export class ChatGateway {
     @MessageBody() createMessageDto: { content: string; receiverId: string },
     @ConnectedSocket() client: Socket,
   ) {
+    console.log('=== BACKEND: sendMessage event received ===');
+    console.log('Socket client ID:', client.id);
+    console.log('Socket connected:', client.connected);
+    console.log('Message data:', createMessageDto);
+
     const user = (client.data as { user: AuthenticatedUser }).user;
     if (!user) {
+      console.error('ERROR: No user found in socket data');
+      console.error('Client data:', client.data);
       return { error: 'Unauthorized' };
     }
 
+    console.log('User authenticated successfully:', {
+      userId: user.sub,
+      userRole: user.role,
+      receiverId: createMessageDto.receiverId,
+      content: createMessageDto.content,
+      chatId: `${user.sub}-${createMessageDto.receiverId}`,
+    });
+
     try {
-      const message = {
-        id: 'temp',
-        content: createMessageDto.content,
-        receiverId: createMessageDto.receiverId,
+      console.log('Calling ChatService.sendMessage with:', {
+        chatId: `${user.sub}-${createMessageDto.receiverId}`,
         senderId: user.sub,
-        createdAt: new Date(),
-      };
+        content: createMessageDto.content,
+        type: 'TEXT',
+      });
 
-      // Emit to sender
-      void client.emit('messageSent', message);
+      // Create the message using the chat service
+      this.chatService
+        .sendMessage(
+          `${user.sub}-${createMessageDto.receiverId}`,
+          user.sub,
+          createMessageDto.content,
+          'TEXT',
+        )
+        .then((message) => {
+          console.log('=== BACKEND: Message created successfully ===');
+          console.log('Created message:', message);
 
-      // Emit to receiver
-      void this.server
-        .to(`user_${message.receiverId}`)
-        .emit('newMessage', message);
+          // Emit to sender
+          console.log(
+            'Emitting messageSent to sender (client ID:',
+            client.id,
+            ')',
+          );
+          void client.emit('messageSent', message);
 
-      return message;
+          // Emit to receiver with additional context
+          const receiverRoom = `user_${createMessageDto.receiverId}`;
+          console.log('Emitting newMessage to receiver room:', receiverRoom);
+          console.log('Receiver ID:', createMessageDto.receiverId);
+
+          void this.server.to(receiverRoom).emit('newMessage', {
+            ...message,
+            receiverId: createMessageDto.receiverId,
+            chatId: `${user.sub}-${createMessageDto.receiverId}`,
+          });
+
+          console.log('=== BACKEND: Message emission completed ===');
+        })
+        .catch((error) => {
+          console.error('=== BACKEND: Error in ChatService.sendMessage ===');
+          console.error('Error details:', error);
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+          void client.emit('messageError', { error: 'Failed to send message' });
+        });
+
+      return { success: true };
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('=== BACKEND: Error in handleMessage ===');
+      console.error('Error details:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
       return { error: 'Failed to send message' };
     }
   }
@@ -132,7 +194,7 @@ export class ChatGateway {
     @MessageBody() data: { receiverId: string; limit?: number },
     @ConnectedSocket() client: Socket,
   ) {
-    const user = (client.data as { user: AuthenticatedUser }).user;
+    const user = client.data.user as AuthenticatedUser;
     if (!user) {
       return { error: 'Unauthorized' };
     }
@@ -148,7 +210,7 @@ export class ChatGateway {
 
   @SubscribeMessage('getUnreadCount')
   handleGetUnreadCount(@ConnectedSocket() client: Socket) {
-    const user = (client.data as { user: AuthenticatedUser }).user;
+    const user = client.data.user as AuthenticatedUser;
     if (!user) {
       return { error: 'Unauthorized' };
     }
@@ -199,7 +261,7 @@ export class ChatGateway {
     @MessageBody() data: { limit?: number; offset?: number },
     @ConnectedSocket() client: Socket,
   ) {
-    const user = (client.data as { user: AuthenticatedUser }).user;
+    const user = client.data.user as AuthenticatedUser;
     if (!user || user.role !== 'ADMIN') {
       return { error: 'Unauthorized' };
     }
@@ -238,5 +300,36 @@ export class ChatGateway {
     this.server
       .to(`user_${userId}`)
       .emit('video_call_notification', notificationData);
+  }
+
+  @SubscribeMessage('join_personal_room')
+  handleJoinPersonalRoom(
+    @MessageBody() data: { userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    console.log('=== BACKEND: join_personal_room event received ===');
+    console.log('Client ID:', client.id);
+    console.log('User ID:', data.userId);
+
+    const user = (client.data as { user: AuthenticatedUser }).user;
+    if (!user) {
+      console.error(
+        'ERROR: No user found in socket data for join_personal_room',
+      );
+      return;
+    }
+
+    console.log('User authenticated for join_personal_room:', {
+      userId: user.sub,
+      userRole: user.role,
+      requestedRoom: data.userId,
+    });
+
+    // Join the user's personal room
+    const roomName = `user_${data.userId}`;
+    client.join(roomName);
+    console.log('User joined room:', roomName);
+    console.log('Client rooms:', client.rooms);
+    console.log('=== BACKEND: join_personal_room completed ===');
   }
 }

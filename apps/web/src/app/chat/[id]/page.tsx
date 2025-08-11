@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
+import { getSocketService } from "@/services/socket";
 import { ArrowLeft, Send, User } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -47,6 +48,34 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Listen for online status updates
+  useEffect(() => {
+    const handleUserStatusChange = (event: CustomEvent) => {
+      const { userId, isOnline } = event.detail;
+
+      // Update the participant's online status if it matches
+      setParticipants((prev) =>
+        prev.map((participant) =>
+          participant.id === userId ? { ...participant, isOnline } : participant
+        )
+      );
+    };
+
+    // Add event listener for user status changes
+    window.addEventListener(
+      "userStatusChange",
+      handleUserStatusChange as EventListener
+    );
+
+    // Cleanup
+    return () => {
+      window.removeEventListener(
+        "userStatusChange",
+        handleUserStatusChange as EventListener
+      );
+    };
+  }, []);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -54,105 +83,337 @@ export default function ChatPage() {
   const loadChat = async () => {
     try {
       setLoading(true);
+      console.log("Loading chat with ID:", chatId);
       const response = await apiClient.getChat(chatId);
+      console.log("API response:", response);
+
       if (
         response &&
         typeof response === "object" &&
         "messages" in response &&
         "participants" in response
       ) {
+        console.log("Setting messages:", response.messages);
+        console.log("Setting participants:", response.participants);
         setMessages(response.messages as any[]);
         setParticipants(response.participants as any[]);
       } else {
-        // Fallback to mock data
-        const mockMessages = [
-          {
-            id: "1",
-            content: "Hello! How can I help you today?",
-            senderId: "other",
-            senderName: "John Smith",
-            type: "TEXT",
-            isRead: true,
-            createdAt: new Date(Date.now() - 3600000),
-          },
-          {
-            id: "2",
-            content: "I have a question about my case",
-            senderId: "current",
-            senderName: "You",
-            type: "TEXT",
-            isRead: true,
-            createdAt: new Date(Date.now() - 1800000),
-          },
-        ];
-        const mockParticipants = [
-          {
-            id: "other",
-            name: "John Smith",
-            role: "Client",
-            isOnline: true,
-          },
-        ];
-        setMessages(mockMessages);
-        setParticipants(mockParticipants);
+        console.error("Invalid response format from API:", response);
+        setMessages([]);
+        setParticipants([]);
       }
     } catch (error) {
       console.error("Error loading chat:", error);
-      // Fallback to mock data
-      const mockMessages = [
-        {
-          id: "1",
-          content: "Hello! How can I help you today?",
-          senderId: "other",
-          senderName: "John Smith",
-          type: "TEXT",
-          isRead: true,
-          createdAt: new Date(Date.now() - 3600000),
-        },
-        {
-          id: "2",
-          content: "I have a question about my case",
-          senderId: "current",
-          senderName: "You",
-          type: "TEXT",
-          isRead: true,
-          createdAt: new Date(Date.now() - 1800000),
-        },
-      ];
-      const mockParticipants = [
-        {
-          id: "other",
-          name: "John Smith",
-          role: "Client",
-          isOnline: true,
-        },
-      ];
-      setMessages(mockMessages);
-      setParticipants(mockParticipants);
+      setMessages([]);
+      setParticipants([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Listen for real-time message updates
+  useEffect(() => {
+    // Check socket connection status
+    console.log("Socket service available:", !!getSocketService());
+    console.log("Socket connected:", getSocketService().isSocketConnected());
+    console.log("Socket state:", getSocketService().getSocketState());
+
+    // Try to reconnect if not connected
+    if (!getSocketService().isSocketConnected()) {
+      console.log("Socket not connected, attempting to reconnect...");
+      const token = localStorage.getItem("token");
+      if (token) {
+        getSocketService().forceReconnect(token);
+      }
+    }
+
+    // Global duplicate prevention - track processed message IDs
+    if (!window.processedMessageIds) {
+      window.processedMessageIds = new Set();
+    }
+
+    const handleNewMessage = (event: CustomEvent) => {
+      console.log("=== CLIENT SIDE: Received newMessage event ===");
+      console.log("Event detail:", event.detail);
+      const { message } = event.detail;
+
+      // Check if message belongs to this chat by comparing both possible chat ID formats
+      const currentChatId = chatId;
+      const messageChatId = message?.chatId;
+
+      // Chat ID can be in two formats: "senderId-receiverId" or "receiverId-senderId"
+      // We need to check if the message belongs to this chat regardless of the order
+      const isMessageForThisChat =
+        message &&
+        messageChatId &&
+        (messageChatId === currentChatId ||
+          messageChatId === currentChatId.split("-").reverse().join("-"));
+
+      console.log("Chat ID comparison:", {
+        currentChatId,
+        messageChatId,
+        reversedCurrentChatId: currentChatId.split("-").reverse().join("-"),
+        isMessageForThisChat,
+      });
+
+      // Only add the message if it belongs to this chat
+      if (isMessageForThisChat) {
+        console.log("Message belongs to this chat, processing...");
+
+        // Ensure processedMessageIds is initialized
+        if (!window.processedMessageIds) {
+          window.processedMessageIds = new Set();
+        }
+
+        // Check if message was already processed globally
+        if (window.processedMessageIds.has(message.id)) {
+          console.log(
+            "Message already processed globally, skipping:",
+            message.id
+          );
+          return;
+        }
+
+        // Mark message as processed globally
+        window.processedMessageIds.add(message.id);
+
+        // Clean up old message IDs to prevent memory leaks
+        if (window.processedMessageIds.size > 100) {
+          const idsArray = Array.from(window.processedMessageIds);
+          window.processedMessageIds.clear();
+          idsArray
+            .slice(-50)
+            .forEach((id) => window.processedMessageIds.add(id));
+        }
+
+        setMessages((prev) => {
+          // Check if message already exists in the current state
+          if (prev.some((msg) => msg.id === message.id)) {
+            console.log(
+              "Message already exists in state, skipping:",
+              message.id
+            );
+            return prev;
+          }
+
+          // Also check if it's a temporary message that should be replaced
+          const existingTempIndex = prev.findIndex(
+            (msg) =>
+              msg.id.startsWith("temp") &&
+              msg.content === message.content &&
+              msg.senderId === message.senderId
+          );
+
+          if (existingTempIndex !== -1) {
+            // Replace the temporary message
+            console.log(
+              "Replacing temporary message with real message:",
+              message.id
+            );
+            const newMessages = [...prev];
+            newMessages[existingTempIndex] = {
+              ...newMessages[existingTempIndex],
+              id: message.id,
+              createdAt: new Date(message.createdAt),
+            };
+            return newMessages;
+          }
+
+          console.log("Adding new message to state:", message);
+          return [
+            ...prev,
+            {
+              id: message.id,
+              content: message.content,
+              senderId: message.senderId,
+              senderName: message.senderName || "Unknown",
+              type: message.type || "TEXT",
+              isRead: false,
+              createdAt: new Date(message.createdAt),
+            },
+          ];
+        });
+        console.log("=== CLIENT SIDE: newMessage processed successfully ===");
+      } else {
+        console.log("Message does not belong to this chat or is invalid:", {
+          message,
+          currentChatId,
+          messageChatId,
+          reversedCurrentChatId: currentChatId.split("-").reverse().join("-"),
+          isMessageForThisChat,
+        });
+      }
+    };
+
+    const handleMessageSent = (event: CustomEvent) => {
+      console.log("=== CLIENT SIDE: Received messageSent event ===");
+      console.log("Event detail:", event.detail);
+      const { message } = event.detail;
+
+      // Replace temporary message with real message
+      if (message && message.senderId === user?.id) {
+        console.log(
+          "Replacing temporary message with real message:",
+          message.id
+        );
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id.startsWith("temp")
+              ? {
+                  ...msg,
+                  id: message.id,
+                  createdAt: new Date(message.createdAt),
+                }
+              : msg
+          )
+        );
+        console.log("=== CLIENT SIDE: messageSent processed successfully ===");
+      } else {
+        console.log("Message sent event not for current user or invalid:", {
+          message,
+          currentUserId: user?.id,
+          messageSenderId: message?.senderId,
+        });
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener("newMessage", handleNewMessage as EventListener);
+    window.addEventListener("messageSent", handleMessageSent as EventListener);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener(
+        "newMessage",
+        handleNewMessage as EventListener
+      );
+      window.removeEventListener(
+        "messageSent",
+        handleMessageSent as EventListener
+      );
+    };
+  }, [chatId, user?.id]);
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || sending) return;
 
+    console.log("=== CLIENT SIDE: Starting message send process ===");
+    console.log("Message content:", newMessage);
+    console.log("Current user:", {
+      id: user?.id,
+      name: user?.name,
+      role: user?.role,
+      email: user?.email,
+    });
+    console.log("Chat ID from URL:", chatId);
+    console.log("All participants:", participants);
+    console.log("Current user ID:", user?.id);
+
     try {
       setSending(true);
-      const message = await apiClient.sendChatMessage(chatId, {
-        content: newMessage,
-        type: "TEXT",
-      });
 
-      if (message && typeof message === "object" && "id" in message) {
-        setMessages((prev) => [...prev, message as Message]);
+      // Get the other participant's ID
+      const otherParticipant = participants.find((p) => p.id !== user?.id);
+      if (!otherParticipant) {
+        console.error("ERROR: No other participant found!");
+        console.error("Participants:", participants);
+        console.error("Current user ID:", user?.id);
+        toast.error("No participant found");
+        return;
+      }
+
+      console.log("Other participant found:", otherParticipant);
+      console.log("Socket service available:", !!getSocketService());
+      console.log("Socket connected:", getSocketService().isSocketConnected());
+      console.log("Socket state:", getSocketService().getSocketState());
+
+      // Construct the chat ID in the format expected by the backend: "senderId-receiverId"
+      const constructedChatId = `${user?.id}-${otherParticipant.id}`;
+      console.log("Constructed chat ID:", constructedChatId);
+      console.log("Expected format: senderId-receiverId");
+      console.log("Actual format:", constructedChatId);
+
+      // Send message via socket for real-time delivery
+      if (getSocketService().isSocketConnected()) {
+        console.log("=== SENDING VIA SOCKET ===");
+        console.log(
+          "Socket service state:",
+          getSocketService().getSocketState()
+        );
+        console.log("Constructed chat ID for socket:", constructedChatId);
+
+        // Log before calling sendMessage
+        console.log("About to call getSocketService().sendMessage with:", {
+          chatId: constructedChatId,
+          content: newMessage,
+          type: "TEXT",
+        });
+
+        getSocketService().sendMessage(constructedChatId, newMessage, "TEXT");
+
+        console.log("sendMessage called successfully");
+
+        // Add message to local state immediately for optimistic UI
+        const tempMessage = {
+          id: `temp-${Date.now()}`,
+          content: newMessage,
+          senderId: user?.id || "",
+          senderName: user?.name || "You",
+          type: "TEXT",
+          isRead: false,
+          createdAt: new Date(),
+        };
+
+        console.log("Adding temp message to local state:", tempMessage);
+        setMessages((prev) => [...prev, tempMessage]);
         setNewMessage("");
+        console.log("=== SOCKET SEND COMPLETED ===");
+      } else {
+        console.log("=== FALLING BACK TO REST API ===");
+        console.log("Socket not connected, falling back to REST API");
+        console.log(
+          "Socket service state:",
+          getSocketService().getSocketState()
+        );
+        console.log("Constructed chat ID for REST API:", constructedChatId);
+
+        // Fallback to REST API if socket is not connected
+        console.log("Calling apiClient.sendChatMessage with:", {
+          chatId: constructedChatId,
+          message: { content: newMessage, type: "TEXT" },
+        });
+
+        const message = await apiClient.sendChatMessage(constructedChatId, {
+          content: newMessage,
+          type: "TEXT",
+        });
+
+        console.log("REST API response:", message);
+
+        if (message && typeof message === "object" && "id" in message) {
+          console.log("REST API message added to state:", message);
+          setMessages((prev) => [...prev, message as Message]);
+          setNewMessage("");
+        } else {
+          console.error("REST API response invalid:", message);
+        }
+        console.log("=== REST API SEND COMPLETED ===");
       }
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("=== ERROR IN MESSAGE SENDING ===");
+      console.error("Error details:", error);
+      console.error(
+        "Error message:",
+        error instanceof Error ? error.message : "Unknown error"
+      );
+      console.error(
+        "Error stack:",
+        error instanceof Error ? error.stack : "No stack trace"
+      );
       toast.error("Failed to send message");
     } finally {
       setSending(false);
+      console.log("=== MESSAGE SEND PROCESS COMPLETED ===");
     }
   };
 
@@ -284,6 +545,33 @@ export default function ChatPage() {
               >
                 <Send className="w-4 h-4" />
                 <span>{sending ? "Sending..." : "Send"}</span>
+              </button>
+
+              {/* Debug button for testing */}
+              <button
+                onClick={() => {
+                  console.log("=== DEBUG: Test button clicked ===");
+                  console.log("Current user:", user);
+                  console.log("Participants:", participants);
+                  console.log("Chat ID from URL:", chatId);
+                  console.log("Socket service:", getSocketService());
+                  console.log(
+                    "Socket connected:",
+                    getSocketService().isSocketConnected()
+                  );
+                  console.log(
+                    "Socket state:",
+                    getSocketService().getSocketState()
+                  );
+                  console.log(
+                    "Window processedMessageIds:",
+                    window.processedMessageIds
+                  );
+                }}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm"
+                title="Debug info"
+              >
+                Debug
               </button>
             </div>
           </div>

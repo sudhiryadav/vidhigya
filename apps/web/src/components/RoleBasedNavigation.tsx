@@ -179,7 +179,7 @@ export function RoleBasedNavigation() {
 
       {/* Sidebar Navigation */}
       <div
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border shadow-lg transform transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 border-r border-border shadow-lg transform transition-transform bg-card duration-300 ease-in-out ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0`}
       >

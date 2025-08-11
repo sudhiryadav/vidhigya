@@ -147,13 +147,18 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
               : state.isFocused
                 ? "hsl(var(--muted))"
                 : "transparent",
-            color: state.isSelected ? "#ffffff" : "hsl(var(--foreground))",
+            color: state.isSelected
+              ? "hsl(var(--background))"
+              : "hsl(var(--foreground))",
             cursor: "pointer",
             transition: "all 0.15s ease-in-out",
             "&:hover": {
               backgroundColor: state.isSelected
                 ? "#3b82f6"
                 : "hsl(var(--muted))",
+              color: state.isSelected
+                ? "hsl(var(--background))"
+                : "hsl(var(--foreground))",
             },
           }),
           singleValue: (provided) => ({

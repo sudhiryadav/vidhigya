@@ -3,6 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
+import FloatingChatButton from "./FloatingChatButton";
 
 const publicRoutes = ["/login", "/register", "/forgot-password"];
 
@@ -18,26 +19,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   useEffect(() => {
-    console.log("AuthGuard effect triggered:", {
-      loading,
-      isAuthenticated,
-      user: user?.role,
-      pathname,
-      hasRedirected: hasRedirected.current,
-    });
-
     if (!loading && !hasRedirected.current) {
       // Add a small delay to prevent race conditions
       const timeoutId = setTimeout(() => {
-        console.log("AuthGuard timeout executed:", {
-          isAuthenticated,
-          pathname,
-          userRole: user?.role,
-        });
-
         // If user is not authenticated and trying to access a protected route
         if (!isAuthenticated && !publicRoutes.includes(pathname)) {
-          console.log("Redirecting to login - not authenticated");
           hasRedirected.current = true;
           router.push("/login");
           return;
@@ -45,14 +31,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
         // If user is authenticated and trying to access login page
         if (isAuthenticated && pathname === "/login") {
-          console.log("Redirecting from login - user authenticated");
           hasRedirected.current = true;
           // Redirect based on role
           if (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") {
-            console.log("Redirecting to admin dashboard");
             router.push("/admin/dashboard");
           } else {
-            console.log("Redirecting to dashboard");
             router.push("/dashboard");
           }
           return;
@@ -60,13 +43,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
         // If user is authenticated and on root path, redirect to appropriate dashboard
         if (isAuthenticated && pathname === "/") {
-          console.log("Redirecting from root - user authenticated");
           hasRedirected.current = true;
           if (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") {
-            console.log("Redirecting to admin dashboard");
             router.push("/admin/dashboard");
           } else {
-            console.log("Redirecting to dashboard");
             router.push("/dashboard");
           }
           return;
@@ -89,5 +69,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {/* Show FloatingChatButton on all authenticated pages */}
+      {isAuthenticated && <FloatingChatButton />}
+    </>
+  );
 }

@@ -1598,7 +1598,7 @@ export default function VideoCallsPage() {
         isOpen={showInstantCallModal}
         onClose={handleInstantCallCancel}
         header={
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-lg font-semibold text-foreground">
             Start Instant Video Call
           </h2>
         }
@@ -1606,7 +1606,7 @@ export default function VideoCallsPage() {
       >
         <div className="p-6">
           <div className="mb-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Start a video call immediately and notify participants. The call
               will begin right away.
             </p>
@@ -1617,7 +1617,7 @@ export default function VideoCallsPage() {
                 <div>
                   <label
                     htmlFor="instantTitle"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    className="block text-sm font-medium text-foreground mb-2"
                   >
                     Call Title *
                   </label>
@@ -1641,7 +1641,7 @@ export default function VideoCallsPage() {
                 <div>
                   <label
                     htmlFor="instantDescription"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    className="block text-sm font-medium text-foreground mb-2"
                   >
                     Description
                   </label>
@@ -1664,7 +1664,7 @@ export default function VideoCallsPage() {
                 <div>
                   <label
                     htmlFor="instantCase"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    className="block text-sm font-medium text-foreground mb-2"
                   >
                     Related Case
                   </label>
@@ -1721,7 +1721,7 @@ export default function VideoCallsPage() {
 
                 {/* Participants */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Participants
                   </label>
                   <div className="space-y-2 max-h-40 overflow-y-auto">

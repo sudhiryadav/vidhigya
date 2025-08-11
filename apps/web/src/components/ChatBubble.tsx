@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { apiClient } from "@/services/api";
-import { socketService } from "@/services/socket";
+import { getSocketService } from "@/services/socket";
 import {
   ArrowLeft,
   Maximize2,
@@ -206,13 +206,13 @@ export default function ChatBubble() {
           `[${componentId}] Connecting to socket from ChatBubble for user:`,
           user.id
         );
-        socketService.connect(token);
+        getSocketService().connect(token);
 
         setTimeout(() => {
           console.log("Checking socket connection status...");
-          if (socketService.isSocketConnected()) {
+          if (getSocketService().isSocketConnected()) {
             console.log("Joining personal room for user:", user.id);
-            socketService.joinPersonalRoom(user.id);
+            getSocketService().joinPersonalRoom(user.id);
           } else {
             console.log("Socket not connected after 1 second");
           }
@@ -380,10 +380,10 @@ export default function ChatBubble() {
   const setupSocketConnection = () => {
     const token = localStorage.getItem("token");
     if (token) {
-      socketService.connect(token);
+      getSocketService().connect(token);
       if (selectedChat) {
         console.log("Joining chat:", selectedChat.id);
-        socketService.joinChat(selectedChat.id);
+        getSocketService().joinChat(selectedChat.id);
       }
     }
   };
@@ -394,7 +394,7 @@ export default function ChatBubble() {
         setMessages((prev) => [...prev, event.detail.message]);
 
         if (event.detail.message.senderId !== user?.id) {
-          socketService.markAsRead(selectedChat!.id);
+          getSocketService().markAsRead(selectedChat!.id);
         }
 
         setChats((prevChats) =>
@@ -518,7 +518,7 @@ export default function ChatBubble() {
     setMessages([]);
 
     // Mark messages as read immediately
-    socketService.markAsRead(chat.id);
+    getSocketService().markAsRead(chat.id);
 
     // Update local state to clear unread count - ensure no duplicates
     setChats((prevChats) => {
@@ -544,7 +544,7 @@ export default function ChatBubble() {
 
       // Mark messages as read when fetching
       if (data.messages && data.messages.length > 0) {
-        socketService.markAsRead(selectedChat.id);
+        getSocketService().markAsRead(selectedChat.id);
 
         // Update local state to clear unread count - ensure no duplicates
         setChats((prevChats) => {
@@ -572,7 +572,7 @@ export default function ChatBubble() {
       setSending(true);
       await apiClient.sendChatMessage(selectedChat.id, { content: newMessage });
       setNewMessage("");
-      socketService.sendMessage(selectedChat.id, newMessage);
+      getSocketService().sendMessage(selectedChat.id, newMessage);
     } catch (error) {
       console.error("Error sending message:", error);
     } finally {
@@ -583,12 +583,12 @@ export default function ChatBubble() {
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
     if (selectedChat) {
-      socketService.sendTypingStatus(selectedChat.id, true);
+      getSocketService().sendTypingStatus(selectedChat.id, true);
       if (typingTimeout) {
         clearTimeout(typingTimeout);
       }
       const timeout = setTimeout(() => {
-        socketService.sendTypingStatus(selectedChat!.id, false);
+        getSocketService().sendTypingStatus(selectedChat!.id, false);
       }, 1000);
       setTypingTimeout(timeout);
     }

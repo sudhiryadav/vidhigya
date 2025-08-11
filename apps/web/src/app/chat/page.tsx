@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
-import { MessageCircle, Plus, Search, User as UserIcon } from "lucide-react";
+import { MessageCircle, Search, Send, User } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -57,6 +57,44 @@ export default function ChatPage() {
   useEffect(() => {
     fetchChats();
     fetchAssociatedUsers();
+  }, []);
+
+  // Listen for online status updates
+  useEffect(() => {
+    const handleUserStatusChange = (event: CustomEvent) => {
+      const { userId, isOnline } = event.detail;
+
+      // Update chats with new online status
+      setChats((prev) =>
+        prev.map((chat) => ({
+          ...chat,
+          participants: chat.participants.map((participant) =>
+            participant.id === userId
+              ? { ...participant, isOnline }
+              : participant
+          ),
+        }))
+      );
+
+      // Update associated users with new online status
+      setAssociatedUsers((prev) =>
+        prev.map((user) => (user.id === userId ? { ...user, isOnline } : user))
+      );
+    };
+
+    // Add event listener for user status changes
+    window.addEventListener(
+      "userStatusChange",
+      handleUserStatusChange as EventListener
+    );
+
+    // Cleanup
+    return () => {
+      window.removeEventListener(
+        "userStatusChange",
+        handleUserStatusChange as EventListener
+      );
+    };
   }, []);
 
   const fetchChats = async () => {
@@ -215,7 +253,7 @@ export default function ChatPage() {
           onClick={() => setShowNewChat(!showNewChat)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
         >
-          <Plus className="w-4 h-4" />
+          <Send className="w-4 h-4" />
           <span>New Chat</span>
         </button>
       </div>
@@ -239,7 +277,7 @@ export default function ChatPage() {
                 >
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                      <UserIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                       <p className="font-medium text-foreground">
@@ -291,7 +329,7 @@ export default function ChatPage() {
                   {/* Avatar */}
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                      <UserIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                      <User className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     </div>
                   </div>
 

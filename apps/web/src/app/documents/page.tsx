@@ -74,6 +74,209 @@ interface UploadFormData {
   caseId: string;
 }
 
+// Document Card Component
+const DocumentCard = ({
+  document: doc,
+  onView,
+  onDownload,
+  onDelete,
+  onComplete,
+  onError,
+  canDelete,
+  apiClient,
+}: {
+  document: Document;
+  onView: (doc: Document) => void;
+  onDownload: (doc: Document) => void;
+  onDelete: (doc: Document) => void;
+  onComplete: () => void;
+  onError: (error: string) => void;
+  canDelete: boolean;
+  apiClient: any;
+}) => {
+  const getFileIcon = (fileType: string) => {
+    if (fileType.includes("pdf")) return "📄";
+    if (fileType.includes("doc")) return "📝";
+    if (fileType.includes("image")) return "🖼️";
+    if (fileType.includes("video")) return "🎥";
+    return "📎";
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      DRAFT: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+      PENDING:
+        "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+      APPROVED:
+        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+      REJECTED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+      ARCHIVED:
+        "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
+    };
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig[status as keyof typeof statusConfig] || "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"}`}
+      >
+        {status.replace("_", " ")}
+      </span>
+    );
+  };
+
+  const getCategoryBadge = (category: string) => {
+    const categoryConfig = {
+      PETITION: "bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-200",
+      EVIDENCE:
+        "bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-emerald-200",
+      CONTRACT:
+        "bg-violet-100 text-violet-800 dark:bg-violet-700 dark:text-violet-200",
+      AGREEMENT:
+        "bg-orange-100 text-orange-800 dark:bg-orange-700 dark:text-orange-200",
+      REPORT:
+        "bg-indigo-100 text-indigo-800 dark:bg-indigo-700 dark:text-indigo-200",
+    };
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${categoryConfig[category as keyof typeof categoryConfig] || "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"}`}
+      >
+        {category.replace("_", " ")}
+      </span>
+    );
+  };
+
+  return (
+    <div className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-shadow">
+      {/* Document Title - Full Width */}
+      <h3 className="font-semibold text-foreground text-lg mb-3 line-clamp-2">
+        {doc.title}
+      </h3>
+
+      {/* File Size */}
+      <p className="text-sm text-muted-foreground mb-4">
+        {formatFileSize(doc.fileSize)}
+      </p>
+
+      {/* File Icon and Badges Row */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center text-2xl">
+          {getFileIcon(doc.fileType)}
+        </div>
+        <div className="flex items-center space-x-2">
+          {getCategoryBadge(doc.category)}
+          {getStatusBadge(doc.status)}
+        </div>
+      </div>
+
+      {/* Document Info */}
+      <div className="space-y-3 mb-4">
+        {doc.description && (
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {doc.description}
+          </p>
+        )}
+
+        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+          <Calendar className="w-4 h-4" />
+          <span>Uploaded {formatDate(doc.createdAt)}</span>
+        </div>
+
+        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+          <User className="w-4 h-4" />
+          <span>by {doc.uploadedBy.name}</span>
+        </div>
+
+        {doc.case && (
+          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+            <Briefcase className="w-4 h-4" />
+            <span>{doc.case.caseNumber}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Progress Tracking */}
+      {doc.aiDocumentId &&
+        (doc.status === "PROCESSING" || doc.status === "UPLOADED") && (
+          <div className="mb-4">
+            <DocumentProgressTracker
+              documentId={doc.id}
+              aiDocumentId={doc.aiDocumentId}
+              filename={doc.title}
+              apiClient={apiClient}
+              onComplete={onComplete}
+              onError={onError}
+            />
+          </div>
+        )}
+
+      {/* Actions */}
+      <div className="flex items-center justify-between pt-4 border-t border-border">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => onView(doc)}
+            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onDownload(doc)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          {canDelete && (
+            <button
+              onClick={() => onDelete(doc)}
+              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <button className="text-sm text-muted-foreground hover:text-foreground">
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Document Card Skeleton Component
+const DocumentCardSkeleton = () => {
+  return (
+    <div className="bg-card rounded-lg shadow-sm border border-border p-6 animate-pulse">
+      <div className="h-6 bg-muted rounded w-full mb-3"></div>
+      <div className="h-4 bg-muted rounded w-1/3 mb-4"></div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="w-12 h-12 bg-muted rounded-lg"></div>
+        <div className="flex space-x-2">
+          <div className="h-6 bg-muted rounded w-16"></div>
+          <div className="h-6 bg-muted rounded w-20"></div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="h-3 bg-muted rounded w-2/3"></div>
+        <div className="h-3 bg-muted rounded w-1/2"></div>
+        <div className="h-3 bg-muted rounded w-3/4"></div>
+      </div>
+    </div>
+  );
+};
+
 export default function DocumentsPage() {
   const { user } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -205,72 +408,6 @@ export default function DocumentsPage() {
       console.error("Error downloading document:", error);
       toast.error("Failed to download document");
     }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const getFileIcon = (fileType: string) => {
-    if (fileType.includes("pdf")) return "📄";
-    if (fileType.includes("doc")) return "📝";
-    if (fileType.includes("image")) return "🖼️";
-    if (fileType.includes("video")) return "🎥";
-    return "📎";
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      DRAFT: "bg-muted text-muted-foreground",
-      PENDING:
-        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
-      APPROVED:
-        "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
-      REJECTED: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400",
-      ARCHIVED:
-        "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
-    };
-    return (
-      <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig[status as keyof typeof statusConfig] || "bg-muted text-muted-foreground"}`}
-      >
-        {status.replace("_", " ")}
-      </span>
-    );
-  };
-
-  const getCategoryBadge = (category: string) => {
-    const categoryConfig = {
-      PETITION:
-        "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
-      EVIDENCE:
-        "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
-      CONTRACT:
-        "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
-      AGREEMENT:
-        "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400",
-      REPORT:
-        "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400",
-    };
-    return (
-      <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${categoryConfig[category as keyof typeof categoryConfig] || "bg-muted text-muted-foreground"}`}
-      >
-        {category.replace("_", " ")}
-      </span>
-    );
   };
 
   const filteredDocuments = documents.filter((doc) => {
@@ -502,110 +639,22 @@ export default function DocumentsPage() {
             </div>
           ) : (
             filteredDocuments.map((doc) => (
-              <div
+              <DocumentCard
                 key={doc.id}
-                className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-shadow"
-              >
-                {/* Document Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center text-2xl">
-                      {getFileIcon(doc.fileType)}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground line-clamp-2">
-                        {doc.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {formatFileSize(doc.fileSize)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {getCategoryBadge(doc.category)}
-                    {getStatusBadge(doc.status)}
-                  </div>
-                </div>
-
-                {/* Document Info */}
-                <div className="space-y-3 mb-4">
-                  {doc.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {doc.description}
-                    </p>
-                  )}
-
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
-                    <span>Uploaded {formatDate(doc.createdAt)}</span>
-                  </div>
-
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                    <User className="w-4 h-4" />
-                    <span>by {doc.uploadedBy.name}</span>
-                  </div>
-
-                  {doc.case && (
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <Briefcase className="w-4 h-4" />
-                      <span>{doc.case.caseNumber}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Progress Tracking */}
-                {doc.aiDocumentId &&
-                  (doc.status === "PROCESSING" ||
-                    doc.status === "UPLOADED") && (
-                    <div className="mb-4">
-                      <DocumentProgressTracker
-                        documentId={doc.id}
-                        aiDocumentId={doc.aiDocumentId}
-                        filename={doc.title}
-                        apiClient={apiClient}
-                        onComplete={() => {
-                          // Refresh documents when processing is complete
-                          fetchDocuments();
-                          toast.success(`${doc.title} processing completed!`);
-                        }}
-                        onError={(error) => {
-                          toast.error(
-                            `Processing failed for ${doc.title}: ${error}`
-                          );
-                        }}
-                      />
-                    </div>
-                  )}
-
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleViewClick(doc)}
-                      className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDownloadDocument(doc)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                    {isLawyer || isAdmin ? (
-                      <button
-                        onClick={() => handleDeleteClick(doc)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    ) : null}
-                  </div>
-                  <button className="text-sm text-muted-foreground hover:text-foreground">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+                document={doc}
+                onView={handleViewClick}
+                onDownload={handleDownloadDocument}
+                onDelete={handleDeleteClick}
+                onComplete={() => {
+                  fetchDocuments();
+                  toast.success(`${doc.title} processing completed!`);
+                }}
+                onError={(error) => {
+                  toast.error(`Processing failed for ${doc.title}: ${error}`);
+                }}
+                canDelete={isLawyer || isAdmin}
+                apiClient={apiClient}
+              />
             ))
           )}
         </div>

@@ -1,9 +1,9 @@
 "use client";
 
 import { apiClient } from "@/services/api";
-import { socketService } from "@/services/socket";
+import { getSocketService } from "@/services/socket";
 import { useRouter } from "next/navigation";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 interface User {
   id: string;
@@ -39,6 +39,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Initialize socket service when AuthProvider is created
+  useEffect(() => {
+    console.log("AuthProvider: Initializing socket service");
+    getSocketService();
+  }, []);
+
   useEffect(() => {
     // Check for existing token and user data on mount
     const token = localStorage.getItem("token");
@@ -49,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         // Initialize socket connection
-        socketService.connect(token);
+        getSocketService().connect(token);
       } catch (error) {
         console.error("Error parsing user data:", error);
         localStorage.removeItem("token");
@@ -80,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("User state updated, user role:", response.user?.role);
 
       // Initialize socket connection after successful login
-      socketService.connect(response.token);
+      getSocketService().connect(response.token);
 
       console.log("Login successful, returning true");
       return true;
@@ -92,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     // Disconnect socket before logout
-    socketService.disconnect();
+    getSocketService().disconnect();
 
     localStorage.removeItem("token");
     localStorage.removeItem("user");

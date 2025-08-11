@@ -1,6 +1,14 @@
 import toast from "react-hot-toast";
 import { io, Socket } from "socket.io-client";
 
+// Extend Window interface to include socketServiceInstance
+declare global {
+  interface Window {
+    socketServiceInstance?: SocketService;
+    processedMessageIds?: Set<string>;
+  }
+}
+
 interface ChatMessage {
   id: string;
   content: string;
@@ -38,12 +46,35 @@ class SocketService {
   private maxReconnectAttempts = 5;
   private connectionId = Math.random().toString(36).substr(2, 9);
   private processingNotifications = new Set<string>(); // Track notifications being processed
+  private processedMessages = new Set<string>(); // Track processed messages to prevent duplicates
 
   connect(token: string) {
+    // Prevent multiple connections
     if (this.socket?.connected) {
       console.log(
         `[${this.connectionId}] Socket already connected, skipping connection`
       );
+      return;
+    }
+
+    // Check if another instance is already connected
+    if (window.socketServiceInstance && window.socketServiceInstance !== this) {
+      console.log(
+        `[${this.connectionId}] Another socket instance is already connected, using that one`
+      );
+      // Copy the connection state from the existing instance
+      this.socket = window.socketServiceInstance.socket;
+      this.isConnected = window.socketServiceInstance.isConnected;
+      return;
+    }
+
+    // Check if there's already a global socket connection
+    if (window.socketServiceInstance?.socket?.connected) {
+      console.log(
+        `[${this.connectionId}] Global socket already connected, using that one`
+      );
+      this.socket = window.socketServiceInstance.socket;
+      this.isConnected = window.socketServiceInstance.isConnected;
       return;
     }
 
@@ -60,13 +91,41 @@ class SocketService {
       `[${this.connectionId}] Connecting to socket with token:`,
       token ? "present" : "missing"
     );
+    console.log(
+      `[${this.connectionId}] Token length:`,
+      token ? token.length : 0
+    );
+    console.log(
+      `[${this.connectionId}] Token preview:`,
+      token ? `${token.substring(0, 20)}...` : "none"
+    );
+    console.log(
+      `[${this.connectionId}] API URL:`,
+      process.env.NEXT_PUBLIC_API_URL
+    );
 
-    this.socket = io(process.env.NEXT_PUBLIC_API_URL, {
+    // Remove /api from the URL for socket connection
+    const socketUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "");
+    console.log(`[${this.connectionId}] Socket URL:`, socketUrl);
+
+    // Check if backend is reachable
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/health`)
+      .then(() => {
+        console.log(`[${this.connectionId}] Backend is reachable`);
+      })
+      .catch((error) => {
+        console.error(`[${this.connectionId}] Backend not reachable:`, error);
+      });
+
+    this.socket = io(socketUrl || "http://localhost:3001", {
       auth: {
         token,
       },
       transports: ["websocket", "polling"],
     });
+
+    // Mark this as the active instance
+    window.socketServiceInstance = this;
 
     this.setupEventListeners();
   }
@@ -75,22 +134,53 @@ class SocketService {
     if (!this.socket) return;
 
     this.socket.on("connect", () => {
-      console.log("Socket connected successfully");
+      console.log(`[${this.connectionId}] Socket connected successfully`);
+      console.log(`[${this.connectionId}] Socket ID:`, this.socket?.id);
       this.isConnected = true;
       this.reconnectAttempts = 0;
     });
 
     this.socket.on("disconnect", () => {
+      console.log(`[${this.connectionId}] Socket disconnected`);
       this.isConnected = false;
     });
 
     this.socket.on("connect_error", (error) => {
+      console.error(`[${this.connectionId}] Socket connection error:`, error);
       this.handleReconnect();
     });
 
     this.socket.on("error", (error) => {
+      console.error(`[${this.connectionId}] Socket error:`, error);
       toast.error(error.message || "Chat connection error");
     });
+
+    // Listen for user online/offline status updates
+    this.socket.on(
+      "userOnline",
+      (data: { userId: string; isOnline: boolean }) => {
+        console.log(`User ${data.userId} is now online`);
+        // Emit custom event for components to listen to
+        window.dispatchEvent(
+          new CustomEvent("userStatusChange", {
+            detail: { userId: data.userId, isOnline: true },
+          })
+        );
+      }
+    );
+
+    this.socket.on(
+      "userOffline",
+      (data: { userId: string; isOnline: boolean }) => {
+        console.log(`User ${data.userId} is now offline`);
+        // Emit custom event for components to listen to
+        window.dispatchEvent(
+          new CustomEvent("userStatusChange", {
+            detail: { userId: data.userId, isOnline: false },
+          })
+        );
+      }
+    );
 
     this.socket.on("chat_notification", (notification: ChatNotification) => {
       this.handleChatNotification(notification);
@@ -103,16 +193,55 @@ class SocketService {
       }
     );
 
-    this.socket.on(
-      "new_message",
-      (data: { chatId: string; message: ChatMessage }) => {
+    this.socket.on("messageSent", (message: ChatMessage) => {
+      console.log(
+        `[${this.connectionId}] Socket received messageSent event:`,
+        message
+      );
+
+      // Check if message was already processed
+      if (this.processedMessages.has(message.id)) {
         console.log(
-          `[${this.connectionId}] Socket received new_message event:`,
-          data
+          `[${this.connectionId}] Message ${message.id} already processed, skipping`
         );
-        this.handleNewMessage(data);
+        return;
       }
-    );
+
+      // Mark message as processed
+      this.processedMessages.add(message.id);
+
+      // Emit custom event for components to listen to
+      window.dispatchEvent(
+        new CustomEvent("messageSent", {
+          detail: { message },
+        })
+      );
+    });
+
+    this.socket.on("newMessage", (message: ChatMessage) => {
+      console.log(
+        `[${this.connectionId}] Socket received new_message event:`,
+        message
+      );
+
+      // Check if message was already processed
+      if (this.processedMessages.has(message.id)) {
+        console.log(
+          `[${this.connectionId}] Message ${message.id} already processed, skipping`
+        );
+        return;
+      }
+
+      // Mark message as processed
+      this.processedMessages.add(message.id);
+
+      // Emit custom event for components to listen to
+      window.dispatchEvent(
+        new CustomEvent("newMessage", {
+          detail: { message },
+        })
+      );
+    });
 
     this.socket.on(
       "user_typing",
@@ -334,11 +463,63 @@ class SocketService {
   }
 
   private handleNewMessage(data: { chatId: string; message: ChatMessage }) {
-    console.log("Received new message:", data);
+    console.log(
+      `[${this.connectionId}] === SOCKET SERVICE: Received newMessage from backend ===`
+    );
+    console.log(`[${this.connectionId}] Data received:`, data);
+
+    // Check if message was already processed
+    if (this.processedMessages.has(data.message.id)) {
+      console.log(
+        `[${this.connectionId}] Message ${data.message.id} already processed, skipping`
+      );
+      return;
+    }
+
+    // Mark as processed
+    this.processedMessages.add(data.message.id);
+    console.log(
+      `[${this.connectionId}] Message marked as processed:`,
+      data.message.id
+    );
+
     // This will be handled by the chat components
     const event = new CustomEvent("newMessage", { detail: data });
-    console.log("Dispatching newMessage event:", event);
+    console.log(`[${this.connectionId}] Dispatching newMessage event:`, event);
     window.dispatchEvent(event);
+    console.log(
+      `[${this.connectionId}] === SOCKET SERVICE: newMessage event dispatched ===`
+    );
+  }
+
+  private handleMessageSent(data: { chatId: string; message: ChatMessage }) {
+    console.log(
+      `[${this.connectionId}] === SOCKET SERVICE: Received messageSent from backend ===`
+    );
+    console.log(`[${this.connectionId}] Data received:`, data);
+
+    // Check if message was already processed
+    if (this.processedMessages.has(data.message.id)) {
+      console.log(
+        `[${this.connectionId}] Message ${data.message.id} already processed, skipping`
+      );
+      return;
+    }
+
+    // Mark as processed
+    this.processedMessages.add(data.message.id);
+    console.log(
+      `[${this.connectionId}] Message marked as processed:`,
+      data.message.id
+    );
+
+    // This will be handled by the chat components
+    const event = new CustomEvent("messageSent", { detail: data });
+    console.log(`[${this.connectionId}] Dispatching messageSent event:`, event);
+    window.dispatchEvent(event);
+    console.log(
+      `[${this.connectionId}] === SOCKET SERVICE: messageSent event dispatched ===`
+    );
   }
 
   private handleUserTyping(data: {
@@ -366,11 +547,22 @@ class SocketService {
 
   joinPersonalRoom(userId: string) {
     if (!this.socket?.connected) {
-      console.error("Socket not connected, cannot join personal room");
+      console.error(
+        `[${this.connectionId}] ERROR: Socket not connected, cannot join personal room`
+      );
       return;
     }
-    console.log("Joining personal room for user:", userId);
+    console.log(
+      `[${this.connectionId}] === SOCKET SERVICE: Joining personal room ===`
+    );
+    console.log(`[${this.connectionId}] User ID:`, userId);
+    console.log(`[${this.connectionId}] Room name: user_${userId}`);
+
     this.socket.emit("join_personal_room", { userId });
+    console.log(`[${this.connectionId}] join_personal_room event emitted`);
+    console.log(
+      `[${this.connectionId}] === SOCKET SERVICE: Personal room join completed ===`
+    );
   }
 
   leaveChat(chatId: string) {
@@ -380,13 +572,79 @@ class SocketService {
     this.socket.emit("leave_chat", { chatId });
   }
 
-  sendMessage(chatId: string, content: string, type = "text") {
+  sendMessage(chatId: string, content: string, type = "TEXT") {
+    console.log(
+      `[${this.connectionId}] === SOCKET SERVICE: sendMessage called ===`
+    );
+    console.log(`[${this.connectionId}] Parameters:`, {
+      chatId,
+      content,
+      type,
+    });
+
     if (!this.socket?.connected) {
-      console.error("Socket not connected, cannot send message");
+      console.error(
+        `[${this.connectionId}] ERROR: Socket not connected, cannot send message`
+      );
+      console.error(`[${this.connectionId}] Socket state:`, {
+        socketExists: !!this.socket,
+        socketConnected: this.socket?.connected,
+        socketId: this.socket?.id,
+      });
       return;
     }
-    console.log("Emitting send_message:", { chatId, content, type });
-    this.socket.emit("send_message", { chatId, content, type });
+
+    // Parse chatId to get receiverId (chatId format: "senderId-receiverId")
+    const [senderId, receiverId] = chatId.split("-");
+    if (!senderId || !receiverId) {
+      console.error(
+        `[${this.connectionId}] ERROR: Invalid chatId format:`,
+        chatId
+      );
+      console.error(
+        `[${this.connectionId}] Expected format: "senderId-receiverId"`
+      );
+      console.error(`[${this.connectionId}] Parsed parts:`, {
+        senderId,
+        receiverId,
+      });
+      return;
+    }
+
+    console.log(`[${this.connectionId}] Chat ID parsed successfully:`, {
+      originalChatId: chatId,
+      parsedSenderId: senderId,
+      parsedReceiverId: receiverId,
+      content,
+      type,
+    });
+
+    console.log(`[${this.connectionId}] Socket details:`, {
+      socketConnected: this.socket.connected,
+      socketId: this.socket.id,
+    });
+
+    console.log(`[${this.connectionId}] Emitting sendMessage event with:`, {
+      content,
+      receiverId,
+      type,
+    });
+
+    try {
+      this.socket.emit("sendMessage", { content, receiverId, type });
+      console.log(
+        `[${this.connectionId}] sendMessage event emitted successfully`
+      );
+    } catch (error) {
+      console.error(
+        `[${this.connectionId}] ERROR emitting sendMessage:`,
+        error
+      );
+    }
+
+    console.log(
+      `[${this.connectionId}] === SOCKET SERVICE: sendMessage completed ===`
+    );
   }
 
   markAsRead(chatId: string) {
@@ -407,12 +665,52 @@ class SocketService {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
-      this.isConnected = false;
+    }
+    this.isConnected = false;
+    this.processedMessages.clear(); // Clear processed messages
+  }
+
+  // Clean up old processed messages (keep only last 100)
+  private cleanupProcessedMessages() {
+    if (this.processedMessages.size > 100) {
+      const messagesArray = Array.from(this.processedMessages);
+      this.processedMessages.clear();
+      // Keep only the last 50 messages
+      messagesArray.slice(-50).forEach((id) => this.processedMessages.add(id));
     }
   }
 
   isSocketConnected() {
-    return this.isConnected && this.socket?.connected;
+    const connected = this.isConnected && this.socket?.connected;
+    console.log(`[${this.connectionId}] isSocketConnected check:`, {
+      isConnected: this.isConnected,
+      socketExists: !!this.socket,
+      socketConnected: this.socket?.connected,
+      socketId: this.socket?.id,
+      result: connected,
+    });
+    return connected;
+  }
+
+  // Check socket state directly
+  getSocketState() {
+    return {
+      isConnected: this.isConnected,
+      socketExists: !!this.socket,
+      socketConnected: this.socket?.connected,
+      socketId: this.socket?.id,
+    };
+  }
+
+  // Force reconnect
+  forceReconnect(token: string) {
+    console.log(`[${this.connectionId}] Force reconnecting...`);
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+    this.isConnected = false;
+    this.connect(token);
   }
 }
 
@@ -425,6 +723,24 @@ export const initializeSocketService = () => {
   if (!isInitialized) {
     console.log("Initializing socket service singleton");
     isInitialized = true;
+
+    // Ensure only one instance exists
+    if (
+      window.socketServiceInstance &&
+      window.socketServiceInstance !== socketService
+    ) {
+      console.log("Another socket instance found, replacing it");
+      window.socketServiceInstance.disconnect();
+    }
+    window.socketServiceInstance = socketService;
+  }
+  return socketService;
+};
+
+// Export a function to get the singleton instance
+export const getSocketService = () => {
+  if (!isInitialized) {
+    return initializeSocketService();
   }
   return socketService;
 };

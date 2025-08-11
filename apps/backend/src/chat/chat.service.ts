@@ -36,8 +36,23 @@ interface Chat {
 export class ChatService {
   constructor(private prisma: PrismaService) {}
 
+  // Method to set online status - will be called by ChatGateway
+  private onlineUsers = new Set<string>();
+
+  setUserOnline(userId: string) {
+    this.onlineUsers.add(userId);
+  }
+
+  setUserOffline(userId: string) {
+    this.onlineUsers.delete(userId);
+  }
+
+  isUserOnline(userId: string): boolean {
+    return this.onlineUsers.has(userId);
+  }
+
   async getUserChats(userId: string): Promise<Chat[]> {
-    // Get all chat messages where user is sender or receiver
+    // Get all messages where user is sender or receiver
     const userMessages = await this.prisma.chatMessage.findMany({
       where: {
         OR: [{ senderId: userId }, { receiverId: userId }],
@@ -63,57 +78,56 @@ export class ChatService {
       },
     });
 
-    // Group messages by conversation (unique sender-receiver pairs)
-    const conversations = new Map<string, typeof userMessages>();
-
+    // Group messages by chat (other participant)
+    const chatMap = new Map<string, typeof userMessages>();
     userMessages.forEach((message) => {
       const otherUserId =
         message.senderId === userId ? message.receiverId : message.senderId;
-      const key = [userId, otherUserId].sort().join('-');
+      const otherUserName =
+        message.senderId === userId
+          ? message.receiver.name
+          : message.sender.name;
+      const otherUserRole =
+        message.senderId === userId
+          ? message.receiver.role
+          : message.sender.role;
 
-      if (!conversations.has(key)) {
-        conversations.set(key, []);
+      if (!chatMap.has(otherUserId)) {
+        chatMap.set(otherUserId, []);
       }
-      conversations.get(key).push(message);
+      chatMap.get(otherUserId).push(message);
     });
 
-    // Convert to Chat objects
+    // Convert to chat objects
     const chats: Chat[] = [];
-
-    for (const [key, messages] of conversations) {
+    for (const [otherUserId, messages] of chatMap) {
       if (messages.length === 0) continue;
 
       const latestMessage = messages[0];
-      const otherUserId =
+      const otherUserIdFromMessage =
         latestMessage.senderId === userId
           ? latestMessage.receiverId
           : latestMessage.senderId;
+      const otherUserName =
+        latestMessage.senderId === userId
+          ? latestMessage.receiver.name
+          : latestMessage.sender.name;
+      const otherUserRole =
+        latestMessage.senderId === userId
+          ? latestMessage.receiver.role
+          : latestMessage.sender.role;
 
-      // Get other participant info
-      const otherUser = await this.prisma.user.findUnique({
-        where: { id: otherUserId },
-        select: {
-          id: true,
-          name: true,
-          role: true,
-        },
-      });
-
-      if (!otherUser) continue;
-
-      // Count unread messages
-      const unreadCount = messages.filter(
-        (m) => m.receiverId === userId && !m.isRead,
-      ).length;
+      // Get real online status
+      const isOnline = this.isUserOnline(otherUserIdFromMessage);
 
       chats.push({
-        id: key,
+        id: `${userId}-${otherUserIdFromMessage}`,
         participants: [
           {
-            id: otherUser.id,
-            name: otherUser.name,
-            role: otherUser.role,
-            isOnline: Math.random() > 0.5, // Mock online status
+            id: otherUserIdFromMessage,
+            name: otherUserName,
+            role: otherUserRole,
+            isOnline,
           },
         ],
         lastMessage: {
@@ -121,11 +135,13 @@ export class ChatService {
           content: latestMessage.content,
           senderId: latestMessage.senderId,
           senderName: latestMessage.sender.name,
-          type: 'TEXT',
+          type: latestMessage.messageType,
           isRead: latestMessage.isRead,
           createdAt: latestMessage.createdAt,
         },
-        unreadCount,
+        unreadCount: messages.filter(
+          (m) => m.receiverId === userId && !m.isRead,
+        ).length,
         createdAt: latestMessage.createdAt,
         updatedAt: latestMessage.updatedAt,
       });
@@ -183,13 +199,16 @@ export class ChatService {
       throw new NotFoundException('Participant not found');
     }
 
+    // Get real online status
+    const isOnline = this.isUserOnline(otherUserId);
+
     return {
       messages: messages.map((m) => ({
         id: m.id,
         content: m.content,
         senderId: m.senderId,
         senderName: m.sender.name,
-        type: 'TEXT',
+        type: m.messageType,
         isRead: m.isRead,
         createdAt: m.createdAt,
       })),
@@ -198,7 +217,7 @@ export class ChatService {
           id: otherUser.id,
           name: otherUser.name,
           role: otherUser.role,
-          isOnline: Math.random() > 0.5, // Mock online status
+          isOnline,
         },
       ],
     };
@@ -238,14 +257,17 @@ export class ChatService {
       throw new NotFoundException('Participant not found');
     }
 
+    // Get real online status
+    const isOnline = this.isUserOnline(participantId);
+
     return {
-      id: [userId, participantId].sort().join('-'),
+      id: `${userId}-${participantId}`,
       participants: [
         {
           id: participant.id,
           name: participant.name,
           role: participant.role,
-          isOnline: Math.random() > 0.5,
+          isOnline,
         },
       ],
       unreadCount: 0,
@@ -261,7 +283,7 @@ export class ChatService {
     content: string,
     type: string = 'TEXT',
   ): Promise<ChatMessage> {
-    // Parse chatId to get receiver ID
+    // Parse chatId to get participant IDs
     const [user1Id, user2Id] = chatId.split('-');
 
     if (
@@ -278,6 +300,7 @@ export class ChatService {
     const message = await this.prisma.chatMessage.create({
       data: {
         content,
+        messageType: type as any,
         senderId,
         receiverId,
         isRead: false,
@@ -298,32 +321,28 @@ export class ChatService {
       content: message.content,
       senderId: message.senderId,
       senderName: message.sender.name,
-      type,
+      type: message.messageType,
       isRead: message.isRead,
       createdAt: message.createdAt,
     };
   }
 
-  async markAsRead(chatId: string, userId: string): Promise<void> {
-    // Parse chatId to get participant IDs
-    const [user1Id, user2Id] = chatId.split('-');
+  async markAsRead(messageId: string, userId: string): Promise<void> {
+    const message = await this.prisma.chatMessage.findUnique({
+      where: { id: messageId },
+    });
 
-    if (!user1Id || !user2Id || (user1Id !== userId && user2Id !== userId)) {
-      throw new ForbiddenException('Access denied to this chat');
+    if (!message) {
+      throw new NotFoundException('Message not found');
     }
 
-    const otherUserId = user1Id === userId ? user2Id : user1Id;
+    if (message.receiverId !== userId) {
+      throw new ForbiddenException('Cannot mark message as read');
+    }
 
-    // Mark all messages from other user as read
-    await this.prisma.chatMessage.updateMany({
-      where: {
-        senderId: otherUserId,
-        receiverId: userId,
-        isRead: false,
-      },
-      data: {
-        isRead: true,
-      },
+    await this.prisma.chatMessage.update({
+      where: { id: messageId },
+      data: { isRead: true },
     });
   }
 
@@ -335,22 +354,12 @@ export class ChatService {
       throw new ForbiddenException('Access denied to this chat');
     }
 
-    // Delete all messages between these users
+    // Delete all messages in the chat
     await this.prisma.chatMessage.deleteMany({
       where: {
         OR: [
-          {
-            AND: [
-              { senderId: userId },
-              { receiverId: user1Id === userId ? user2Id : user1Id },
-            ],
-          },
-          {
-            AND: [
-              { senderId: user1Id === userId ? user2Id : user1Id },
-              { receiverId: userId },
-            ],
-          },
+          { AND: [{ senderId: user1Id }, { receiverId: user2Id }] },
+          { AND: [{ senderId: user2Id }, { receiverId: user1Id }] },
         ],
       },
     });
@@ -363,144 +372,98 @@ export class ChatService {
         id: true,
         name: true,
         role: true,
+        email: true,
+        phone: true,
       },
     });
   }
 
   async getAssociatedUsers(userId: string): Promise<ChatParticipant[]> {
+    // Get user's role to determine associated users
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        clientCases: {
-          include: {
-            assignedLawyer: true,
-          },
-        },
-        assignedCases: {
-          include: {
-            client: true,
-          },
-        },
-      },
+      select: { role: true },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const associatedUsers: ChatParticipant[] = [];
+    let associatedUsers: any[] = [];
 
-    if (user.role === 'CLIENT') {
-      // For clients, get their assigned lawyers
-      const lawyerIds = new Set<string>();
-
-      user.clientCases.forEach((case_) => {
-        if (case_.assignedLawyer) {
-          lawyerIds.add(case_.assignedLawyer.id);
-        }
+    if (
+      user.role === 'LAWYER' ||
+      user.role === 'ASSOCIATE' ||
+      user.role === 'PARALEGAL'
+    ) {
+      // Lawyers can see clients
+      associatedUsers = await this.prisma.user.findMany({
+        where: { role: 'CLIENT' },
+        select: {
+          id: true,
+          name: true,
+          role: true,
+        },
       });
-
-      if (lawyerIds.size > 0) {
-        const lawyers = await this.prisma.user.findMany({
-          where: {
-            id: { in: Array.from(lawyerIds) },
-            role: { in: ['LAWYER', 'ASSOCIATE', 'PARALEGAL'] },
+    } else if (user.role === 'CLIENT') {
+      // Clients can see lawyers
+      associatedUsers = await this.prisma.user.findMany({
+        where: {
+          role: {
+            in: ['LAWYER', 'ASSOCIATE', 'PARALEGAL'],
           },
-          select: {
-            id: true,
-            name: true,
-            role: true,
-          },
-        });
-
-        associatedUsers.push(
-          ...lawyers.map((lawyer) => ({
-            id: lawyer.id,
-            name: lawyer.name,
-            role: lawyer.role,
-            isOnline: Math.random() > 0.5, // Mock online status
-          })),
-        );
-      }
-    } else if (['LAWYER', 'ASSOCIATE', 'PARALEGAL'].includes(user.role)) {
-      // For lawyers, get their clients
-      const clientIds = new Set<string>();
-
-      user.assignedCases.forEach((case_) => {
-        if (case_.client) {
-          clientIds.add(case_.client.id);
-        }
+        },
+        select: {
+          id: true,
+          name: true,
+          role: true,
+        },
       });
-
-      if (clientIds.size > 0) {
-        const clients = await this.prisma.user.findMany({
-          where: {
-            id: { in: Array.from(clientIds) },
-            role: 'CLIENT',
-          },
-          select: {
-            id: true,
-            name: true,
-            role: true,
-          },
-        });
-
-        associatedUsers.push(
-          ...clients.map((client) => ({
-            id: client.id,
-            name: client.name,
-            role: client.role,
-            isOnline: Math.random() > 0.5, // Mock online status
-          })),
-        );
-      }
     }
 
-    return associatedUsers;
+    // Get real online status for all associated users
+    return associatedUsers.map((user) => ({
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      isOnline: this.isUserOnline(user.id),
+    }));
   }
 
   async createChatWithAssociatedUser(
     userId: string,
     associatedUserId: string,
   ): Promise<Chat> {
-    // Verify the users are associated
-    const associatedUsers = await this.getAssociatedUsers(userId);
-    const isAssociated = associatedUsers.some(
-      (user) => user.id === associatedUserId,
-    );
-
-    if (!isAssociated) {
-      throw new ForbiddenException(
-        'Cannot create chat with non-associated user',
-      );
-    }
-
-    // Check if chat already exists
-    const existingChat = await this.getUserChats(userId);
-    const existingChatWithUser = existingChat.find((chat) =>
-      chat.participants.some((p) => p.id === associatedUserId),
-    );
-
-    if (existingChatWithUser) {
-      return existingChatWithUser;
-    }
-
-    // Create a system message to initialize the chat
-    await this.prisma.chatMessage.create({
-      data: {
-        content: 'Chat started',
-        senderId: userId,
-        receiverId: associatedUserId,
-        isRead: true,
+    // Check if user exists and is associated
+    const associatedUser = await this.prisma.user.findUnique({
+      where: { id: associatedUserId },
+      select: {
+        id: true,
+        name: true,
+        role: true,
       },
     });
 
-    // Return the new chat
-    const chats = await this.getUserChats(userId);
-    const newChat = chats.find((chat) =>
-      chat.participants.some((p) => p.id === associatedUserId),
-    );
+    if (!associatedUser) {
+      throw new NotFoundException('Associated user not found');
+    }
 
-    return newChat;
+    // Get real online status
+    const isOnline = this.isUserOnline(associatedUserId);
+
+    return {
+      id: `${userId}-${associatedUserId}`,
+      participants: [
+        {
+          id: associatedUser.id,
+          name: associatedUser.name,
+          role: associatedUser.role,
+          isOnline,
+        },
+      ],
+      unreadCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 }
