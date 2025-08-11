@@ -4,9 +4,9 @@ import AddClientModal from "@/components/AddClientModal";
 import CreateBillModal from "@/components/CreateBillModal";
 import CreateCaseModal from "@/components/CreateCaseModal";
 import CreateTaskModal from "@/components/CreateTaskModal";
+import InstantCallModal from "@/components/InstantCallModal";
 
 import ScheduleEventModal from "@/components/ScheduleEventModal";
-import ModalDialog from "@/components/ui/ModalDialog";
 import UploadDocumentModal from "@/components/UploadDocumentModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -172,12 +172,6 @@ export default function Dashboard() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showInstantCallNotification, setShowInstantCallNotification] =
     useState(false);
-  const [instantCallData, setInstantCallData] = useState({
-    title: "",
-    description: "",
-    caseId: "",
-    participantIds: [] as string[],
-  });
   const [showCreateBillModal, setShowCreateBillModal] = useState(false);
   const [showCreateCaseModal, setShowCreateCaseModal] = useState(false);
   const [showUploadDocumentModal, setShowUploadDocumentModal] = useState(false);
@@ -481,38 +475,8 @@ export default function Dashboard() {
   };
 
   // Instant Call Functions
-  const handleInstantCallSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await apiClient.startInstantCall(instantCallData);
-
-      // Navigate to video call room
-      if (response && (response as any).meetingId) {
-        window.open(
-          `/video-call-room/${(response as any).meetingId}`,
-          "_blank"
-        );
-        setShowInstantCallModal(false);
-        setInstantCallData({
-          title: "",
-          description: "",
-          caseId: "",
-          participantIds: [],
-        });
-      }
-    } catch (error) {
-      console.error("Error starting instant call:", error);
-    }
-  };
-
   const handleInstantCallCancel = () => {
     setShowInstantCallModal(false);
-    setInstantCallData({
-      title: "",
-      description: "",
-      caseId: "",
-      participantIds: [],
-    });
   };
 
   // Client Dashboard Components
@@ -999,93 +963,16 @@ export default function Dashboard() {
         />
 
         {/* Start Instant Call Modal */}
-        <ModalDialog
+        <InstantCallModal
           isOpen={showInstantCallModal}
           onClose={handleInstantCallCancel}
-          header={
-            <h2 className="text-lg font-semibold text-foreground">
-              Start Instant Video Call
-            </h2>
-          }
-          maxWidth="lg"
-        >
-          <div className="p-6">
-            <div className="mb-6">
-              <p className="text-sm text-muted-foreground mb-4">
-                Start a video call immediately and notify participants. The call
-                will begin right away.
-              </p>
-
-              <form onSubmit={handleInstantCallSubmit}>
-                <div className="space-y-4">
-                  {/* Title */}
-                  <div>
-                    <label
-                      htmlFor="instantTitle"
-                      className="block text-sm font-medium text-foreground mb-2"
-                    >
-                      Call Title *
-                    </label>
-                    <input
-                      type="text"
-                      id="instantTitle"
-                      value={instantCallData.title}
-                      onChange={(e) =>
-                        setInstantCallData({
-                          ...instantCallData,
-                          title: e.target.value,
-                        })
-                      }
-                      placeholder="Enter call title"
-                      className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                      required
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label
-                      htmlFor="instantDescription"
-                      className="block text-sm font-medium text-foreground mb-2"
-                    >
-                      Description
-                    </label>
-                    <textarea
-                      id="instantDescription"
-                      value={instantCallData.description}
-                      onChange={(e) =>
-                        setInstantCallData({
-                          ...instantCallData,
-                          description: e.target.value,
-                        })
-                      }
-                      placeholder="Enter call description"
-                      rows={3}
-                      className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-3 mt-6">
-                  <button
-                    type="button"
-                    onClick={handleInstantCallCancel}
-                    className="px-4 py-2 text-muted-foreground bg-muted rounded-lg hover:bg-muted/80 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!instantCallData.title.trim()}
-                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Start Instant Call
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </ModalDialog>
+          onSuccess={(meetingId) => {
+            // Navigate to video call room
+            window.open(`/video-call-room/${meetingId}`, "_blank");
+            setShowInstantCallModal(false);
+          }}
+          autoJoin={false}
+        />
       </div>
     );
   }

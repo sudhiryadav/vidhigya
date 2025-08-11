@@ -453,8 +453,8 @@ export default function BillingPage() {
                 </svg>
                 Refresh
               </button>
-              {/* Only show New Bill button for clients */}
-              {isClient && (
+              {/* Only show New Bill button for lawyers and admins */}
+              {canManageBills && (
                 <button
                   onClick={() => setShowCreateModal(true)}
                   className="btn-primary flex items-center"
@@ -855,8 +855,8 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* Create Bill Modal - Only for Clients */}
-      {isClient && (
+      {/* Create Bill Modal - Only for Lawyers and Admins */}
+      {canManageBills && (
         <ModalDialog
           isOpen={showCreateModal}
           onClose={() => {

@@ -18,16 +18,16 @@ export const ValidationMessage: React.FC<ValidationMessageProps> = ({
   return (
     <div className={`relative ${className}`}>
       <div className="absolute top-full left-0 right-0 z-20 mt-2 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-        <div className="flex items-start space-x-2 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-3 shadow-lg max-w-sm backdrop-blur-sm hover:shadow-xl transition-shadow duration-200">
+        <div className="flex items-start space-x-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-3 shadow-lg max-w-sm backdrop-blur-sm hover:shadow-xl transition-shadow duration-200">
           {showIcon && (
-            <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
           )}
           <p className="text-sm text-red-700 dark:text-red-300 leading-relaxed font-medium">
             {error.message}
           </p>
         </div>
-        {/* Arrow pointing up */}
-        <div className="absolute -top-2 left-6 w-3 h-3 bg-red-50 dark:bg-red-900/30 border-l border-t border-red-200 dark:border-red-700 transform rotate-45"></div>
+        {/* Arrow pointing up - properly positioned and styled */}
+        <div className="absolute -top-2 left-4 w-4 h-4 bg-red-50 dark:bg-red-900/20 border-l border-t border-red-200 dark:border-red-700 transform rotate-45"></div>
       </div>
     </div>
   );
@@ -54,9 +54,10 @@ export const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   return (
     <div className={`relative mb-2 ${className}`}>
       <label
-        className={`block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 ${labelClassName}`}
+        className={`block text-sm font-medium text-foreground mb-1 ${labelClassName}`}
       >
-        {label} {required && <span className="text-red-500">*</span>}
+        {label}{" "}
+        {required && <span className="text-red-600 dark:text-red-400">*</span>}
       </label>
       <div className="relative">
         {children}
@@ -90,7 +91,7 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
   className = "",
   rows,
 }) => {
-  const inputClassName = `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground transition-colors duration-200 ${
+  const inputClassName = `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent bg-background text-foreground transition-colors duration-200 ${
     error ? "border-red-500 ring-red-500" : "border-border"
   } ${className}`;
 
@@ -146,7 +147,7 @@ export const ValidatedSelect: React.FC<ValidatedSelectProps> = ({
             const option = options.find((opt) => opt.value === e.target.value);
             onChange(option || null);
           }}
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground transition-colors duration-200 ${
+          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent bg-background text-foreground transition-colors duration-200 ${
             error ? "border-red-500 ring-red-500" : "border-border"
           }`}
         >
