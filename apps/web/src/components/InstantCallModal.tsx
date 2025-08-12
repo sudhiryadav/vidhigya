@@ -4,11 +4,17 @@ import ModalDialog from "@/components/ui/ModalDialog";
 import CustomSelect from "@/components/ui/select";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { useVideoCall } from "@/contexts/VideoCallContext";
+import { instantCallSchema } from "@/lib/validation";
 import { apiClient } from "@/services/api";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { Mic, MicOff, Video, VideoOff } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Resolver, useForm } from "react-hook-form";
 import toast from "react-hot-toast";
+import * as yup from "yup";
+
+// Use the schema from validation file
+type InstantCallFormData = yup.InferType<typeof instantCallSchema>;
 
 interface Case {
   id: string;
@@ -21,13 +27,6 @@ interface User {
   id: string;
   name: string;
   email: string;
-}
-
-interface InstantCallFormData {
-  title: string;
-  description: string;
-  caseId: string;
-  participantIds: string[];
 }
 
 interface InstantCallModalProps {
@@ -68,6 +67,10 @@ export default function InstantCallModal({
       participantIds: [],
     },
     mode: "onSubmit",
+    resolver: yupResolver(instantCallSchema) as Resolver<
+      InstantCallFormData,
+      any
+    >,
   });
 
   // Watch for changes in participants to trigger validation
@@ -76,8 +79,6 @@ export default function InstantCallModal({
     watchedParticipantIds.length === 0
       ? { type: "required", message: "At least one participant is required" }
       : undefined;
-
-  const watchedCaseId = watch("caseId");
 
   useEffect(() => {
     if (isOpen) {
@@ -216,7 +217,7 @@ export default function InstantCallModal({
             <input
               type="text"
               id="instantTitle"
-              {...register("title", { required: "Title is required" })}
+              {...register("title")}
               placeholder="Enter call title"
               className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent bg-background text-foreground"
             />
@@ -238,6 +239,7 @@ export default function InstantCallModal({
               rows={3}
               className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent bg-background text-foreground"
             />
+            <ValidationMessage error={errors.description} />
           </div>
 
           {/* Case Selection */}
@@ -256,14 +258,21 @@ export default function InstantCallModal({
                   label: `${caseItem.caseNumber} - ${caseItem.title}`,
                 })),
               ]}
-              value={{
-                value: watch("caseId"),
-                label: watch("caseId")
-                  ? cases.find((c) => c.id === watch("caseId"))?.caseNumber +
-                    " - " +
-                    cases.find((c) => c.id === watch("caseId"))?.title
-                  : "No case selected",
-              }}
+              value={
+                watch("caseId") && watch("caseId") !== ""
+                  ? {
+                      value: watch("caseId"),
+                      label: (() => {
+                        const foundCase = cases.find(
+                          (c) => c.id === watch("caseId")
+                        );
+                        return foundCase
+                          ? `${foundCase.caseNumber} - ${foundCase.title}`
+                          : "No case selected";
+                      })(),
+                    }
+                  : { value: "", label: "No case selected" }
+              }
               onChange={(option) => {
                 const selectedCaseId = option?.value || "";
                 const selectedCase = cases.find((c) => c.id === selectedCaseId);
@@ -281,6 +290,7 @@ export default function InstantCallModal({
               }}
               placeholder="Select a case"
             />
+            <ValidationMessage error={errors.caseId} />
             {watch("caseId") && (
               <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                 Case client will be automatically added as a participant

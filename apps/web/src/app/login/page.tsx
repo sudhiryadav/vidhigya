@@ -1,45 +1,60 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { loginSchema } from "@/lib/validation";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Resolver, useForm } from "react-hook-form";
 import toast from "react-hot-toast";
+import * as yup from "yup";
+
+type LoginFormData = yup.InferType<typeof loginSchema>;
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
   const router = useRouter();
   const { login } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    setError: setFormError,
+  } = useForm<LoginFormData>({
+    resolver: yupResolver(loginSchema) as Resolver<LoginFormData>,
+    mode: "onSubmit",
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
-    setError("");
+    setFormError("root", { message: "" });
 
     try {
-      console.log("Login form submitted for:", email);
-      const success = await login(email, password);
+      console.log("Login form submitted for:", data.email);
+      const success = await login(data.email, data.password);
       console.log("Login result:", success);
       if (success) {
         console.log("Login successful, AuthGuard will handle redirect");
         // Login successful, AuthGuard will handle redirect
       } else {
         console.log("Login failed, showing error");
-        setError("Invalid email or password");
+        setFormError("root", { message: "Invalid email or password" });
       }
     } catch (err) {
       console.error("Login error:", err);
       if (err instanceof Error) {
         // Show specific error message from API
-        setError(err.message);
+        setFormError("root", { message: err.message });
       } else {
-        setError("Network error. Please check your connection and try again.");
+        setFormError("root", {
+          message: "Network error. Please check your connection and try again.",
+        });
       }
     } finally {
       setLoading(false);
@@ -47,10 +62,10 @@ export default function LoginPage() {
   };
 
   const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
+    setValue("email", demoEmail);
+    setValue("password", demoPassword);
     setDemoLoading(demoEmail);
-    setError("");
+    setFormError("root", { message: "" });
 
     try {
       const success = await login(demoEmail, demoPassword);
@@ -64,16 +79,18 @@ export default function LoginPage() {
         toast.success(`Welcome! Logged in as ${role}`);
         // Login successful, AuthGuard will handle redirect
       } else {
-        setError("Invalid email or password");
+        setFormError("root", { message: "Invalid email or password" });
         toast.error("Login failed. Please try again.");
       }
     } catch (err) {
       console.error("Demo login error:", err);
       if (err instanceof Error) {
-        setError(err.message);
+        setFormError("root", { message: err.message });
         toast.error(err.message);
       } else {
-        setError("Network error. Please check your connection and try again.");
+        setFormError("root", {
+          message: "Network error. Please check your connection and try again.",
+        });
         toast.error(
           "Network error. Please check your connection and try again."
         );
@@ -102,11 +119,11 @@ export default function LoginPage() {
 
           {/* Login Form */}
           <div className="bg-card border border-border rounded-xl shadow-lg dark:shadow-xl p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {errors.root && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
                   <p className="text-sm text-red-600 dark:text-red-400">
-                    {error}
+                    {errors.root.message}
                   </p>
                 </div>
               )}
@@ -125,15 +142,17 @@ export default function LoginPage() {
                   </div>
                   <input
                     id="email"
-                    name="email"
                     type="email"
                     autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    {...register("email")}
                     className="block w-full pl-10 pr-3 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground placeholder-muted-foreground"
                     placeholder="Enter your email"
                   />
+                  {errors.email && (
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      {errors.email.message}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -151,15 +170,17 @@ export default function LoginPage() {
                   </div>
                   <input
                     id="password"
-                    name="password"
                     type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    {...register("password")}
                     className="block w-full pl-10 pr-12 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground placeholder-muted-foreground"
                     placeholder="Enter your password"
                   />
+                  {errors.password && (
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      {errors.password.message}
+                    </p>
+                  )}
                   <button
                     type="button"
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"

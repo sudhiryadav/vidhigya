@@ -169,6 +169,73 @@ export const patterns = {
   url: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/,
 };
 
+// Instant call validation schema
+export const instantCallSchema = yup
+  .object({
+    title: yup
+      .string()
+      .required("Title is required")
+      .min(3, "Title must be at least 3 characters")
+      .max(100, "Title must be less than 100 characters"),
+    description: yup
+      .string()
+      .max(500, "Description must be less than 500 characters"),
+    caseId: yup.string().optional(),
+    participantIds: yup
+      .array()
+      .of(yup.string().required())
+      .min(1, "At least one participant is required")
+      .required("Participants are required"),
+  })
+  .required();
+
+// Login validation schema
+export const loginSchema = yup
+  .object({
+    email: yup
+      .string()
+      .required("Email is required")
+      .email("Please enter a valid email address"),
+    password: yup
+      .string()
+      .required("Password is required")
+      .min(1, "Password is required"),
+  })
+  .required();
+
+// Join meeting validation schema
+export const joinMeetingSchema = yup
+  .object({
+    meetingId: yup
+      .string()
+      .required("Meeting ID is required")
+      .min(3, "Meeting ID must be at least 3 characters")
+      .max(50, "Meeting ID must be less than 50 characters"),
+  })
+  .required();
+
+// Event validation schema
+export const eventSchema = yup
+  .object({
+    title: yup
+      .string()
+      .required("Event title is required")
+      .min(3, "Title must be at least 3 characters")
+      .max(100, "Title must be less than 100 characters"),
+    description: yup
+      .string()
+      .max(500, "Description must be less than 500 characters"),
+    startTime: yup.date().required("Start time is required"),
+    endTime: yup
+      .date()
+      .required("End time is required")
+      .min(yup.ref("startTime"), "End time must be after start time"),
+    type: yup.string().required("Event type is required"),
+    caseId: yup.string().optional(),
+    clientId: yup.string().optional(),
+  })
+  .required();
+
 // Common error messages
 export const errorMessages = {
   required: "This field is required",

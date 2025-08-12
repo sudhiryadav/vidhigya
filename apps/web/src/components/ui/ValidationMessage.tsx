@@ -27,7 +27,7 @@ export const ValidationMessage: React.FC<ValidationMessageProps> = ({
           </p>
         </div>
         {/* Arrow pointing up - properly positioned and styled */}
-        <div className="absolute -top-2 left-4 w-4 h-4 bg-red-50 dark:bg-red-900/20 border-l border-t border-red-200 dark:border-red-700 transform rotate-45"></div>
+        <div className="absolute -top-2 left-4 w-4 h-4 bg-red-50 dark:bg-red-900/20 border-r border-b border-red-200 dark:border-red-700 transform rotate-45"></div>
       </div>
     </div>
   );

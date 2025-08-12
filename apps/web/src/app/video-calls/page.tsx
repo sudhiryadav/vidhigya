@@ -6,7 +6,9 @@ import ModalDialog from "@/components/ui/ModalDialog";
 import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVideoCall } from "@/contexts/VideoCallContext";
+import { joinMeetingSchema } from "@/lib/validation";
 import { apiClient } from "@/services/api";
+import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Calendar,
   CheckCircle,
@@ -23,6 +25,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Resolver, useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 
 interface VideoCall {
@@ -364,6 +367,20 @@ export default function VideoCallsPage() {
   const [showJoinWithMeetingIdModal, setShowJoinWithMeetingIdModal] =
     useState(false);
   const [showInstantCallModal, setShowInstantCallModal] = useState(false);
+  const [meetingIdToJoin, setMeetingIdToJoin] = useState("");
+
+  // Form for joining meeting
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    setValue,
+  } = useForm<JoinMeetingFormData>({
+    resolver: yupResolver(joinMeetingSchema) as Resolver<JoinMeetingFormData>,
+    mode: "onSubmit",
+  });
+
   const [videoCallToEdit, setVideoCallToEdit] = useState<VideoCall | null>(
     null
   );
@@ -373,7 +390,6 @@ export default function VideoCallsPage() {
   const [videoCallToJoin, setVideoCallToJoin] = useState<VideoCall | null>(
     null
   );
-  const [meetingIdToJoin, setMeetingIdToJoin] = useState("");
   const [cases, setCases] = useState<Case[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [formData, setFormData] = useState({
@@ -641,24 +657,17 @@ export default function VideoCallsPage() {
     setShowJoinWithMeetingIdModal(true);
   };
 
-  const handleJoinWithMeetingIdSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!meetingIdToJoin.trim()) {
-      toast.error("Please enter a meeting ID");
-      return;
-    }
-
+  const handleJoinWithMeetingIdSubmit = async (data: JoinMeetingFormData) => {
     // Save pre-call settings
     // localStorage.setItem("preCallAudioEnabled", preCallAudioEnabled.toString());
     // localStorage.setItem("preCallVideoEnabled", preCallVideoEnabled.toString());
 
     // Navigate to video call room
-    window.open(`/video-call-room/${meetingIdToJoin.trim()}`, "_blank");
+    window.open(`/video-call-room/${data.meetingId.trim()}`, "_blank");
 
     // Close modal and reset
     setShowJoinWithMeetingIdModal(false);
-    setMeetingIdToJoin("");
+    reset();
   };
 
   const handleJoinWithMeetingIdCancel = () => {
@@ -1428,7 +1437,7 @@ export default function VideoCallsPage() {
               Enter the meeting ID to join an existing video call.
             </p>
 
-            <form onSubmit={handleJoinWithMeetingIdSubmit}>
+            <form onSubmit={handleSubmit(handleJoinWithMeetingIdSubmit)}>
               <div className="mb-4">
                 <label
                   htmlFor="meetingId"
@@ -1439,12 +1448,16 @@ export default function VideoCallsPage() {
                 <input
                   type="text"
                   id="meetingId"
-                  value={meetingIdToJoin}
-                  onChange={(e) => setMeetingIdToJoin(e.target.value)}
+                  {...register("meetingId")}
                   placeholder="Enter meeting ID (e.g., abc123)"
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
                   autoFocus
                 />
+                {errors.meetingId && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                    {errors.meetingId.message}
+                  </p>
+                )}
               </div>
 
               {/* Pre-call Settings */}
