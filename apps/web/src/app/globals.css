@@ -2,24 +2,25 @@
 
 /* Base theme variables - Light theme (default) */
 :root {
+  --background-transparency: 0.9;
   --color-toast-bg: #ffffff;
   --color-toast-color: #374151;
   --color-toast-border: #e5e7eb;
   
-  --color-background: 0 0% 100%;
-  --color-foreground: 222.2 84% 4.9%;
-  --color-card: 0 0% 100%;
-  --color-card-foreground: 222.2 84% 4.9%;
-  --color-popover: 0 0% 100%;
-  --color-popover-foreground: 222.2 84% 4.9%;
+  --color-background: hsla(0,0%,100%,var(--background-transparency));
+  --color-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
+  --color-card: hsla(0,0%,100%,var(--background-transparency))
+  --color-card-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
+  --color-popover: hsla(0,0%,100%,var(--background-transparency))
+  --color-popover-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-primary: 221.2 83.2% 53.3%;
   --color-primary-foreground: 210 40% 98%;
   --color-secondary: 210 40% 96%;
-  --color-secondary-foreground: 222.2 84% 4.9%;
+  --color-secondary-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-muted: 210 40% 96%;
   --color-muted-foreground: 215.4 16.3% 46.9%;
   --color-accent: 210 40% 96%;
-  --color-accent-foreground: 222.2 84% 4.9%;
+  --color-accent-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-destructive: 0 84.2% 60.2%;
   --color-destructive-foreground: 210 40% 98%;
   --color-border: 214.3 31.8% 91.4%;
@@ -46,14 +47,14 @@
   --color-toast-color: #f9fafb;
   --color-toast-border: #374151;
   
-  --color-background: 222.2 84% 4.9%;
+  --color-background: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-foreground: 210 40% 98%;
-  --color-card: 222.2 84% 4.9%;
+  --color-card: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-card-foreground: 210 40% 98%;
-  --color-popover: 222.2 84% 4.9%;
+  --color-popover: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-popover-foreground: 210 40% 98%;
   --color-primary: 217.2 91.2% 59.8%;
-  --color-primary-foreground: 222.2 84% 4.9%;
+  --color-primary-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-secondary: 217.2 32.6% 17.5%;
   --color-secondary-foreground: 210 40% 98%;
   --color-muted: 217.2 32.6% 17.5%;
@@ -645,20 +646,20 @@ html {
   --color-toast-color: #374151;
   --color-toast-border: #e5e7eb;
   
-  --color-background: 0 0% 100%;
-  --color-foreground: 222.2 84% 4.9%;
-  --color-card: 0 0% 100%;
-  --color-card-foreground: 222.2 84% 4.9%;
-  --color-popover: 0 0% 100%;
-  --color-popover-foreground: 222.2 84% 4.9%;
+  --color-background: hsla(0,0%,100%,var(--background-transparency))
+  --color-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
+  --color-card: hsla(0,0%,100%,var(--background-transparency))
+  --color-card-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
+  --color-popover: hsla(0,0%,100%,var(--background-transparency))
+  --color-popover-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-primary: 221.2 83.2% 53.3%;
   --color-primary-foreground: 210 40% 98%;
   --color-secondary: 210 40% 96%;
-  --color-secondary-foreground: 222.2 84% 4.9%;
+  --color-secondary-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-muted: 210 40% 96%;
   --color-muted-foreground: 215.4 16.3% 46.9%;
   --color-accent: 210 40% 96%;
-  --color-accent-foreground: 222.2 84% 4.9%;
+  --color-accent-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-destructive: 0 84.2% 60.2%;
   --color-destructive-foreground: 210 40% 98%;
   --color-border: 214.3 31.8% 91.4%;
@@ -672,14 +673,14 @@ html {
   --color-toast-color: #f9fafb;
   --color-toast-border: #374151;
   
-  --color-background: 222.2 84% 4.9%;
+  --color-background: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-foreground: 210 40% 98%;
-  --color-card: 222.2 84% 4.9%;
+  --color-card: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-card-foreground: 210 40% 98%;
-  --color-popover: 222.2 84% 4.9%;
+  --color-popover: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-popover-foreground: 210 40% 98%;
   --color-primary: 217.2 91.2% 59.8%;
-  --color-primary-foreground: 222.2 84% 4.9%;
+  --color-primary-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-secondary: 217.2 32.6% 17.5%;
   --color-secondary-foreground: 210 40% 98%;
   --color-muted: 217.2 32.6% 17.5%;
@@ -700,4 +701,42 @@ html {
 
 [data-theme="dark"] {
   color-scheme: dark;
+}
+
+/* Mini Video Call Window Styles */
+.mini-video-call-window {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  transition: all 0.3s ease;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.mini-video-call-window.minimized {
+  width: 4rem;
+  height: 4rem;
+}
+
+.mini-video-call-window.expanded {
+  width: 20rem;
+  height: 12rem;
+}
+
+/* Ensure video elements in mini window work properly */
+.mini-video-call-window video {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+/* Responsive adjustments for mini window */
+@media (max-width: 640px) {
+  .mini-video-call-window.expanded {
+    width: calc(100vw - 2rem);
+    height: calc(100vh / 3);
+    bottom: 1rem;
+    right: 1rem;
+    left: 1rem;
+  }
 }

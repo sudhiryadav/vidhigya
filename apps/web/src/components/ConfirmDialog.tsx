@@ -68,7 +68,7 @@ export default function ConfirmDialog({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-muted bg-opacity-75 transition-opacity" />
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity" />
         </Transition.Child>
 
         <div className="fixed inset-0 z-10 overflow-y-auto">
@@ -84,7 +84,7 @@ export default function ConfirmDialog({
             >
               <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-card px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
                 <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/20 sm:mx-0 sm:h-10 sm:w-10">
+                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-muted sm:mx-0 sm:h-10 sm:w-10">
                     <ExclamationTriangleIcon
                       className={`h-6 w-6 ${getIconColor()}`}
                       aria-hidden="true"
@@ -93,14 +93,12 @@ export default function ConfirmDialog({
                   <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
                     <Dialog.Title
                       as="h3"
-                      className="text-base font-semibold leading-6 text-gray-900 dark:text-white"
+                      className="text-base font-semibold leading-6 text-foreground"
                     >
                       {title}
                     </Dialog.Title>
                     <div className="mt-2">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {message}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{message}</p>
                     </div>
                   </div>
                 </div>

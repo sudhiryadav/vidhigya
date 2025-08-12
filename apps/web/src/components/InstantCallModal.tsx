@@ -3,6 +3,7 @@
 import ModalDialog from "@/components/ui/ModalDialog";
 import CustomSelect from "@/components/ui/select";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
+import { useVideoCall } from "@/contexts/VideoCallContext";
 import { apiClient } from "@/services/api";
 import { Mic, MicOff, Video, VideoOff } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -42,6 +43,7 @@ export default function InstantCallModal({
   onSuccess,
   autoJoin = false,
 }: InstantCallModalProps) {
+  const { startVideoCall } = useVideoCall();
   const [cases, setCases] = useState<Case[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -136,7 +138,10 @@ export default function InstantCallModal({
       onClose();
       reset();
 
-      // Call success callback
+      // Start video call using context (same window)
+      await startVideoCall(response.meetingId, data.title);
+
+      // Call success callback if provided
       if (onSuccess) {
         onSuccess(response.meetingId);
       }

@@ -10,6 +10,7 @@ import ScheduleEventModal from "@/components/ScheduleEventModal";
 import UploadDocumentModal from "@/components/UploadDocumentModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useVideoCall } from "@/contexts/VideoCallContext";
 import { apiClient } from "@/services/api";
 import { formatCurrency } from "@/utils/currency";
 import {
@@ -135,6 +136,7 @@ interface ClientBill {
 
 export default function Dashboard() {
   const { user, isAuthenticated } = useAuth();
+  const { startVideoCall } = useVideoCall();
   const { getSetting } = useSettings();
   const router = useRouter();
 
@@ -344,7 +346,7 @@ export default function Dashboard() {
       if (changeText.startsWith("+"))
         return "text-green-600 dark:text-green-400";
       if (changeText.startsWith("-")) return "text-red-600 dark:text-red-400";
-      return "text-gray-600 dark:text-gray-400";
+      return "text-muted-foreground";
     };
 
     return (
@@ -499,7 +501,7 @@ export default function Dashboard() {
       if (changeText.startsWith("+"))
         return "text-green-600 dark:text-green-400";
       if (changeText.startsWith("-")) return "text-red-600 dark:text-red-400";
-      return "text-gray-600 dark:text-gray-400";
+      return "text-muted-foreground";
     };
 
     return (
@@ -608,10 +610,10 @@ export default function Dashboard() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-red-500" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <h3 className="text-lg font-medium text-foreground mb-2">
             Error Loading Dashboard
           </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">{error}</p>
+          <p className="text-muted-foreground mb-4">{error}</p>
           <button onClick={fetchDashboardData} className="btn-primary">
             Try Again
           </button>
@@ -627,10 +629,10 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
           {/* Welcome Section */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-3xl font-bold text-foreground">
               Welcome back, {user?.name}!
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
+            <p className="text-muted-foreground mt-2">
               Here&apos;s what&apos;s happening with your practice today.
             </p>
           </div>
@@ -673,7 +675,7 @@ export default function Dashboard() {
 
           {/* Quick Actions */}
           <div className="mb-8">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            <h2 className="text-lg font-medium text-foreground mb-4">
               Quick Actions
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
@@ -967,8 +969,7 @@ export default function Dashboard() {
           isOpen={showInstantCallModal}
           onClose={handleInstantCallCancel}
           onSuccess={(meetingId) => {
-            // Navigate to video call room
-            window.open(`/video-call-room/${meetingId}`, "_blank");
+            // The modal now handles starting the call in the same window
             setShowInstantCallModal(false);
           }}
           autoJoin={false}
@@ -984,10 +985,10 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
           {/* Welcome Section */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-3xl font-bold text-foreground">
               Welcome back, {user?.name}!
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
+            <p className="text-muted-foreground mt-2">
               Here&apos;s an overview of your legal matters and recent activity.
             </p>
           </div>
@@ -1029,7 +1030,7 @@ export default function Dashboard() {
 
           {/* Quick Actions */}
           <div className="mb-8">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            <h2 className="text-lg font-medium text-foreground mb-4">
               Quick Actions
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -1245,10 +1246,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
         <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-red-500" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+        <h3 className="text-lg font-medium text-foreground mb-2">
           Access Denied
         </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-muted-foreground mb-4">
           You don&apos;t have permission to access this dashboard.
         </p>
       </div>

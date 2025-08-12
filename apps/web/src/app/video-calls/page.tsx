@@ -1,9 +1,11 @@
 "use client";
 
+import ConfirmDialog from "@/components/ConfirmDialog";
 import InstantCallModal from "@/components/InstantCallModal";
 import ModalDialog from "@/components/ui/ModalDialog";
 import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
+import { useVideoCall } from "@/contexts/VideoCallContext";
 import { apiClient } from "@/services/api";
 import {
   Calendar,
@@ -95,6 +97,8 @@ function VideoCallCard({
   formatDate,
   formatTime,
 }: VideoCallCardProps) {
+  const { isCallActive } = useVideoCall();
+
   const isUpcoming = (startTime: string) => {
     return new Date(startTime) > new Date();
   };
@@ -103,14 +107,20 @@ function VideoCallCard({
     const now = new Date();
     const start = new Date(startTime);
     const end = new Date(endTime);
+    return now >= start && now <= end && status === "LIVE";
+  };
 
-    // Check if the meeting is actually live based on status and time
-    // Handle both uppercase (IN_PROGRESS) and lowercase (in_progress) status values
+  const isInProgress = (startTime: string, endTime: string, status: string) => {
+    const now = new Date();
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    // Check if the meeting is actually in progress based on status and time
     const isStatusInProgress =
       status.toLowerCase() === "in_progress" || status === "IN_PROGRESS";
     const isWithinTimeRange = now >= start && now <= end;
 
-    // Meeting is live only if status is in_progress AND we're within the time range
+    // Meeting is in progress if status is in_progress AND we're within the time range
     return isStatusInProgress && isWithinTimeRange;
   };
 
@@ -119,23 +129,55 @@ function VideoCallCard({
     endTime: string,
     status: string
   ) => {
-    const now = new Date();
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-
-    // If the meeting hasn't started yet, show as "SCHEDULED"
-    if (now < start) {
-      return "SCHEDULED";
+    // First check if the call is currently active in the context
+    if (isCallActive(videoCall.meetingId)) {
+      return "IN_PROGRESS";
     }
 
-    // If the meeting has ended, show as "COMPLETED" regardless of backend status
+    // Check if it's upcoming
+    if (isUpcoming(startTime)) {
+      return "UPCOMING";
+    }
+
+    // Check if it's live based on status and time
+    if (isLive(startTime, endTime, status)) {
+      return "LIVE";
+    }
+
+    // Check if it's in progress based on status and time
+    if (isInProgress(startTime, endTime, status)) {
+      return "IN_PROGRESS";
+    }
+
+    // Check if it's completed based on status
+    if (status === "COMPLETED" || status === "completed") {
+      return "COMPLETED";
+    }
+
+    // Check if it's cancelled based on status
+    if (status === "CANCELLED" || status === "cancelled") {
+      return "CANCELLED";
+    }
+
+    // Default to completed only if we're past the end time and status is not explicitly set
+    const now = new Date();
+    const end = new Date(endTime);
     if (now > end) {
       return "COMPLETED";
     }
 
-    // If we're within the time range, show the backend status
+    // If we can't determine, return the original status
     return status;
   };
+
+  const displayStatus = getDisplayStatus(
+    videoCall.startTime,
+    videoCall.endTime,
+    videoCall.status
+  );
+
+  // Check if this call is currently active in the context
+  const isCurrentlyActive = isCallActive(videoCall.meetingId);
 
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-shadow">
@@ -151,34 +193,54 @@ function VideoCallCard({
             </h3>
             <div className="flex items-center mt-1">
               <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(getDisplayStatus(videoCall.startTime, videoCall.endTime, videoCall.status))}`}
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  isCurrentlyActive
+                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                    : getStatusColor(
+                        getDisplayStatus(
+                          videoCall.startTime,
+                          videoCall.endTime,
+                          videoCall.status
+                        )
+                      )
+                }`}
               >
-                {getStatusIcon(
-                  getDisplayStatus(
-                    videoCall.startTime,
-                    videoCall.endTime,
-                    videoCall.status
-                  )
+                {isCurrentlyActive ? (
+                  <>
+                    <Clock className="h-3 w-3 mr-1" />
+                    <span className="ml-1">In Progress</span>
+                  </>
+                ) : (
+                  <>
+                    {getStatusIcon(
+                      getDisplayStatus(
+                        videoCall.startTime,
+                        videoCall.endTime,
+                        videoCall.status
+                      )
+                    )}
+                    <span className="ml-1">
+                      {getDisplayStatus(
+                        videoCall.startTime,
+                        videoCall.endTime,
+                        videoCall.status
+                      )
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase())}
+                    </span>
+                  </>
                 )}
-                <span className="ml-1">
-                  {getDisplayStatus(
-                    videoCall.startTime,
-                    videoCall.endTime,
-                    videoCall.status
-                  )
-                    .replace(/_/g, " ")
-                    .replace(/\b\w/g, (l) => l.toUpperCase())}
-                </span>
               </span>
               {isLive(
                 videoCall.startTime,
                 videoCall.endTime,
                 videoCall.status
-              ) && (
-                <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                  Live Now
-                </span>
-              )}
+              ) &&
+                !isCurrentlyActive && (
+                  <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                    Live Now
+                  </span>
+                )}
             </div>
           </div>
         </div>
@@ -238,13 +300,25 @@ function VideoCallCard({
 
       {/* Actions */}
       <div className="flex space-x-2">
-        {/* Show Join button for:
-            - Scheduled calls that are upcoming
-            - Live calls (in progress within time range)
-        */}
-        {(isUpcoming(videoCall.startTime) &&
-          videoCall.status === "SCHEDULED") ||
-        isLive(videoCall.startTime, videoCall.endTime, videoCall.status) ? (
+        {/* Show appropriate button based on call status */}
+        {isCurrentlyActive ? (
+          // Call is currently active - show "In Progress" button
+          <button
+            className="flex-1 flex items-center justify-center px-3 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 cursor-default"
+            disabled
+          >
+            <Clock className="h-4 w-4 mr-2" />
+            In Progress
+          </button>
+        ) : (isUpcoming(videoCall.startTime) &&
+            videoCall.status === "SCHEDULED") ||
+          isLive(videoCall.startTime, videoCall.endTime, videoCall.status) ||
+          isInProgress(
+            videoCall.startTime,
+            videoCall.endTime,
+            videoCall.status
+          ) ? (
+          // Call can be joined - show "Join" button
           <button
             onClick={() => onJoin(videoCall)}
             className="flex-1 flex items-center justify-center px-3 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
@@ -277,6 +351,7 @@ function VideoCallCard({
 
 export default function VideoCallsPage() {
   const { user } = useAuth();
+  const { startVideoCall } = useVideoCall();
   const [videoCalls, setVideoCalls] = useState<VideoCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -515,19 +590,9 @@ export default function VideoCallsPage() {
         }
       }
 
-      // Store pre-call settings in localStorage
-      // localStorage.setItem(
-      //   "preCallAudioEnabled",
-      //   preCallAudioEnabled.toString()
-      // );
-      // localStorage.setItem(
-      //   "preCallVideoEnabled",
-      //   preCallVideoEnabled.toString()
-      // );
-
-      // Navigate to the video call room
+      // Start video call using context (same window)
       if (videoCallToJoin.meetingId) {
-        window.location.href = `/video-call-room/${videoCallToJoin.meetingId}`;
+        await startVideoCall(videoCallToJoin.meetingId, videoCallToJoin.title);
       }
 
       // Close modal and refresh the video calls list
@@ -631,7 +696,7 @@ export default function VideoCallsPage() {
       case "cancelled":
         return <XCircle className="h-4 w-4 text-red-600" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-600" />;
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -837,11 +902,11 @@ export default function VideoCallsPage() {
         {/* Video Calls List */}
         {filteredVideoCalls.length === 0 ? (
           <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
-            <Video className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            <Video className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               No video calls found
             </h3>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-muted-foreground">
               {searchTerm || filterStatus !== "all" || filterCase !== "all"
                 ? "Try adjusting your filters to see more results."
                 : "Video calls will appear here once they are scheduled."}
@@ -852,7 +917,7 @@ export default function VideoCallsPage() {
             {/* In Progress Calls */}
             {inProgressCalls.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                <h2 className="text-xl font-semibold text-foreground mb-4">
                   In Progress ({inProgressCalls.length})
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -879,7 +944,7 @@ export default function VideoCallsPage() {
             {/* Upcoming Calls */}
             {upcomingCalls.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                <h2 className="text-xl font-semibold text-foreground mb-4">
                   Upcoming ({upcomingCalls.length})
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -906,7 +971,7 @@ export default function VideoCallsPage() {
             {/* Past Calls */}
             {pastCalls.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                <h2 className="text-xl font-semibold text-foreground mb-4">
                   Past ({pastCalls.length})
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -967,7 +1032,7 @@ export default function VideoCallsPage() {
           className="space-y-4"
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Title (Optional)
             </label>
             <input
@@ -985,7 +1050,7 @@ export default function VideoCallsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Description (Optional)
             </label>
             <textarea
@@ -1068,7 +1133,7 @@ export default function VideoCallsPage() {
           className="space-y-4"
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Title
             </label>
             <input
@@ -1085,7 +1150,7 @@ export default function VideoCallsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Description
             </label>
             <textarea
@@ -1102,7 +1167,7 @@ export default function VideoCallsPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Start Time
               </label>
               <input
@@ -1119,7 +1184,7 @@ export default function VideoCallsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 End Time
               </label>
               <input
@@ -1181,7 +1246,7 @@ export default function VideoCallsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Participants
             </label>
             <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -1205,9 +1270,9 @@ export default function VideoCallsPage() {
                         });
                       }
                     }}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-border text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="text-sm text-gray-900 dark:text-white">
+                  <span className="text-sm text-foreground">
                     {user.name} ({user.email})
                   </span>
                 </label>
@@ -1218,47 +1283,15 @@ export default function VideoCallsPage() {
       </ModalDialog>
 
       {/* Delete Confirmation Modal */}
-      <ModalDialog
+      <ConfirmDialog
         isOpen={showDeleteModal}
         onClose={handleDeleteCancel}
-        header={
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Delete Video Call
-          </h2>
-        }
-        footer={
-          <div className="flex space-x-3">
-            <button
-              onClick={handleDeleteCancel}
-              className="px-4 py-2 bg-muted text-muted-foreground text-base font-medium rounded-md shadow-sm hover:bg-muted/80 focus:outline-none focus:ring-2 focus:ring-gray-300"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleDeleteConfirm}
-              className="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300"
-            >
-              Delete
-            </button>
-          </div>
-        }
-        maxWidth="md"
-        closeOnEscape={true}
-        closeOnOverlayClick={true}
-      >
-        <div className="text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 mb-4">
-            <X className="h-6 w-6 text-red-600 dark:text-red-400" />
-          </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Are you sure you want to delete the video call{" "}
-            <span className="font-medium text-gray-900 dark:text-white">
-              "{videoCallToDelete?.title}"
-            </span>
-            ? This action cannot be undone.
-          </p>
-        </div>
-      </ModalDialog>
+        onConfirm={handleDeleteConfirm}
+        title="Delete Video Call"
+        message={`Are you sure you want to delete the video call "${videoCallToDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
 
       {/* Join Modal with Pre-call Settings */}
       <ModalDialog
@@ -1294,32 +1327,16 @@ export default function VideoCallsPage() {
       >
         <div>
           <div className="mb-4">
-            <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+            <h4 className="font-medium text-foreground mb-2">
               {videoCallToJoin?.title}
             </h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            <p className="text-sm text-muted-foreground mb-3">
               Meeting ID:{" "}
               <span className="font-mono font-medium text-blue-600 dark:text-blue-400">
                 {videoCallToJoin?.meetingId}
               </span>
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {formatDate(videoCallToJoin?.startTime || "")} at{" "}
-              {formatTime(videoCallToJoin?.startTime || "")}
-            </p>
-          </div>
-
-          <div className="mb-4">
-            <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-              {videoCallToJoin?.title}
-            </h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-              Meeting ID:{" "}
-              <span className="font-mono font-medium text-blue-600 dark:text-blue-400">
-                {videoCallToJoin?.meetingId}
-              </span>
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               {formatDate(videoCallToJoin?.startTime || "")} at{" "}
               {formatTime(videoCallToJoin?.startTime || "")}
             </p>
@@ -1327,7 +1344,7 @@ export default function VideoCallsPage() {
 
           {/* Pre-call Settings */}
           <div className="mb-6">
-            <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+            <h5 className="text-sm font-medium text-foreground mb-3">
               Before joining, you can:
             </h5>
 
@@ -1338,10 +1355,10 @@ export default function VideoCallsPage() {
                   {/* preCallAudioEnabled is no longer managed here */}
                   <Mic className="h-5 w-5 text-green-600 dark:text-green-400" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    <p className="text-sm font-medium text-foreground">
                       Microphone
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       {/* preCallAudioEnabled is no longer managed here */}
                       Will be enabled
                     </p>
@@ -1367,10 +1384,10 @@ export default function VideoCallsPage() {
                   {/* preCallVideoEnabled is no longer managed here */}
                   <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    <p className="text-sm font-medium text-foreground">
                       Camera
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       {/* preCallVideoEnabled is no longer managed here */}
                       Will be enabled
                     </p>
@@ -1407,7 +1424,7 @@ export default function VideoCallsPage() {
       >
         <div className="p-6">
           <div className="mb-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Enter the meeting ID to join an existing video call.
             </p>
 
@@ -1415,7 +1432,7 @@ export default function VideoCallsPage() {
               <div className="mb-4">
                 <label
                   htmlFor="meetingId"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  className="block text-sm font-medium text-foreground mb-2"
                 >
                   Meeting ID
                 </label>
@@ -1432,7 +1449,7 @@ export default function VideoCallsPage() {
 
               {/* Pre-call Settings */}
               <div className="mb-6">
-                <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                <h5 className="text-sm font-medium text-foreground mb-3">
                   Pre-call settings:
                 </h5>
 
@@ -1443,10 +1460,10 @@ export default function VideoCallsPage() {
                       {/* preCallAudioEnabled is no longer managed here */}
                       <Mic className="h-5 w-5 text-green-600 dark:text-green-400" />
                       <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        <p className="text-sm font-medium text-foreground">
                           Microphone
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-muted-foreground">
                           {/* preCallAudioEnabled is no longer managed here */}
                           Will be enabled
                         </p>
@@ -1473,11 +1490,11 @@ export default function VideoCallsPage() {
                       {/* preCallVideoEnabled is no longer managed here */}
                       <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
                       <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        <p className="text-sm font-medium text-foreground">
                           Camera
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {/* preCallVideoEnabled is no longer managed here */}
+                        <p className="text-xs text-muted-foreground">
+                          {/* preCallAudioEnabled is no longer managed here */}
                           Will be enabled
                         </p>
                       </div>
@@ -1524,8 +1541,7 @@ export default function VideoCallsPage() {
         isOpen={showInstantCallModal}
         onClose={() => setShowInstantCallModal(false)}
         onSuccess={(meetingId) => {
-          // Navigate to video call room
-          window.open(`/video-call-room/${meetingId}`, "_blank");
+          // The modal now handles starting the call in the same window
           setShowInstantCallModal(false);
           // Refresh video calls list
           fetchVideoCalls();

@@ -1,15 +1,16 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import ModalDialog from "@/components/ui/ModalDialog";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import VideoCallControls from "@/components/VideoCallControls";
+import VideoDisplay from "@/components/VideoDisplay";
 import { useAuth } from "@/contexts/AuthContext";
+import { useVideoCall } from "@/contexts/VideoCallContext";
 import { apiClient } from "@/services/api";
 import {
   AlertCircle,
   Maximize,
   Mic,
   MicOff,
-  PhoneOff,
   Settings,
   Share,
   Users,
@@ -23,6 +24,15 @@ export default function VideoCallRoom() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const {
+    videoCallState,
+    updateLocalStream,
+    updateRemoteStream,
+    updateCallDuration,
+    updateParticipants,
+    endVideoCall,
+    setVideoRoomStatus,
+  } = useVideoCall();
   const meetingId = params.meetingId as string;
 
   // Video/Audio refs
@@ -48,6 +58,37 @@ export default function VideoCallRoom() {
   const [participants, setParticipants] = useState<any[]>([]);
   const [callInfo, setCallInfo] = useState<any>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Set video room status when component mounts
+  useEffect(() => {
+    setVideoRoomStatus(true);
+
+    // Check if we're already in an active call - don't restart if so
+    if (videoCallState.isActive && videoCallState.meetingId === meetingId) {
+      console.log("Already in active call, continuing...");
+      // Don't reinitialize media if call is already active
+      return;
+    }
+
+    // Only initialize if this is a new call
+    initializeMedia();
+
+    return () => {
+      setVideoRoomStatus(false);
+    };
+  }, [
+    setVideoRoomStatus,
+    meetingId,
+    videoCallState.isActive,
+    videoCallState.meetingId,
+  ]);
+
+  // Add router event listener to ensure cleanup on navigation
+  useEffect(() => {
+    return () => {
+      setVideoRoomStatus(false);
+    };
+  }, [setVideoRoomStatus]);
 
   // Callback ref to ensure video element is set when rendered
   const setLocalVideoRef = useCallback((element: HTMLVideoElement | null) => {
@@ -91,7 +132,11 @@ export default function VideoCallRoom() {
 
     // Start call duration timer
     const timer = setInterval(() => {
-      setCallDuration((prev) => prev + 1);
+      setCallDuration((prev) => {
+        const newDuration = prev + 1;
+        // Don't update global context here to avoid infinite re-renders
+        return newDuration;
+      });
     }, 1000);
 
     // Simulate connecting to video call
@@ -161,6 +206,9 @@ export default function VideoCallRoom() {
     if (localStream && localVideoRef.current) {
       localVideoRef.current.srcObject = localStream;
       localVideoRef.current.load();
+
+      // Update global context
+      updateLocalStream(localStream);
     } else if (localStream && !localVideoRef.current) {
       // Retry after a short delay
       const retryInterval = setInterval(() => {
@@ -174,7 +222,17 @@ export default function VideoCallRoom() {
       // Clear interval after 5 seconds to prevent infinite retries
       setTimeout(() => clearInterval(retryInterval), 5000);
     }
-  }, [localStream]);
+  }, [localStream, updateLocalStream]);
+
+  // Update remote stream in global context only when it actually changes
+  useEffect(() => {
+    if (remoteStream) {
+      updateRemoteStream(remoteStream);
+    }
+  }, [remoteStream, updateRemoteStream]);
+
+  // Remove the problematic useEffect calls that were causing infinite loops
+  // The global context will be updated when the component actually changes these values
 
   const initializeMedia = async () => {
     try {
@@ -196,6 +254,8 @@ export default function VideoCallRoom() {
       // Set the stream in ref and state
       localStreamRef.current = stream;
       setLocalStream(stream);
+      // Update global context with local stream
+      updateLocalStream(stream);
 
       // Wait a bit for the video element to be rendered
       setTimeout(() => {
@@ -245,7 +305,10 @@ export default function VideoCallRoom() {
     try {
       const data = (await apiClient.getVideoCallByMeetingId(meetingId)) as any;
       setCallInfo(data);
-      setParticipants(data.participants || []);
+      const newParticipants = data.participants || [];
+      setParticipants(newParticipants);
+      // Update global context with participants
+      updateParticipants(newParticipants);
     } catch (error) {
       console.error("Error fetching call info:", error);
     }
@@ -267,9 +330,12 @@ export default function VideoCallRoom() {
 
     // Handle incoming remote stream
     peerConnection.ontrack = (event) => {
-      setRemoteStream(event.streams[0]);
+      const newRemoteStream = event.streams[0];
+      setRemoteStream(newRemoteStream);
+      // Update global context with remote stream
+      updateRemoteStream(newRemoteStream);
       if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0];
+        remoteVideoRef.current.srcObject = newRemoteStream;
       }
     };
 
@@ -293,7 +359,7 @@ export default function VideoCallRoom() {
   };
 
   // Function to update remote stream to reflect local track changes
-  const updateRemoteStream = () => {
+  const updateLocalRemoteStream = () => {
     if (localStreamRef.current) {
       // Create a new MediaStream with current track states
       const updatedRemoteStream = new MediaStream();
@@ -325,7 +391,7 @@ export default function VideoCallRoom() {
     // This is a simulation - in a real app, you'd have a signaling server
     // Simulate receiving a remote stream after a delay
     setTimeout(() => {
-      updateRemoteStream();
+      updateLocalRemoteStream();
     }, 3000);
   };
 
@@ -342,30 +408,16 @@ export default function VideoCallRoom() {
     if (localStreamRef.current) {
       const audioTracks = localStreamRef.current.getAudioTracks();
       if (audioTracks.length > 0) {
-        const audioTrack = audioTracks[0];
+        const newAudioEnabled = !isAudioEnabled;
+        audioTracks[0].enabled = newAudioEnabled;
+        setIsAudioEnabled(newAudioEnabled);
 
-        // Toggle the track enabled state - this affects the actual stream
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsAudioEnabled(audioTrack.enabled);
-
-        // Update video element to reflect audio state
         if (localVideoRef.current) {
-          localVideoRef.current.muted = !audioTrack.enabled;
+          localVideoRef.current.muted = !newAudioEnabled;
         }
 
-        // Update peer connection to reflect the change
-        if (peerConnectionRef.current) {
-          const senders = peerConnectionRef.current.getSenders();
-          const audioSender = senders.find(
-            (sender) => sender.track?.kind === "audio"
-          );
-          if (audioSender && audioSender.track) {
-            audioSender.track.enabled = audioTrack.enabled;
-          }
-        }
-
-        // Update remote stream to reflect the change immediately
-        updateRemoteStream();
+        // Update global context with audio state
+        // Note: We don't need to update the stream itself, just the state
       }
     }
   };
@@ -374,25 +426,12 @@ export default function VideoCallRoom() {
     if (localStreamRef.current) {
       const videoTracks = localStreamRef.current.getVideoTracks();
       if (videoTracks.length > 0) {
-        const videoTrack = videoTracks[0];
+        const newVideoEnabled = !isVideoEnabled;
+        videoTracks[0].enabled = newVideoEnabled;
+        setIsVideoEnabled(newVideoEnabled);
 
-        // Toggle the track enabled state - this affects the actual stream
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsVideoEnabled(videoTrack.enabled);
-
-        // Update peer connection to reflect the change
-        if (peerConnectionRef.current) {
-          const senders = peerConnectionRef.current.getSenders();
-          const videoSender = senders.find(
-            (sender) => sender.track?.kind === "video"
-          );
-          if (videoSender && videoSender.track) {
-            videoSender.track.enabled = videoTrack.enabled;
-          }
-        }
-
-        // Update remote stream to reflect the change immediately
-        updateRemoteStream();
+        // Update global context with video state
+        // Note: We don't need to update the stream itself, just the state
       }
     }
   };
@@ -426,6 +465,9 @@ export default function VideoCallRoom() {
             if (localVideoRef.current) {
               localVideoRef.current.srcObject = localStreamRef.current;
             }
+
+            // Update global context with updated local stream
+            updateLocalStream(localStreamRef.current);
           }
         }
 
@@ -434,6 +476,8 @@ export default function VideoCallRoom() {
         // Stop screen sharing and restore camera
         await initializeMedia();
         setIsScreenSharing(false);
+
+        // Note: initializeMedia already updates the global context
       }
     } catch (error) {
       console.error("Error toggling screen share:", error);
@@ -445,28 +489,73 @@ export default function VideoCallRoom() {
   };
 
   const handleConfirmEndCall = () => {
-    // Stop all media streams
+    // Stop all media streams properly
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-    }
-    if (remoteStream) {
-      remoteStream.getTracks().forEach((track) => track.stop());
+      localStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped local track:", track.kind);
+      });
+      localStreamRef.current = null;
     }
 
-    if (user?.role === "CLIENT") {
-      router.push("/video-calls");
-    } else {
-      router.push("/video-calls");
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped local stream track:", track.kind);
+      });
+      setLocalStream(null);
     }
+
+    if (remoteStream) {
+      remoteStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped remote stream track:", track.kind);
+      });
+      setRemoteStream(null);
+    }
+
+    // Close peer connection
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    // End call in global context
+    endVideoCall();
+
+    // Navigate back to video calls page
+    router.push("/video-calls");
   };
 
   const handleLeaveCall = () => {
-    // Cleanup media streams and peer connection
+    // Cleanup media streams and peer connection properly
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped local track on leave:", track.kind);
+      });
+      localStreamRef.current = null;
     }
+
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped local stream track on leave:", track.kind);
+      });
+      setLocalStream(null);
+    }
+
+    if (remoteStream) {
+      remoteStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped remote stream track on leave:", track.kind);
+      });
+      setRemoteStream(null);
+    }
+
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
     }
 
     // Navigate back
@@ -526,6 +615,16 @@ export default function VideoCallRoom() {
       setIsFullscreen(!isFullscreen);
     }
   };
+
+  // Update global context with call duration when component unmounts
+  useEffect(() => {
+    return () => {
+      // Update global context with final duration when leaving
+      if (callDuration > 0) {
+        updateCallDuration(callDuration);
+      }
+    };
+  }, [callDuration, updateCallDuration]);
 
   if (isConnecting) {
     return (
@@ -616,26 +715,19 @@ export default function VideoCallRoom() {
       <div className="flex-1 flex" ref={videoContainerRef}>
         {/* Video Area */}
         <div className="flex-1 relative">
-          {/* Main Video - Remote Participant */}
-          <div className="absolute inset-0 bg-card flex items-center justify-center">
-            {remoteStream ? (
-              <video
-                ref={setRemoteVideoRef}
-                autoPlay
-                playsInline
-                muted={false}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="text-center text-foreground">
-                <div className="w-32 h-32 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Video className="w-12 h-12 text-muted-foreground" />
-                </div>
-                <p className="text-lg font-medium">
-                  {participants.length > 1
-                    ? "Waiting for other participants..."
-                    : "Waiting for participants..."}
-                </p>
+          <VideoDisplay
+            localStream={localStream}
+            remoteStream={remoteStream}
+            variant="main"
+            showLocalOverlay={true}
+            showWaitingMessage={true}
+            className="w-full h-full"
+          />
+
+          {/* Meeting Info Overlay */}
+          {!remoteStream && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="text-center text-foreground bg-card/80 backdrop-blur-sm rounded-lg p-6 max-w-md">
                 <p className="text-muted-foreground mb-2">
                   Meeting ID: {meetingId}
                 </p>
@@ -673,54 +765,8 @@ export default function VideoCallRoom() {
                   </div>
                 )}
               </div>
-            )}
-          </div>
-
-          {/* Local Video - Picture in Picture */}
-          <div className="absolute top-4 right-4 w-48 h-36 bg-muted rounded-lg overflow-hidden">
-            <video
-              ref={setLocalVideoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-              onLoadedMetadata={() => {
-                // Video metadata loaded
-              }}
-              onError={(e) => {
-                console.error("Local video error:", e);
-              }}
-            />
-
-            {/* Loading overlay */}
-            {!localStream && (
-              <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                <div className="text-center">
-                  <Video className="w-8 h-8 text-muted-foreground mx-auto mb-1" />
-                  <p className="text-muted-foreground text-xs">
-                    Loading camera...
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Audio mute indicator */}
-            {!isAudioEnabled && (
-              <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                Muted
-              </div>
-            )}
-
-            {/* Video off indicator */}
-            {!isVideoEnabled && (
-              <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                <div className="text-center">
-                  <VideoOff className="w-8 h-8 text-muted-foreground mx-auto mb-1" />
-                  <p className="text-muted-foreground text-xs">Camera Off</p>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -800,38 +846,18 @@ export default function VideoCallRoom() {
       {/* Controls */}
       <div className="bg-muted px-6 py-4">
         <div className="flex items-center justify-center space-x-4">
-          <button
-            onClick={handleToggleAudio}
-            className={`p-3 rounded-full transition-colors ${
-              isAudioEnabled
-                ? "bg-muted text-foreground hover:bg-muted/80"
-                : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            }`}
-            title={isAudioEnabled ? "Mute microphone" : "Unmute microphone"}
-          >
-            {isAudioEnabled ? (
-              <Mic className="w-6 h-6" />
-            ) : (
-              <MicOff className="w-6 h-6" />
-            )}
-          </button>
+          {/* Common Video Call Controls */}
+          <VideoCallControls
+            isAudioEnabled={isAudioEnabled}
+            isVideoEnabled={isVideoEnabled}
+            onToggleAudio={handleToggleAudio}
+            onToggleVideo={handleToggleVideo}
+            onEndCall={handleEndCall}
+            variant="main"
+            showEndCall={true}
+          />
 
-          <button
-            onClick={handleToggleVideo}
-            className={`p-3 rounded-full transition-colors ${
-              isVideoEnabled
-                ? "bg-muted text-foreground hover:bg-muted/80"
-                : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            }`}
-            title={isVideoEnabled ? "Turn off camera" : "Turn on camera"}
-          >
-            {isVideoEnabled ? (
-              <Video className="w-6 h-6" />
-            ) : (
-              <VideoOff className="w-6 h-6" />
-            )}
-          </button>
-
+          {/* Screen Share Button */}
           <button
             onClick={handleToggleScreenShare}
             className={`p-3 rounded-full transition-colors ${
@@ -839,59 +865,24 @@ export default function VideoCallRoom() {
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-foreground hover:bg-muted/80"
             }`}
+            title={isScreenSharing ? "Stop sharing" : "Share screen"}
           >
             <Share className="w-6 h-6" />
-          </button>
-
-          <button
-            onClick={handleEndCall}
-            className="p-3 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
-          >
-            <PhoneOff className="w-6 h-6" />
           </button>
         </div>
       </div>
 
       {/* End Call Confirmation Dialog */}
-      <ModalDialog
+      <ConfirmDialog
         isOpen={showEndCallDialog}
         onClose={() => setShowEndCallDialog(false)}
-        header={
-          <h3 className="text-lg font-semibold text-foreground">End Call</h3>
-        }
-        footer={
-          <div className="flex justify-end space-x-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowEndCallDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleConfirmEndCall}>
-              End Call
-            </Button>
-          </div>
-        }
-        maxWidth="md"
-        closeOnEscape={true}
-        closeOnOverlayClick={true}
-      >
-        <div className="p-6">
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-destructive/20 rounded-full flex items-center justify-center">
-                <PhoneOff className="w-5 h-5 text-destructive" />
-              </div>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground">
-                Are you sure you want to end the call? This action cannot be
-                undone.
-              </p>
-            </div>
-          </div>
-        </div>
-      </ModalDialog>
+        onConfirm={handleConfirmEndCall}
+        title="End Call"
+        message="Are you sure you want to end the call? This action cannot be undone."
+        confirmText="End Call"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   );
 }

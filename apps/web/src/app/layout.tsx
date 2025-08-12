@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { FontSizeProvider } from "@/contexts/FontSizeContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { VideoCallProvider } from "@/contexts/VideoCallContext";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -27,11 +28,13 @@ export default function RootLayout({
           <AuthProvider>
             <SettingsProvider>
               <FontSizeProvider>
-                <ToastContainer>
-                  <AuthGuard>
-                    <LayoutWrapper>{children}</LayoutWrapper>
-                  </AuthGuard>
-                </ToastContainer>
+                <VideoCallProvider>
+                  <ToastContainer>
+                    <AuthGuard>
+                      <LayoutWrapper>{children}</LayoutWrapper>
+                    </AuthGuard>
+                  </ToastContainer>
+                </VideoCallProvider>
               </FontSizeProvider>
             </SettingsProvider>
           </AuthProvider>
