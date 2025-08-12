@@ -20,6 +20,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 interface BillingRecord {
   id: string;
@@ -241,7 +242,7 @@ export default function BillingPage() {
     try {
       // Validate required fields
       if (!formData.amount || !formData.description || !formData.dueDate) {
-        alert("Please fill in all required fields");
+        toast.error("Please fill in all required fields");
         return;
       }
 
@@ -269,11 +270,11 @@ export default function BillingPage() {
         await fetchOverdueBills();
 
         // Show success message
-        alert("Bill created successfully!");
+        toast.success("Bill created successfully!");
       }
     } catch (error) {
       console.error("Error creating bill:", error);
-      alert("Failed to create bill. Please try again.");
+      toast.error("Failed to create bill. Please try again.");
     }
   };
 
@@ -315,11 +316,10 @@ export default function BillingPage() {
     if (!selectedBill) return;
 
     try {
-      // TODO: Implement bill deletion API call when backend supports it
-      // For now, we'll simulate the deletion locally
-      console.log("Deleting bill:", selectedBill.id);
+      // Call API to delete bill
+      await apiClient.deleteBill(selectedBill.id);
 
-      // Simulate successful deletion
+      console.log("Bill deleted successfully:", selectedBill.id);
       setShowDeleteModal(false);
       setSelectedBill(null);
 
@@ -328,12 +328,10 @@ export default function BillingPage() {
       await fetchOverdueBills();
 
       // Show success message
-      alert(
-        "Bill deletion simulated successfully! Backend delete API needs to be implemented."
-      );
+      toast.success("Bill deleted successfully!");
     } catch (error) {
       console.error("Error deleting bill:", error);
-      alert("Failed to delete bill. Please try again.");
+      toast.error("Failed to delete bill. Please try again.");
     }
   };
 
@@ -344,7 +342,7 @@ export default function BillingPage() {
     try {
       // Validate required fields
       if (!formData.amount || !formData.description || !formData.dueDate) {
-        alert("Please fill in all required fields");
+        toast.error("Please fill in all required fields");
         return;
       }
 
@@ -357,11 +355,10 @@ export default function BillingPage() {
         caseId: formData.caseId || undefined,
       };
 
-      // TODO: Implement bill update API call when backend supports it
-      // For now, we'll simulate the update locally
-      console.log("Updating bill:", selectedBill.id, updateData);
+      // Call API to update bill
+      await apiClient.updateBill(selectedBill.id, updateData);
 
-      // Simulate successful update
+      console.log("Bill updated successfully:", selectedBill.id, updateData);
       setShowEditModal(false);
       setSelectedBill(null);
       resetForm();
@@ -371,12 +368,10 @@ export default function BillingPage() {
       await fetchOverdueBills();
 
       // Show success message
-      alert(
-        "Bill update simulated successfully! Backend update API needs to be implemented."
-      );
+      toast.success("Bill updated successfully!");
     } catch (error) {
       console.error("Error updating bill:", error);
-      alert("Failed to update bill. Please try again.");
+      toast.error("Failed to update bill. Please try again.");
     }
   };
 

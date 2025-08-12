@@ -19,6 +19,7 @@ import { DocumentCategory, DocumentStatus } from '@prisma/client';
 import { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ConversationContextService } from '../common/services/conversation-context.service';
 import { QdrantService } from '../config/qdrant.service';
 import { S3Service } from '../config/s3.config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -69,6 +70,7 @@ export class DocumentsController {
     private readonly configService: ConfigService,
     private readonly qdrantService: QdrantService,
     private readonly prisma: PrismaService,
+    private readonly conversationContextService: ConversationContextService,
   ) {}
 
   @Post()
@@ -468,15 +470,50 @@ export class DocumentsController {
         throw new BadRequestException('Modal.com endpoint not configured');
       }
 
+      // Get conversation history from backend instead of frontend
+      const backendHistory = await this.getConversationHistory(
+        req.user.sub,
+        query,
+      );
+
+      // Use conversation context service to intelligently truncate history
+      const { truncatedHistory, truncationInfo } =
+        await this.conversationContextService.truncateConversationHistory(
+          backendHistory,
+          query,
+          context,
+        );
+
+      // Pre-validate context before sending to AI service
+      const validation =
+        this.conversationContextService.validateContextBeforeSending(
+          truncatedHistory,
+          query,
+          context,
+        );
+
+      console.log('Conversation context processing:', {
+        originalHistoryCount: conversationHistory.length,
+        backendHistoryCount: backendHistory.length,
+        truncatedHistoryCount: truncatedHistory.length,
+        truncationInfo,
+        queryLength: query.length,
+        contextLength: context?.length || 0,
+        preValidation: validation,
+      });
+
+      // Use the validated history
+      const finalHistory = validation.finalHistory;
+
       console.log(
-        'Using direct Modal.com integration with conversation context',
+        'Using direct Modal.com integration with optimized conversation context',
       );
       return await this.queryDocumentsDirect(
         query,
         req.user.sub,
         limit,
         context,
-        conversationHistory,
+        finalHistory, // Use validated history that's guaranteed to fit within token limits
       );
     } catch (error) {
       console.error('Error processing document query:', error);
@@ -485,6 +522,80 @@ export class DocumentsController {
       }
       throw new BadRequestException('Failed to process query');
     }
+  }
+
+  /**
+   * Get conversation history from backend database instead of frontend
+   */
+  private async getConversationHistory(
+    userId: string,
+    currentQuery: string,
+  ): Promise<Array<{ question: string; answer: string; timestamp?: string }>> {
+    try {
+      // Get recent document queries for this user (more conservative limit)
+      const recentQueries = await this.prisma.documentQuery.findMany({
+        where: {
+          userId,
+          // Optionally filter by case if needed
+          // caseId: caseId,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 10, // Reduced from 20 to 10 for more conservative token usage
+        select: {
+          question: true,
+          answer: true,
+          createdAt: true,
+        },
+      });
+
+      // Convert to the expected format
+      return recentQueries.map((query) => ({
+        question: query.question,
+        answer: query.answer,
+        timestamp: query.createdAt.toISOString(),
+      }));
+    } catch (error) {
+      console.error('Error fetching conversation history:', error);
+      // Return empty array if there's an error - don't fail the entire request
+      return [];
+    }
+  }
+
+  /**
+   * Build the final context string that will be sent to Modal.com
+   * This helps with debugging token usage
+   */
+  private buildFinalContextString(
+    documentContext: string,
+    conversationHistory: Array<{
+      question: string;
+      answer: string;
+      timestamp?: string;
+    }>,
+    query: string,
+  ): string {
+    let context = '';
+
+    // Add document context
+    if (documentContext) {
+      context += `Document Context:\n${documentContext}\n\n`;
+    }
+
+    // Add conversation history
+    if (conversationHistory.length > 0) {
+      context += 'Conversation History:\n';
+      conversationHistory.forEach((item, index) => {
+        context += `Q${index + 1}: ${item.question}\n`;
+        context += `A${index + 1}: ${item.answer}\n\n`;
+      });
+    }
+
+    // Add current query
+    context += `Current Question: ${query}`;
+
+    return context;
   }
 
   private async queryDocumentsDirect(
@@ -541,6 +652,22 @@ export class DocumentsController {
           `Sending ${conversationHistory.length} previous Q&A pairs as separate history`,
         );
       }
+
+      // Build the final context string for logging
+      const finalContextString = this.buildFinalContextString(
+        documentContext,
+        conversationHistory,
+        query,
+      );
+
+      console.log('Sending to Modal.com:', {
+        queryLength: query.length,
+        contextLength: documentContext.length,
+        historyCount: conversationHistory.length,
+        finalContextLength: finalContextString.length,
+        estimatedTokens: Math.ceil(finalContextString.length / 4), // Rough token estimate
+        maxAllowedTokens: 4096,
+      });
 
       // Call Modal.com directly
       const modalResponse = await fetch(

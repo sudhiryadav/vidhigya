@@ -4,7 +4,25 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useVideoCall } from "@/contexts/VideoCallContext";
 import { apiClient } from "@/services/api";
-import { Bell, Mic, MicOff, Trash2, Video, VideoOff, X } from "lucide-react";
+import {
+  AlertCircle,
+  Bell,
+  Brain,
+  Building,
+  Calendar,
+  CheckCircle,
+  CreditCard,
+  FileCheck,
+  FileText,
+  Gavel,
+  MessageSquare,
+  Mic,
+  MicOff,
+  Trash2,
+  Video,
+  VideoOff,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ModalDialog from "./ui/ModalDialog";
@@ -65,9 +83,9 @@ export default function NotificationBell() {
           },
           {
             id: "2",
-            title: "Event Reminder",
+            title: "Hearing Reminder",
             message: "Reminder: Client Meeting starts in 1 hour",
-            type: "EVENT_REMINDER",
+            type: "HEARING_REMINDER",
             isRead: false,
             createdAt: "2024-02-15T09:30:00.000Z",
             actionUrl: "/calendar/1",
@@ -76,10 +94,29 @@ export default function NotificationBell() {
             id: "3",
             title: "Document Uploaded",
             message: "Sarah uploaded 'Contract Review' to case CASE-2024-001",
-            type: "DOCUMENT_UPLOADED",
+            type: "DOCUMENT_UPLOAD",
             isRead: true,
             createdAt: "2024-02-15T08:00:00.000Z",
             actionUrl: "/documents/1",
+          },
+          {
+            id: "4",
+            title: "Case Update",
+            message: "Case Smith vs. Johnson status updated to 'In Progress'",
+            type: "CASE_UPDATE",
+            isRead: false,
+            createdAt: "2024-02-15T07:00:00.000Z",
+            actionUrl: "/cases/1",
+          },
+          {
+            id: "5",
+            title: "Billing Notification",
+            message:
+              "Invoice #INV-2024-001 has been generated for Case ABC-123",
+            type: "BILLING",
+            isRead: true,
+            createdAt: "2024-02-15T06:00:00.000Z",
+            actionUrl: "/billing/1",
           },
         ];
         setNotifications(mockNotifications);
@@ -101,9 +138,9 @@ export default function NotificationBell() {
         },
         {
           id: "2",
-          title: "Event Reminder",
+          title: "Hearing Reminder",
           message: "Reminder: Client Meeting starts in 1 hour",
-          type: "EVENT_REMINDER",
+          type: "HEARING_REMINDER",
           isRead: false,
           createdAt: "2024-02-15T09:30:00.000Z",
           actionUrl: "/calendar/1",
@@ -112,10 +149,28 @@ export default function NotificationBell() {
           id: "3",
           title: "Document Uploaded",
           message: "Sarah uploaded 'Contract Review' to case CASE-2024-001",
-          type: "DOCUMENT_UPLOADED",
+          type: "DOCUMENT_UPLOAD",
           isRead: true,
           createdAt: "2024-02-15T08:00:00.000Z",
           actionUrl: "/documents/1",
+        },
+        {
+          id: "4",
+          title: "Case Update",
+          message: "Case Smith vs. Johnson status updated to 'In Progress'",
+          type: "CASE_UPDATE",
+          isRead: false,
+          createdAt: "2024-02-15T07:00:00.000Z",
+          actionUrl: "/cases/1",
+        },
+        {
+          id: "5",
+          title: "Billing Notification",
+          message: "Invoice #INV-2024-001 has been generated for Case ABC-123",
+          type: "BILLING",
+          isRead: true,
+          createdAt: "2024-02-15T06:00:00.000Z",
+          actionUrl: "/billing/1",
         },
       ];
       setNotifications(mockNotifications);
@@ -192,21 +247,123 @@ export default function NotificationBell() {
     }
   };
 
-  const getNotificationIcon = (type: string) => {
+  const isVideoCallNotification = (notification: Notification): boolean => {
+    return !!(
+      notification.title &&
+      (notification.title.includes("Instant Video Call Created") ||
+        notification.title.includes("Video Call Started") ||
+        notification.title.includes("Video Call Scheduled"))
+    );
+  };
+
+  const getNotificationIcon = (type: string, title?: string) => {
+    // Check if it's a video call notification by title (since backend uses SYSTEM type)
+    if (
+      title &&
+      (title.includes("Instant Video Call Created") ||
+        title.includes("Video Call Started") ||
+        title.includes("Video Call Scheduled"))
+    ) {
+      return <Video className="w-6 h-6 text-red-600 dark:text-red-400" />;
+    }
+
     switch (type) {
       case "TASK_ASSIGNED":
-        return "📋";
+        return (
+          <CheckCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        );
       case "EVENT_REMINDER":
-        return "📅";
+        return (
+          <Calendar className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+        );
       case "DOCUMENT_UPLOADED":
-        return "📄";
+        return (
+          <FileText className="w-6 h-6 text-green-600 dark:text-green-400" />
+        );
+      case "CASE_UPDATE":
+        return (
+          <Gavel className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+        );
+      case "HEARING_REMINDER":
+        return (
+          <Building className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+        );
+      case "DOCUMENT_UPLOAD":
+        return (
+          <FileCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+        );
+      case "AI_ANALYSIS":
+        return <Brain className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />;
+      case "BILLING":
+        return (
+          <CreditCard className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+        );
+      case "MESSAGE":
+        return (
+          <MessageSquare className="w-6 h-6 text-sky-600 dark:text-sky-400" />
+        );
       case "VIDEO_CALL_INSTANT":
-        return "📹";
       case "VIDEO_CALL_STARTED":
-        return "🎥";
+        return <Video className="w-6 h-6 text-red-600 dark:text-red-400" />;
+      case "SYSTEM":
+        return (
+          <AlertCircle className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+        );
       default:
-        return "🔔";
+        return <Bell className="w-6 h-6 text-gray-600 dark:text-gray-400" />;
     }
+  };
+
+  const formatNotificationMessage = (notification: Notification) => {
+    // Check if it's a video call notification
+    if (isVideoCallNotification(notification)) {
+      // Extract meeting ID from the message
+      const meetingIdMatch = notification.message.match(
+        /Meeting ID: ([A-Z0-9-]+)/
+      );
+      if (meetingIdMatch) {
+        const meetingId = meetingIdMatch[1];
+        const videoCallRoomUrl = `/video-call-room/${meetingId}`;
+
+        // Format the message with clickable link
+        const formattedMessage = notification.message
+          .replace(/Meeting URL: .*/, "") // Remove the old meeting URL
+          .replace(/Meeting ID: [A-Z0-9-]+/, "") // Remove the first meeting ID occurrence
+          .replace(/Click the link above to join.*/, "")
+          .trim(); // Remove extra whitespace
+
+        return (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">{formattedMessage}</p>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-muted-foreground">Meeting ID:</span>
+              <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                {meetingId}
+              </span>
+            </div>
+            <a
+              href={videoCallRoomUrl}
+              onClick={async (e) => {
+                e.stopPropagation();
+                // Mark notification as read when joining
+                await markAsRead(notification.id);
+                // Navigate to video call room
+                router.push(videoCallRoomUrl);
+              }}
+              className="inline-flex items-center text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium"
+            >
+              <Video className="w-3 h-3 mr-1" />
+              Join Video Call →
+            </a>
+          </div>
+        );
+      }
+    }
+
+    // Default message display
+    return (
+      <p className="text-sm text-muted-foreground">{notification.message}</p>
+    );
   };
 
   useEffect(() => {
@@ -235,11 +392,8 @@ export default function NotificationBell() {
   const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id);
 
-    // Check if this is a video call notification
-    if (
-      notification.type === "VIDEO_CALL_INSTANT" ||
-      notification.type === "VIDEO_CALL_STARTED"
-    ) {
+    // Check if this is a video call notification by title
+    if (isVideoCallNotification(notification)) {
       // Show pre-call settings modal for video call notifications
       setSelectedVideoCallNotification(notification);
       setShowPreCallModal(true);
@@ -257,19 +411,17 @@ export default function NotificationBell() {
     localStorage.setItem("preCallAudioEnabled", preCallAudioEnabled.toString());
     localStorage.setItem("preCallVideoEnabled", preCallVideoEnabled.toString());
 
-    // Extract meeting ID from the notification message or actionUrl
+    // Extract meeting ID from the notification message
     let meetingId = "";
-    if (selectedVideoCallNotification.actionUrl) {
-      // If actionUrl contains the meeting ID
+    const message = selectedVideoCallNotification.message;
+    const meetingIdMatch = message.match(/Meeting ID: ([A-Z0-9-]+)/);
+
+    if (meetingIdMatch) {
+      meetingId = meetingIdMatch[1];
+    } else if (selectedVideoCallNotification.actionUrl) {
+      // Fallback: try to extract from actionUrl
       const urlParts = selectedVideoCallNotification.actionUrl.split("/");
       meetingId = urlParts[urlParts.length - 1];
-    } else {
-      // Try to extract from message (fallback)
-      const message = selectedVideoCallNotification.message;
-      const meetingIdMatch = message.match(/Meeting ID: ([A-Z0-9-]+)/);
-      if (meetingIdMatch) {
-        meetingId = meetingIdMatch[1];
-      }
     }
 
     if (meetingId) {
@@ -354,7 +506,10 @@ export default function NotificationBell() {
                 >
                   <div className="flex items-start space-x-3">
                     <div className="flex-shrink-0 text-2xl">
-                      {getNotificationIcon(notification.type)}
+                      {getNotificationIcon(
+                        notification.type,
+                        notification.title
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -370,9 +525,7 @@ export default function NotificationBell() {
                           )}
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {notification.message}
-                      </p>
+                      {formatNotificationMessage(notification)}
                     </div>
                     <button
                       onClick={(e) => {

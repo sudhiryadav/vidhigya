@@ -615,23 +615,8 @@ export default function DocumentQA({
     );
   };
 
-  // Helper function to build conversation history from messages
-  const buildConversationHistory = () => {
-    const conversationHistory = [];
-    for (let i = 0; i < messages.length; i += 2) {
-      const questionMsg = messages[i];
-      const answerMsg = messages[i + 1];
-
-      if (questionMsg?.type === "question" && answerMsg?.type === "answer") {
-        conversationHistory.push({
-          question: questionMsg.content,
-          answer: answerMsg.content,
-          timestamp: questionMsg.timestamp.toISOString(),
-        });
-      }
-    }
-    return conversationHistory;
-  };
+  // Conversation history is now handled automatically by the backend
+  // No need to build it on the frontend
 
   const handleAskQuestion = async () => {
     if (!question.trim()) return;
@@ -660,12 +645,11 @@ export default function DocumentQA({
     setError(null);
 
     try {
-      const conversationHistory = buildConversationHistory();
+      // Conversation history is now handled automatically by the backend
       const response = await apiClient.queryDocuments(
         currentQuestion,
         context,
-        10,
-        conversationHistory
+        10
       );
 
       const aiMessage: QAMessage = {
@@ -802,13 +786,8 @@ export default function DocumentQA({
     setIsLoading(true);
 
     try {
-      const conversationHistory = buildConversationHistory();
-      const response = await apiClient.queryDocuments(
-        suggestion,
-        context,
-        10,
-        conversationHistory
-      );
+      // Conversation history is now handled automatically by the backend
+      const response = await apiClient.queryDocuments(suggestion, context, 10);
 
       const answerMessage: QAMessage = {
         id: (Date.now() + 1).toString(),
@@ -859,13 +838,13 @@ export default function DocumentQA({
             <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center space-x-2">
                 <Bot className="w-6 h-6 text-blue-600" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h2 className="text-lg font-semibold text-foreground">
                   Document AI Assistant
                 </h2>
-                {buildConversationHistory().length > 0 && (
+                {messages.length > 0 && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                     <MessageSquare className="w-3 h-3 mr-1" />
-                    Context: {buildConversationHistory().length} Q&A
+                    Context: Auto-managed by AI
                   </span>
                 )}
               </div>

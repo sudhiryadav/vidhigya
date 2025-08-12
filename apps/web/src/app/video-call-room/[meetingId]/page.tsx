@@ -844,7 +844,7 @@ export default function VideoCallRoom() {
       </div>
 
       {/* Controls */}
-      <div className="bg-muted px-6 py-4">
+      <div className="px-6 py-4">
         <div className="flex items-center justify-center space-x-4">
           {/* Common Video Call Controls */}
           <VideoCallControls
@@ -860,10 +860,10 @@ export default function VideoCallRoom() {
           {/* Screen Share Button */}
           <button
             onClick={handleToggleScreenShare}
-            className={`p-3 rounded-full transition-colors ${
+            className={`p-3 rounded-full transition-all duration-200 hover:scale-110 ${
               isScreenSharing
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "bg-muted text-foreground hover:bg-muted/80"
+                ? "text-primary hover:text-primary/80 hover:bg-primary/10"
+                : "text-foreground hover:text-foreground/80 hover:bg-foreground/10"
             }`}
             title={isScreenSharing ? "Stop sharing" : "Share screen"}
           >

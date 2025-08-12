@@ -369,7 +369,7 @@ function MiniVideoCallWindow() {
           </div>
 
           {/* Controls - Ensure they're always visible */}
-          <div className="bg-card px-3 py-2 flex-shrink-0 border-t border-border">
+          <div className="px-3 py-2 flex-shrink-0 border-t border-border">
             <VideoCallControls
               isAudioEnabled={videoCallState.isAudioEnabled}
               isVideoEnabled={videoCallState.isVideoEnabled}

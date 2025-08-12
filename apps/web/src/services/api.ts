@@ -525,16 +525,12 @@ class ApiClient {
   async queryDocuments(
     query: string,
     context?: string,
-    limit: number = 10,
-    conversationHistory?: Array<{
-      question: string;
-      answer: string;
-      timestamp?: string;
-    }>
+    limit: number = 10
+    // conversationHistory is now handled by the backend automatically
   ): Promise<any> {
     return this.request("/documents/query", {
       method: "POST",
-      body: JSON.stringify({ query, context, limit, conversationHistory }),
+      body: JSON.stringify({ query, context, limit }),
     });
   }
 
@@ -625,6 +621,30 @@ class ApiClient {
     return this.request("/billing", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  async updateBill(
+    id: string,
+    data: {
+      amount?: number;
+      currency?: string;
+      description?: string;
+      billType?: string;
+      status?: string;
+      dueDate?: string;
+      caseId?: string;
+    }
+  ) {
+    return this.request(`/billing/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteBill(id: string) {
+    return this.request(`/billing/${id}`, {
+      method: "DELETE",
     });
   }
 

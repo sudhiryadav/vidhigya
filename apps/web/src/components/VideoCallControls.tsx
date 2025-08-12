@@ -32,10 +32,10 @@ export default function VideoCallControls({
       {/* Audio Toggle */}
       <button
         onClick={onToggleAudio}
-        className={`${buttonSize} rounded-full transition-colors ${
+        className={`${buttonSize} rounded-full transition-all duration-200 hover:scale-110 ${
           isAudioEnabled
-            ? "bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-400"
-            : "bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400"
+            ? "text-green-500 hover:text-green-400 hover:bg-green-500/10"
+            : "text-red-500 hover:text-red-400 hover:bg-red-500/10"
         }`}
         title={isAudioEnabled ? "Mute" : "Unmute"}
       >
@@ -49,10 +49,10 @@ export default function VideoCallControls({
       {/* Video Toggle */}
       <button
         onClick={onToggleVideo}
-        className={`${buttonSize} rounded-full transition-colors ${
+        className={`${buttonSize} rounded-full transition-all duration-200 hover:scale-110 ${
           isVideoEnabled
-            ? "bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-400"
-            : "bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400"
+            ? "text-green-500 hover:text-green-400 hover:bg-green-500/10"
+            : "text-red-500 hover:text-red-400 hover:bg-red-500/10"
         }`}
         title={isVideoEnabled ? "Turn off camera" : "Turn on camera"}
       >
@@ -67,7 +67,7 @@ export default function VideoCallControls({
       {showEndCall && (
         <button
           onClick={onEndCall}
-          className={`${buttonSize} bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors`}
+          className={`${buttonSize} text-red-500 rounded-full hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 hover:scale-110`}
           title="End call"
         >
           <PhoneOff className={iconSize} />
