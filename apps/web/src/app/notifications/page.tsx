@@ -113,6 +113,16 @@ export default function NotificationsPage() {
           createdAt: "2024-02-15T06:00:00.000Z",
           actionUrl: "/video-calls/1",
         },
+        {
+          id: "6",
+          title: "Instant Video Call Created",
+          message:
+            "John Lawyer created an instant video call: Case Review\n\nMeeting ID: ABC-123-XYZ\nMeeting URL: https://meet.example.com/abc-123-xyz\n\nClick the link above to join immediately!",
+          type: "SYSTEM",
+          isRead: false,
+          createdAt: "2024-02-15T05:00:00.000Z",
+          actionUrl: "/video-calls/1",
+        },
       ];
       setNotifications(mockNotifications);
     } finally {
@@ -171,7 +181,17 @@ export default function NotificationsPage() {
     }
   };
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type: string, title?: string) => {
+    // Check if it's a video call notification by title (since backend uses SYSTEM type)
+    if (
+      title &&
+      (title.includes("Instant Video Call Created") ||
+        title.includes("Video Call Started") ||
+        title.includes("Video Call Scheduled"))
+    ) {
+      return <Video className="h-5 w-5 text-red-600 dark:text-red-400" />;
+    }
+
     switch (type) {
       case "TASK_ASSIGNED":
         return <CheckSquare className="h-5 w-5 text-blue-500" />;
@@ -184,7 +204,7 @@ export default function NotificationsPage() {
         return <DollarSign className="h-5 w-5 text-red-500" />;
       case "VIDEO_CALL_STARTED":
       case "VIDEO_CALL_INSTANT":
-        return <Video className="h-5 w-5 text-orange-500" />;
+        return <Video className="h-5 w-5 text-red-600 dark:text-red-400" />;
       case "CASE_UPDATE":
         return <Bell className="h-5 w-5 text-indigo-500" />;
       default:
@@ -192,7 +212,17 @@ export default function NotificationsPage() {
     }
   };
 
-  const getNotificationTypeLabel = (type: string) => {
+  const getNotificationTypeLabel = (type: string, title?: string) => {
+    // Check if it's a video call notification by title (since backend uses SYSTEM type)
+    if (
+      title &&
+      (title.includes("Instant Video Call Created") ||
+        title.includes("Video Call Started") ||
+        title.includes("Video Call Scheduled"))
+    ) {
+      return "Video Call";
+    }
+
     switch (type) {
       case "TASK_ASSIGNED":
         return "Task";
@@ -396,7 +426,10 @@ export default function NotificationsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4 flex-1">
                     <div className="flex-shrink-0 mt-1">
-                      {getNotificationIcon(notification.type)}
+                      {getNotificationIcon(
+                        notification.type,
+                        notification.title
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-2">
@@ -420,7 +453,10 @@ export default function NotificationsPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                            {getNotificationTypeLabel(notification.type)}
+                            {getNotificationTypeLabel(
+                              notification.type,
+                              notification.title
+                            )}
                           </span>
                           {!notification.isRead && (
                             <button

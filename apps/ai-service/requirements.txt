@@ -34,5 +34,3 @@ modal
 
 # Optional: For development and debugging
 python-multipart==0.0.9
-
-# Note: SQLAlchemy and database dependencies removed since AI service doesn't manage database records
