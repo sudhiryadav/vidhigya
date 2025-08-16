@@ -44,6 +44,7 @@ export default function AddClientModal({
         address: formData.address || undefined,
         company: formData.company || undefined,
         notes: formData.notes || undefined,
+        role: "client", // Add the required role property
       };
 
       await apiClient.createClient(clientData);

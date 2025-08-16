@@ -261,7 +261,7 @@ export default function InstantCallModal({
               value={
                 watch("caseId") && watch("caseId") !== ""
                   ? {
-                      value: watch("caseId"),
+                      value: watch("caseId") || "",
                       label: (() => {
                         const foundCase = cases.find(
                           (c) => c.id === watch("caseId")
@@ -271,7 +271,7 @@ export default function InstantCallModal({
                           : "No case selected";
                       })(),
                     }
-                  : { value: "", label: "No case selected" }
+                  : undefined
               }
               onChange={(option) => {
                 const selectedCaseId = option?.value || "";

@@ -72,6 +72,10 @@ interface User {
   email: string;
 }
 
+interface JoinMeetingFormData {
+  meetingId: string;
+}
+
 // VideoCallCard Component
 interface VideoCallCardProps {
   videoCall: VideoCall;

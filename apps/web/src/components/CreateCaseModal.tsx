@@ -2,6 +2,7 @@
 
 import ModalDialog from "@/components/ui/ModalDialog";
 import CustomSelect from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -23,6 +24,7 @@ export default function CreateCaseModal({
   onClose,
   onSuccess,
 }: CreateCaseModalProps) {
+  const { user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -70,6 +72,7 @@ export default function CreateCaseModal({
       setLoading(true);
 
       const caseData = {
+        caseNumber: `CASE-${Date.now()}`, // Generate a temporary case number
         title: formData.title,
         description: formData.description,
         category: formData.category,
@@ -77,6 +80,7 @@ export default function CreateCaseModal({
         clientId: formData.clientId,
         courtId: formData.courtId || undefined,
         filingDate: formData.filingDate || undefined,
+        assignedLawyerId: user?.id || "", // Get the current user's ID
       };
 
       await apiClient.createCase(caseData);

@@ -8,6 +8,13 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
+// Extend Window interface to include our custom property
+declare global {
+  interface Window {
+    processedMessageIds?: Set<string>;
+  }
+}
+
 interface Message {
   id: string;
   content: string;
@@ -37,6 +44,13 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize processedMessageIds on component mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && !window.processedMessageIds) {
+      window.processedMessageIds = new Set();
+    }
+  }, []);
 
   useEffect(() => {
     if (chatId) {
@@ -178,12 +192,17 @@ export default function ChatPage() {
         window.processedMessageIds.add(message.id);
 
         // Clean up old message IDs to prevent memory leaks
-        if (window.processedMessageIds.size > 100) {
+        if (
+          window.processedMessageIds &&
+          window.processedMessageIds.size > 100
+        ) {
           const idsArray = Array.from(window.processedMessageIds);
           window.processedMessageIds.clear();
-          idsArray
-            .slice(-50)
-            .forEach((id) => window.processedMessageIds.add(id));
+          idsArray.slice(-50).forEach((id) => {
+            if (window.processedMessageIds) {
+              window.processedMessageIds.add(id);
+            }
+          });
         }
 
         setMessages((prev) => {

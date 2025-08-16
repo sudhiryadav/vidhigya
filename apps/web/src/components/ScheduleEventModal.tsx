@@ -90,18 +90,14 @@ export default function ScheduleEventModal({
         title: formData.title,
         description: formData.description || undefined,
         eventType: formData.eventType,
-        startDate: `${formData.startDate}T${formData.startTime}`,
-        endDate:
-          formData.endDate && formData.endTime
-            ? `${formData.endDate}T${formData.endTime}`
-            : undefined,
-        caseId: formData.caseId || undefined,
-        clientId: formData.clientId || undefined,
+        startTime: formData.startDate,
+        endTime: formData.endDate || formData.startDate, // Use startDate as fallback if endDate is not set
         location: formData.location || undefined,
-        notes: formData.notes || undefined,
+        isAllDay: false, // Default to false for now
+        participantIds: [], // Empty array for now, can be enhanced later
       };
 
-      await apiClient.createEvent(eventData);
+      await apiClient.createCalendarEvent(eventData);
 
       toast.success("Event scheduled successfully!");
 

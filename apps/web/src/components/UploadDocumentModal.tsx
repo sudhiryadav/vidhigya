@@ -84,7 +84,7 @@ export default function UploadDocumentModal({
         uploadData.append("files", file);
       });
 
-      await apiClient.uploadDocuments(uploadData);
+      await apiClient.uploadDocument(uploadData);
 
       toast.success("Documents uploaded successfully!");
 
