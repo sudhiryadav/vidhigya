@@ -117,7 +117,7 @@ class SocketService {
         console.error(`[${this.connectionId}] Backend not reachable:`, error);
       });
 
-    this.socket = io(socketUrl || "http://localhost:3001", {
+    this.socket = io(socketUrl, {
       auth: {
         token,
       },

@@ -43,3 +43,5 @@ generated/prisma
 
 .venv
 __pycache__
+
+logs/
