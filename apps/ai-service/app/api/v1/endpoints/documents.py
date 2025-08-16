@@ -717,8 +717,8 @@ def process_file_with_progress(
         print(f"  Content preview: {cleaned_text_content[:200]}...")
         print(f"  Content is empty: {not cleaned_text_content.strip()}")
 
-        # Generate a unique document ID for vector storage
-        document_id_for_storage = str(uuid.uuid4())
+        # Use the same document ID that was passed from the upload endpoint
+        document_id_for_storage = document_id
 
         # Optimize chunks with page tracking
         chunks_with_pages = optimize_chunk_size_with_pages(

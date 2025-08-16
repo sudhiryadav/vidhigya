@@ -22,6 +22,7 @@ export interface CreateDocumentDto {
   category: DocumentCategory;
   caseId?: string;
   uploadedById: string;
+  aiDocumentId?: string;
 }
 
 interface DocumentQuery {

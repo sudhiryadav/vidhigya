@@ -16,6 +16,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentCategory, DocumentStatus } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -140,6 +141,7 @@ export class DocumentsController {
       uploadedById: string;
       createdAt: Date;
       updatedAt: Date;
+      aiDocumentId: string;
     } | null = null;
 
     try {
@@ -173,6 +175,7 @@ export class DocumentsController {
         category: (body.category as DocumentCategory) || DocumentCategory.OTHER,
         caseId: body.caseId || undefined,
         uploadedById: req.user.sub,
+        aiDocumentId: randomUUID(),
       };
 
       createdDocument = await this.documentsService.create(createDocumentDto);
@@ -189,6 +192,11 @@ export class DocumentsController {
         const fileBlob = new Blob([file.buffer], { type: file.mimetype });
         formData.append('files', fileBlob, file.originalname);
         formData.append('userId', req.user.sub);
+        // Add document IDs to form data as JSON array
+        formData.append(
+          'documentIds',
+          JSON.stringify([createdDocument.aiDocumentId]),
+        );
         if (body.description) {
           formData.append('description', body.description);
         }
@@ -335,7 +343,9 @@ export class DocumentsController {
         throw new Error(`FastAPI service error: ${response.status}`);
       }
 
-      const result = await response.json();
+      const result = (await response.json()) as {
+        status: { status: string };
+      };
 
       // If processing is complete, update the database
       if (result.status?.status === 'COMPLETED') {
