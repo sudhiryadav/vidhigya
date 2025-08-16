@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { Logo } from "./Logo";
 import MessageBell from "./MessageBell";
 import NotificationBell from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
@@ -84,12 +85,7 @@ export function Navigation() {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">V</span>
-              </div>
-              <span className="text-xl font-bold text-foreground">
-                Vidhigya
-              </span>
+              <Logo size="md" />
             </Link>
           </div>
 

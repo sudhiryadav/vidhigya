@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Logo } from "./Logo";
 import NotificationBell from "./NotificationBell";
 import ProfilePicture from "./ProfilePicture";
 import { ThemeToggle } from "./ThemeToggle";
@@ -187,12 +188,7 @@ export function RoleBasedNavigation() {
           {/* Logo and Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
             <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">व</span>
-              </div>
-              <span className="text-2xl font-bold text-foreground">
-                विधीज्ञ
-              </span>
+              <Logo size="md" />
             </Link>
             <div className="flex items-center space-x-2">
               {hasRole(["SUPER_ADMIN", "ADMIN"]) && (
@@ -309,10 +305,7 @@ export function RoleBasedNavigation() {
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">V</span>
-            </div>
-            <span className="text-lg font-bold text-foreground">Vidhigya</span>
+            <Logo size="md" />
           </div>
           <div className="flex items-center space-x-2">
             <NotificationBell />

@@ -1,5 +1,6 @@
 "use client";
 
+import { Logo } from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { loginSchema } from "@/lib/validation";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -106,8 +107,8 @@ export default function LoginPage() {
         <div className="max-w-md w-full space-y-8">
           {/* Logo and Header */}
           <div className="text-center">
-            <div className="mx-auto w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mb-4">
-              <span className="text-white font-bold text-2xl">V</span>
+            <div className="mx-auto mb-4">
+              <Logo size="xl" />
             </div>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
               Welcome back
