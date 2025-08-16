@@ -33,24 +33,9 @@ class Settings(BaseSettings):
     # IMPORTANT: This must match the NEXTAUTH_SECRET in the Next.js frontend
     NEXTAUTH_SECRET: str = os.getenv("NEXTAUTH_SECRET", "")
 
-    # File Storage
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploaded_docs")
-
     # Postman Settings
     POSTMAN_API_KEY: Optional[str] = os.getenv("POSTMAN_API_KEY")
     POSTMAN_COLLECTION_ID: Optional[str] = os.getenv("POSTMAN_COLLECTION_ID")
-
-    # Email settings
-    ADMIN_EMAIL: str = "admin@qurieus.com"
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_USERNAME: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_FROM_EMAIL: str = "noreply@qurieus.com"
-
-    # Ollama settings
-    OLLAMA_API_URL: str = os.getenv("OLLAMA_API_URL")
-    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL").strip()  # Default to mistral:latest
 
     # Qdrant settings
     QDRANT_URL: str = os.getenv("QDRANT_URL")
