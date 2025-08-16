@@ -13,11 +13,8 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors({
-    origin: [
-      process.env.FRONTEND_URL,
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-    ],
+    origin:
+      process.env.NODE_ENV === 'production' ? [process.env.FRONTEND_URL] : true,
     credentials: true,
   });
 
@@ -26,7 +23,7 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-  const port = process.env.PORT || 3001;
+  const port = process.env.PORT;
   const host = '0.0.0.0'; // Listen on all network interfaces
 
   console.log('='.repeat(60));

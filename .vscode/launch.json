@@ -42,6 +42,7 @@
       "cwd": "${workspaceFolder}/apps/backend",
       "env": {
         "NODE_ENV": "development",
+        "PORT": "3889"
       },
       "console": "integratedTerminal",
       "restart": true,
@@ -107,7 +108,6 @@
       "cwd": "${workspaceFolder}/apps/mobile",
       "env": {
         "NODE_ENV": "development",
-        "EXPO_PUBLIC_API_URL": "http://localhost:3888",
         "EXPO_DEVTOOLS_LISTEN_ADDRESS": "0.0.0.0"
       },
       "console": "integratedTerminal",
