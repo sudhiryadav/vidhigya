@@ -59,6 +59,11 @@ export default function ChatPage() {
   }, [chatId]);
 
   useEffect(() => {
+    console.log("Messages state changed:", {
+      count: messages.length,
+      messageIds: messages.map((msg) => msg.id),
+      lastMessage: messages[messages.length - 1],
+    });
     scrollToBottom();
   }, [messages]);
 
@@ -141,6 +146,33 @@ export default function ChatPage() {
       }
     }
 
+    // Ensure user joins their personal room to receive messages
+    if (user?.id) {
+      console.log("Ensuring user joins personal room:", user.id);
+
+      // Try to join immediately if already connected
+      if (getSocketService().isSocketConnected()) {
+        console.log(
+          "Socket already connected, joining personal room immediately"
+        );
+        getSocketService().joinPersonalRoom(user.id);
+      } else {
+        // Wait for connection and then join
+        console.log("Socket not connected, waiting for connection...");
+        setTimeout(() => {
+          if (getSocketService().isSocketConnected()) {
+            console.log(
+              "Socket connected, joining personal room for user:",
+              user.id
+            );
+            getSocketService().joinPersonalRoom(user.id);
+          } else {
+            console.log("Socket still not connected after timeout");
+          }
+        }, 2000);
+      }
+    }
+
     // Global duplicate prevention - track processed message IDs
     if (!window.processedMessageIds) {
       window.processedMessageIds = new Set();
@@ -149,11 +181,20 @@ export default function ChatPage() {
     const handleNewMessage = (event: CustomEvent) => {
       console.log("=== CLIENT SIDE: Received newMessage event ===");
       console.log("Event detail:", event.detail);
+      console.log("Event detail message:", event.detail.message);
       const { message } = event.detail;
 
       // Check if message belongs to this chat by comparing both possible chat ID formats
       const currentChatId = chatId;
       const messageChatId = message?.chatId;
+
+      console.log("Message structure analysis:", {
+        messageExists: !!message,
+        messageChatId,
+        currentChatId,
+        messageKeys: message ? Object.keys(message) : [],
+        messageFull: message,
+      });
 
       // Chat ID can be in two formats: "senderId-receiverId" or "receiverId-senderId"
       // We need to check if the message belongs to this chat regardless of the order
@@ -173,6 +214,15 @@ export default function ChatPage() {
       // Only add the message if it belongs to this chat
       if (isMessageForThisChat) {
         console.log("Message belongs to this chat, processing...");
+        console.log("Message details:", {
+          id: message.id,
+          content: message.content,
+          senderId: message.senderId,
+          senderName: message.senderName,
+          type: message.type,
+          chatId: message.chatId,
+          receiverId: message.receiverId,
+        });
 
         // Ensure processedMessageIds is initialized
         if (!window.processedMessageIds) {
@@ -206,6 +256,12 @@ export default function ChatPage() {
         }
 
         setMessages((prev) => {
+          console.log("Current messages in state:", prev.length);
+          console.log(
+            "Message IDs in state:",
+            prev.map((msg) => msg.id)
+          );
+
           // Check if message already exists in the current state
           if (prev.some((msg) => msg.id === message.id)) {
             console.log(
@@ -239,18 +295,17 @@ export default function ChatPage() {
           }
 
           console.log("Adding new message to state:", message);
-          return [
-            ...prev,
-            {
-              id: message.id,
-              content: message.content,
-              senderId: message.senderId,
-              senderName: message.senderName || "Unknown",
-              type: message.type || "TEXT",
-              isRead: false,
-              createdAt: new Date(message.createdAt),
-            },
-          ];
+          const newMessageForState = {
+            id: message.id,
+            content: message.content,
+            senderId: message.senderId,
+            senderName: message.senderName || "Unknown",
+            type: message.type || "TEXT",
+            isRead: false,
+            createdAt: new Date(message.createdAt),
+          };
+          console.log("New message for state:", newMessageForState);
+          return [...prev, newMessageForState];
         });
         console.log("=== CLIENT SIDE: newMessage processed successfully ===");
       } else {

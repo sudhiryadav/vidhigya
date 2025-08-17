@@ -330,6 +330,10 @@ export class ChatGateway {
     client.join(roomName);
     console.log('User joined room:', roomName);
     console.log('Client rooms:', client.rooms);
+
+    // Confirm to the client that they've joined the personal room
+    client.emit('personal_room_joined', { userId: data.userId, roomName });
+
     console.log('=== BACKEND: join_personal_room completed ===');
   }
 }

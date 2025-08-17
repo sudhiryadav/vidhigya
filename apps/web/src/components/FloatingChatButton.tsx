@@ -152,12 +152,13 @@ export default function FloatingChatButton({
 
   const fetchUsers = async () => {
     try {
-      const response = await apiClient.getClients();
+      // Use the associated users endpoint that returns appropriate users based on role
+      const response = await apiClient.getAssociatedUsers();
       if (response && Array.isArray(response)) {
         setAssociatedUsers(response);
       }
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Error fetching associated users:", error);
     }
   };
 
@@ -400,6 +401,13 @@ export default function FloatingChatButton({
             >
               {user.email}
             </p>
+            <p
+              className={`text-xs truncate ${
+                resolvedTheme === "dark" ? "text-gray-500" : "text-gray-400"
+              }`}
+            >
+              {user.role}
+            </p>
           </div>
         </div>
       </button>
@@ -449,7 +457,11 @@ export default function FloatingChatButton({
             <div className="flex items-center space-x-2">
               <MessageSquare className="w-5 h-5" />
               <span className="font-medium">
-                {view === "list" ? "Chats" : "Chat"}
+                {view === "list"
+                  ? user?.role === "CLIENT"
+                    ? "Chat with Lawyers"
+                    : "Chat with Clients"
+                  : "Chat"}
               </span>
             </div>
             <div className="flex items-center space-x-1">
@@ -486,28 +498,164 @@ export default function FloatingChatButton({
           <div className="flex-1 flex flex-col overflow-hidden">
             {view === "list" && (
               <>
-                {/* Search */}
-                <div className="p-3 border-b border-border">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                    <input
-                      type="text"
-                      placeholder="Search users..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors ${
-                        resolvedTheme === "dark"
-                          ? "bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
-                          : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500"
-                      }`}
-                    />
-                  </div>
-                </div>
+                {/* Existing Chats Section */}
+                {chats.length > 0 && (
+                  <>
+                    <div className="px-3 py-2 border-b border-border">
+                      <h3 className="text-sm font-medium text-foreground">
+                        Recent Chats
+                      </h3>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {chats.slice(0, 3).map((chat) => (
+                        <button
+                          key={chat.id}
+                          onClick={() => {
+                            setSelectedChat(chat);
+                            setView("chat");
+                          }}
+                          className={`w-full text-left p-3 rounded-lg transition-colors ${
+                            resolvedTheme === "dark"
+                              ? "hover:bg-gray-800 text-white"
+                              : "hover:bg-gray-100 text-gray-900"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                  resolvedTheme === "dark"
+                                    ? "bg-gray-700"
+                                    : "bg-gray-200"
+                                }`}
+                              >
+                                <User
+                                  className={`w-4 h-4 ${
+                                    resolvedTheme === "dark"
+                                      ? "text-gray-400"
+                                      : "text-gray-600"
+                                  }`}
+                                />
+                              </div>
+                              <div className="text-left">
+                                <p className="text-sm font-medium truncate">
+                                  {getParticipantName(chat)}
+                                </p>
+                                {chat.lastMessage && (
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {chat.lastMessage.content}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {chat.unreadCount > 0 && (
+                              <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                                {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                      {chats.length > 3 && (
+                        <button
+                          onClick={() => router.push("/chat")}
+                          className="w-full p-2 text-center text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                        >
+                          View All Chats ({chats.length})
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
 
-                {/* Users List */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                  {renderUsersList()}
-                </div>
+                {/* Start New Chat Section - Show when no existing chats or when there are associated users */}
+                {(chats.length === 0 || associatedUsers.length > 0) && (
+                  <div className="px-3 py-2 border-b border-border">
+                    <h3 className="text-sm font-medium text-foreground">
+                      {chats.length === 0 ? "Start New Chat" : "Start New Chat"}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {user?.role === "CLIENT"
+                        ? "Chat with your assigned lawyers"
+                        : "Chat with your assigned clients"}
+                    </p>
+                  </div>
+                )}
+
+                {/* Search - Only show if there are multiple users */}
+                {associatedUsers.length > 1 && (
+                  <div className="p-3 border-b border-border">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <input
+                        type="text"
+                        placeholder={`Search ${user?.role === "CLIENT" ? "lawyers" : "clients"}...`}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors ${
+                          resolvedTheme === "dark"
+                            ? "bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+                            : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Associated Users List - Only show if there are multiple users */}
+                {associatedUsers.length > 1 && (
+                  <>
+                    <div className="px-3 py-2 border-b border-border">
+                      <h3 className="text-sm font-medium text-foreground">
+                        {user?.role === "CLIENT"
+                          ? "Your Lawyers"
+                          : "Your Clients"}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {user?.role === "CLIENT"
+                          ? "Start a chat with any of your lawyers"
+                          : "Start a chat with any of your clients"}
+                      </p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                      {renderUsersList()}
+                    </div>
+                  </>
+                )}
+
+                {/* Show message when there's only one associated user */}
+                {associatedUsers.length === 1 && (
+                  <div className="flex-1 flex items-center justify-center p-6">
+                    <div className="text-center text-muted-foreground">
+                      <User className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50 dark:text-muted-foreground/30" />
+                      <p className="text-sm">
+                        {user?.role === "CLIENT"
+                          ? "You have one lawyer assigned. Start chatting!"
+                          : "You have one client assigned. Start chatting!"}
+                      </p>
+                      <button
+                        onClick={() => startNewChat(associatedUsers[0].id)}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Start Chat
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show message when there are no associated users */}
+                {associatedUsers.length === 0 && (
+                  <div className="flex-1 flex items-center justify-center p-6">
+                    <div className="text-center text-muted-foreground">
+                      <User className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50 dark:text-muted-foreground/30" />
+                      <p className="text-sm">
+                        {user?.role === "CLIENT"
+                          ? "No lawyers assigned yet"
+                          : "No clients assigned yet"}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 

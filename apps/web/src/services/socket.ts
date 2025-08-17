@@ -13,8 +13,12 @@ interface ChatMessage {
   id: string;
   content: string;
   senderId: string;
+  senderName?: string;
+  type?: string;
   createdAt: string;
   isRead: boolean;
+  receiverId?: string;
+  chatId?: string;
 }
 
 interface ChatNotification {
@@ -258,12 +262,23 @@ class SocketService {
     );
 
     this.socket.on("joined_chat", (data: { chatId: string }) => {
-      // Chat joined successfully
+      console.log(`[${this.connectionId}] Chat joined successfully:`, data);
     });
 
     this.socket.on("left_chat", (data: { chatId: string }) => {
-      // Chat left successfully
+      console.log(`[${this.connectionId}] Chat left successfully:`, data);
     });
+
+    // Add listener for personal room join confirmation
+    this.socket.on(
+      "personal_room_joined",
+      (data: { userId: string; roomName: string }) => {
+        console.log(
+          `[${this.connectionId}] Personal room joined successfully:`,
+          data
+        );
+      }
+    );
   }
 
   private handleReconnect() {
@@ -546,6 +561,16 @@ class SocketService {
   }
 
   joinPersonalRoom(userId: string) {
+    console.log(
+      `[${this.connectionId}] === SOCKET SERVICE: joinPersonalRoom called ===`
+    );
+    console.log(`[${this.connectionId}] Socket state:`, {
+      socketExists: !!this.socket,
+      socketConnected: this.socket?.connected,
+      socketId: this.socket?.id,
+      isConnected: this.isConnected,
+    });
+
     if (!this.socket?.connected) {
       console.error(
         `[${this.connectionId}] ERROR: Socket not connected, cannot join personal room`
