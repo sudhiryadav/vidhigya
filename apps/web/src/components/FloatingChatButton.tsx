@@ -79,6 +79,13 @@ export default function FloatingChatButton({
       fetchChats();
       fetchUsers();
       setActiveTab("recent"); // Reset to recent tab when expanding
+
+      // Set up periodic refresh to keep chats in sync with backend
+      const interval = setInterval(() => {
+        fetchChats();
+      }, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(interval);
     }
   }, [isExpanded]);
 
@@ -144,6 +151,16 @@ export default function FloatingChatButton({
     }
   }, [messages, view]);
 
+  // Update selectedChat when chats state changes to maintain consistency
+  useEffect(() => {
+    if (selectedChat) {
+      const updatedChat = chats.find((chat) => chat.id === selectedChat.id);
+      if (updatedChat && updatedChat.unreadCount !== selectedChat.unreadCount) {
+        setSelectedChat(updatedChat);
+      }
+    }
+  }, [chats, selectedChat]);
+
   // Check if on chat page or auth pages
   const isOnChatPage =
     pathname.includes("/chat/") || pathname.includes("/chat/");
@@ -190,13 +207,33 @@ export default function FloatingChatButton({
         setMessages(messages || []);
         // Mark messages as read
         if (messages && messages.length > 0) {
-          getSocketService().markAsRead(selectedChat.id);
-          // Update local state to clear unread count
-          setChats((prevChats) =>
-            prevChats.map((c) =>
-              c.id === selectedChat.id ? { ...c, unreadCount: 0 } : c
-            )
-          );
+          try {
+            // Mark as read in backend
+            const response = await apiClient.markChatAsRead(selectedChat.id);
+            if (
+              response &&
+              typeof response === "object" &&
+              "success" in response &&
+              response.success
+            ) {
+              // Also notify socket service
+              getSocketService().markAsRead(selectedChat.id);
+              // Update local state to clear unread count
+              setChats((prevChats) =>
+                prevChats.map((c) =>
+                  c.id === selectedChat.id ? { ...c, unreadCount: 0 } : c
+                )
+              );
+            }
+          } catch (error) {
+            console.error("Error marking chat as read:", error);
+            // Still update local state even if backend call fails
+            setChats((prevChats) =>
+              prevChats.map((c) =>
+                c.id === selectedChat.id ? { ...c, unreadCount: 0 } : c
+              )
+            );
+          }
         }
       }
     } catch (error) {
@@ -207,7 +244,7 @@ export default function FloatingChatButton({
   const setupSocketConnection = () => {
     if (!selectedChat) return;
 
-    const handleNewMessage = (event: CustomEvent) => {
+    const handleNewMessage = async (event: CustomEvent) => {
       const { message } = event.detail;
       if (message && message.chatId === selectedChat.id) {
         setMessages((prev) => {
@@ -227,16 +264,50 @@ export default function FloatingChatButton({
             },
           ];
         });
+
+        // Mark the chat as read when a message is received and chat is open
+        if (selectedChat && message.senderId !== user?.id) {
+          try {
+            // Mark as read in backend
+            const response = await apiClient.markChatAsRead(selectedChat.id);
+            if (
+              response &&
+              typeof response === "object" &&
+              "success" in response &&
+              response.success
+            ) {
+              // Update local state
+              setChats((prevChats) =>
+                prevChats.map((chat) =>
+                  chat.id === selectedChat.id
+                    ? { ...chat, unreadCount: 0 }
+                    : chat
+                )
+              );
+            }
+          } catch (error) {
+            console.error("Error marking chat as read:", error);
+            // Still update local state even if backend call fails
+            setChats((prevChats) =>
+              prevChats.map((chat) =>
+                chat.id === selectedChat.id ? { ...chat, unreadCount: 0 } : chat
+              )
+            );
+          }
+        }
       }
     };
 
-    window.addEventListener("newMessage", handleNewMessage as EventListener);
+    window.addEventListener(
+      "newMessage",
+      handleNewMessage as unknown as EventListener
+    );
 
     // Return cleanup function
     return () => {
       window.removeEventListener(
         "newMessage",
-        handleNewMessage as EventListener
+        handleNewMessage as unknown as EventListener
       );
     };
   };
@@ -314,9 +385,9 @@ export default function FloatingChatButton({
   };
 
   const getUnreadCount = () => {
-    // If we have chats loaded, use them; otherwise return 0
+    // If we have chats loaded, count chats with unread messages; otherwise return 0
     if (chats.length > 0) {
-      return chats.reduce((total, chat) => total + (chat.unreadCount || 0), 0);
+      return chats.filter((chat) => (chat.unreadCount || 0) > 0).length;
     }
     return 0;
   };
@@ -454,6 +525,7 @@ export default function FloatingChatButton({
       {/* Minimized Chat Button */}
       {!isExpanded && (
         <button
+          key={`chat-button-${getUnreadCount()}`}
           onClick={toggleBubble}
           className={`relative rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
             resolvedTheme === "dark"
@@ -463,11 +535,14 @@ export default function FloatingChatButton({
           title="Open Chat"
         >
           <MessageSquare className="h-6 w-6" />
-          {getUnreadCount() > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium shadow-lg">
-              {getUnreadCount() > 9 ? "9+" : getUnreadCount()}
-            </span>
-          )}
+          {(() => {
+            const unreadCount = getUnreadCount();
+            return unreadCount > 0 ? (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium shadow-lg">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            ) : null;
+          })()}
         </button>
       )}
 
@@ -548,11 +623,11 @@ export default function FloatingChatButton({
                     }`}
                   >
                     Recent Chats
-                    {chats.length > 0 && (
+                    {/* {chats.length > 0 && (
                       <span className="ml-2 bg-gray-600 text-white text-xs rounded-full px-2 py-0.5">
                         {chats.length}
                       </span>
-                    )}
+                    )} */}
                   </button>
                   <button
                     onClick={() => setActiveTab("new")}
@@ -578,9 +653,54 @@ export default function FloatingChatButton({
                         {chats.map((chat) => (
                           <button
                             key={chat.id}
-                            onClick={() => {
-                              setSelectedChat(chat);
-                              setView("chat");
+                            onClick={async () => {
+                              try {
+                                // Mark chat as read in backend
+                                const response = await apiClient.markChatAsRead(
+                                  chat.id
+                                );
+
+                                if (
+                                  response &&
+                                  typeof response === "object" &&
+                                  "success" in response &&
+                                  response.success
+                                ) {
+                                  // Mark chat as read by setting unreadCount to 0
+                                  const updatedChat = {
+                                    ...chat,
+                                    unreadCount: 0,
+                                  };
+                                  setSelectedChat(updatedChat);
+                                  setView("chat");
+                                  setChats((prevChats) =>
+                                    prevChats.map((c) =>
+                                      c.id === chat.id ? updatedChat : c
+                                    )
+                                  );
+
+                                  // Refresh chats list to ensure backend sync
+                                  setTimeout(() => {
+                                    fetchChats();
+                                  }, 100);
+                                } else {
+                                  console.error(
+                                    "Backend returned error:",
+                                    response
+                                  );
+                                  // Still open the chat even if marking as read fails
+                                  setSelectedChat(chat);
+                                  setView("chat");
+                                }
+                              } catch (error) {
+                                console.error(
+                                  "Error marking chat as read:",
+                                  error
+                                );
+                                // Still open the chat even if marking as read fails
+                                setSelectedChat(chat);
+                                setView("chat");
+                              }
                             }}
                             className={`w-full text-left p-3 rounded-lg transition-colors ${
                               resolvedTheme === "dark"

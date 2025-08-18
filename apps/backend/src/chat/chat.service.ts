@@ -346,6 +346,37 @@ export class ChatService {
     });
   }
 
+  async markChatAsRead(chatId: string, userId: string): Promise<void> {
+    try {
+      // Parse chatId to get participant IDs
+      const [user1Id, user2Id] = chatId.split('-');
+
+      if (!user1Id || !user2Id || (user1Id !== userId && user2Id !== userId)) {
+        throw new ForbiddenException('Access denied to this chat');
+      }
+
+      // Mark all unread messages in this chat as read for the current user
+      const result = await this.prisma.chatMessage.updateMany({
+        where: {
+          receiverId: userId,
+          isRead: false,
+          OR: [{ senderId: user1Id }, { senderId: user2Id }],
+        },
+        data: { isRead: true },
+      });
+
+      console.log(
+        `Marked ${result.count} messages as read for chat ${chatId} and user ${userId}`,
+      );
+    } catch (error) {
+      console.error(
+        `Error marking chat ${chatId} as read for user ${userId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
   async deleteChat(chatId: string, userId: string): Promise<void> {
     // Parse chatId to get participant IDs
     const [user1Id, user2Id] = chatId.split('-');

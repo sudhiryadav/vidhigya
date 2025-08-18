@@ -67,7 +67,6 @@ export default function ConfirmDialog({
         <h3 className="text-base font-semibold leading-6 text-foreground">
           {title}
         </h3>
-        <p className="text-sm text-muted-foreground mt-1">{message}</p>
       </div>
     </div>
   );
@@ -102,7 +101,7 @@ export default function ConfirmDialog({
       closeOnOverlayClick={true}
     >
       {/* Content is now in the header, so this can be empty or used for additional content */}
-      <div className="min-h-[100px]"></div>
+      {message}
     </ModalDialog>
   );
 }

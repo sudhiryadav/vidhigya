@@ -15,7 +15,7 @@
   },
   "debug.console.fontSize": 14,
   "debug.console.lineHeight": 20,
-  "debug.internalConsoleOptions": "openOnSessionStart",
+  "debug.internalConsoleOptions": "neverOpen",
   "debug.showBreakpointsInOverviewRuler": true,
   "debug.showInlineBreakpointCandidates": true,
 

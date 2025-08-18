@@ -1106,7 +1106,7 @@ export default function DocumentQA() {
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    placeholder="Ask a question about your documents..."
+                    placeholder="Ask a question   about your documents..."
                     className="w-full p-3 pr-12 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground resize-none"
                     rows={1}
                     disabled={isLoading}

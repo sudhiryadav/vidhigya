@@ -9,8 +9,8 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ChatService } from './chat.service';
 import { ChatDto, ChatParticipantDto, ChatResponseDto } from './dto/chat.dto';
@@ -84,8 +84,14 @@ export class ChatController {
   async markAsRead(
     @Param('id') chatId: string,
     @Request() req: AuthenticatedRequest,
-  ): Promise<void> {
-    return this.chatService.markAsRead(chatId, req.user.sub);
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      await this.chatService.markChatAsRead(chatId, req.user.sub);
+      return { success: true, message: 'Chat marked as read successfully' };
+    } catch (error) {
+      console.error(`Error marking chat ${chatId} as read:`, error);
+      throw error;
+    }
   }
 
   @Delete(':id')
