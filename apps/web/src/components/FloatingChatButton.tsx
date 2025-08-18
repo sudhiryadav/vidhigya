@@ -60,6 +60,7 @@ export default function FloatingChatButton({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [view, setView] = useState<"list" | "chat">("list");
+  const [activeTab, setActiveTab] = useState<"recent" | "new">("recent");
   const [chats, setChats] = useState<Chat[]>([]);
   const [associatedUsers, setAssociatedUsers] = useState<AssociatedUser[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
@@ -77,6 +78,7 @@ export default function FloatingChatButton({
     if (isExpanded) {
       fetchChats();
       fetchUsers();
+      setActiveTab("recent"); // Reset to recent tab when expanding
     }
   }, [isExpanded]);
 
@@ -86,6 +88,7 @@ export default function FloatingChatButton({
 
     const handleGlobalNewMessage = (event: CustomEvent) => {
       const { message, chatId } = event.detail;
+
       if (message && chatId && message.senderId !== user?.id) {
         // Update unread count for the chat
         setChats((prevChats) => {
@@ -115,6 +118,22 @@ export default function FloatingChatButton({
     if (view === "chat" && selectedChat && user) {
       fetchMessages();
       const cleanup = setupSocketConnection();
+
+      // Ensure user joins their personal room to receive messages
+      if (getSocketService().isSocketConnected()) {
+        getSocketService().joinPersonalRoom(user.id);
+      } else {
+        const token = localStorage.getItem("token");
+        if (token) {
+          getSocketService().connect(token);
+          setTimeout(() => {
+            if (getSocketService().isSocketConnected()) {
+              getSocketService().joinPersonalRoom(user.id);
+            }
+          }, 1000);
+        }
+      }
+
       return cleanup;
     }
   }, [selectedChat, view, user]);
@@ -245,6 +264,7 @@ export default function FloatingChatButton({
           isRead: false,
           createdAt: new Date(),
         };
+
         setMessages((prev) => [...prev, tempMessage]);
         setNewMessage("");
       } else {
@@ -327,6 +347,21 @@ export default function FloatingChatButton({
       const chatId = `${user.id}-${selectedUser.id}`;
       setSelectedChat({ id: chatId, unreadCount: 0 });
       setView("chat");
+
+      // Ensure user joins their personal room to receive messages
+      if (getSocketService().isSocketConnected()) {
+        getSocketService().joinPersonalRoom(user.id);
+      } else {
+        const token = localStorage.getItem("token");
+        if (token) {
+          getSocketService().connect(token);
+          setTimeout(() => {
+            if (getSocketService().isSocketConnected()) {
+              getSocketService().joinPersonalRoom(user.id);
+            }
+          }, 1000);
+        }
+      }
     }
   };
 
@@ -498,162 +533,206 @@ export default function FloatingChatButton({
           <div className="flex-1 flex flex-col overflow-hidden">
             {view === "list" && (
               <>
-                {/* Existing Chats Section */}
-                {chats.length > 0 && (
-                  <>
-                    <div className="px-3 py-2 border-b border-border">
-                      <h3 className="text-sm font-medium text-foreground">
-                        Recent Chats
-                      </h3>
-                    </div>
-                    <div className="p-3 space-y-2">
-                      {chats.slice(0, 3).map((chat) => (
-                        <button
-                          key={chat.id}
-                          onClick={() => {
-                            setSelectedChat(chat);
-                            setView("chat");
-                          }}
-                          className={`w-full text-left p-3 rounded-lg transition-colors ${
-                            resolvedTheme === "dark"
-                              ? "hover:bg-gray-800 text-white"
-                              : "hover:bg-gray-100 text-gray-900"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                  resolvedTheme === "dark"
-                                    ? "bg-gray-700"
-                                    : "bg-gray-200"
-                                }`}
-                              >
-                                <User
-                                  className={`w-4 h-4 ${
+                {/* Tabs */}
+                <div className="flex border-b border-border">
+                  <button
+                    onClick={() => setActiveTab("recent")}
+                    className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                      activeTab === "recent"
+                        ? resolvedTheme === "dark"
+                          ? "text-blue-400 border-b-2 border-blue-400 bg-gray-800/50"
+                          : "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                        : resolvedTheme === "dark"
+                          ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800/30"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    }`}
+                  >
+                    Recent Chats
+                    {chats.length > 0 && (
+                      <span className="ml-2 bg-gray-600 text-white text-xs rounded-full px-2 py-0.5">
+                        {chats.length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("new")}
+                    className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                      activeTab === "new"
+                        ? resolvedTheme === "dark"
+                          ? "text-blue-400 border-b-2 border-blue-400 bg-gray-800/50"
+                          : "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                        : resolvedTheme === "dark"
+                          ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800/30"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    }`}
+                  >
+                    New Chat
+                  </button>
+                </div>
+
+                {/* Tab Content */}
+                {activeTab === "recent" && (
+                  <div className="flex-1 overflow-y-auto">
+                    {chats.length > 0 ? (
+                      <div className="p-3 space-y-2">
+                        {chats.map((chat) => (
+                          <button
+                            key={chat.id}
+                            onClick={() => {
+                              setSelectedChat(chat);
+                              setView("chat");
+                            }}
+                            className={`w-full text-left p-3 rounded-lg transition-colors ${
+                              resolvedTheme === "dark"
+                                ? "hover:bg-gray-800 text-white"
+                                : "hover:bg-gray-100 text-gray-900"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
                                     resolvedTheme === "dark"
-                                      ? "text-gray-400"
-                                      : "text-gray-600"
+                                      ? "bg-gray-700"
+                                      : "bg-gray-200"
                                   }`}
-                                />
-                              </div>
-                              <div className="text-left">
-                                <p className="text-sm font-medium truncate">
-                                  {getParticipantName(chat)}
-                                </p>
-                                {chat.lastMessage && (
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {chat.lastMessage.content}
+                                >
+                                  <User
+                                    className={`w-4 h-4 ${
+                                      resolvedTheme === "dark"
+                                        ? "text-gray-400"
+                                        : "text-gray-600"
+                                    }`}
+                                  />
+                                </div>
+                                <div className="text-left">
+                                  <p className="text-sm font-medium truncate">
+                                    {getParticipantName(chat)}
                                   </p>
-                                )}
+                                  {chat.lastMessage && (
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {chat.lastMessage.content}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
+                              {chat.unreadCount > 0 && (
+                                <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                                  {chat.unreadCount > 9
+                                    ? "9+"
+                                    : chat.unreadCount}
+                                </span>
+                              )}
                             </div>
-                            {chat.unreadCount > 0 && (
-                              <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                                {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                      {chats.length > 3 && (
+                          </button>
+                        ))}
                         <button
                           onClick={() => router.push("/chat")}
                           className="w-full p-2 text-center text-sm text-blue-600 hover:text-blue-700 transition-colors"
                         >
-                          View All Chats ({chats.length})
+                          View All Chats
                         </button>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {/* Start New Chat Section - Show when no existing chats or when there are associated users */}
-                {(chats.length === 0 || associatedUsers.length > 0) && (
-                  <div className="px-3 py-2 border-b border-border">
-                    <h3 className="text-sm font-medium text-foreground">
-                      {chats.length === 0 ? "Start New Chat" : "Start New Chat"}
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      {user?.role === "CLIENT"
-                        ? "Chat with your assigned lawyers"
-                        : "Chat with your assigned clients"}
-                    </p>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center p-6">
+                        <div className="text-center text-muted-foreground">
+                          <MessageSquare className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50 dark:text-muted-foreground/30" />
+                          <p className="text-sm">No recent chats</p>
+                          <p className="text-xs mt-1">
+                            Start a new conversation to begin chatting
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Search - Only show if there are multiple users */}
-                {associatedUsers.length > 1 && (
-                  <div className="p-3 border-b border-border">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <input
-                        type="text"
-                        placeholder={`Search ${user?.role === "CLIENT" ? "lawyers" : "clients"}...`}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors ${
-                          resolvedTheme === "dark"
-                            ? "bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
-                            : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500"
-                        }`}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Associated Users List - Only show if there are multiple users */}
-                {associatedUsers.length > 1 && (
-                  <>
+                {activeTab === "new" && (
+                  <div className="flex-1 overflow-y-auto">
+                    {/* Start New Chat Section */}
                     <div className="px-3 py-2 border-b border-border">
                       <h3 className="text-sm font-medium text-foreground">
-                        {user?.role === "CLIENT"
-                          ? "Your Lawyers"
-                          : "Your Clients"}
+                        Start New Chat
                       </h3>
                       <p className="text-xs text-muted-foreground">
                         {user?.role === "CLIENT"
-                          ? "Start a chat with any of your lawyers"
-                          : "Start a chat with any of your clients"}
+                          ? "Chat with your assigned lawyers"
+                          : "Chat with your assigned clients"}
                       </p>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                      {renderUsersList()}
-                    </div>
-                  </>
-                )}
 
-                {/* Show message when there's only one associated user */}
-                {associatedUsers.length === 1 && (
-                  <div className="flex-1 flex items-center justify-center p-6">
-                    <div className="text-center text-muted-foreground">
-                      <User className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50 dark:text-muted-foreground/30" />
-                      <p className="text-sm">
-                        {user?.role === "CLIENT"
-                          ? "You have one lawyer assigned. Start chatting!"
-                          : "You have one client assigned. Start chatting!"}
-                      </p>
-                      <button
-                        onClick={() => startNewChat(associatedUsers[0].id)}
-                        className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Start Chat
-                      </button>
-                    </div>
-                  </div>
-                )}
+                    {/* Search - Only show if there are multiple users */}
+                    {associatedUsers.length > 1 && (
+                      <div className="p-3 border-b border-border">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                          <input
+                            type="text"
+                            placeholder={`Search ${user?.role === "CLIENT" ? "lawyers" : "clients"}...`}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors ${
+                              resolvedTheme === "dark"
+                                ? "bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+                                : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500"
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    )}
 
-                {/* Show message when there are no associated users */}
-                {associatedUsers.length === 0 && (
-                  <div className="flex-1 flex items-center justify-center p-6">
-                    <div className="text-center text-muted-foreground">
-                      <User className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50 dark:text-muted-foreground/30" />
-                      <p className="text-sm">
-                        {user?.role === "CLIENT"
-                          ? "No lawyers assigned yet"
-                          : "No clients assigned yet"}
-                      </p>
-                    </div>
+                    {/* Associated Users List - Only show if there are multiple users */}
+                    {associatedUsers.length > 1 && (
+                      <>
+                        <div className="px-3 py-2 border-b border-border">
+                          <h3 className="text-sm font-medium text-foreground">
+                            {user?.role === "CLIENT"
+                              ? "Your Lawyers"
+                              : "Your Clients"}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {user?.role === "CLIENT"
+                              ? "Start a chat with any of your lawyers"
+                              : "Start a chat with any of your clients"}
+                          </p>
+                        </div>
+                        <div className="p-3 space-y-2">{renderUsersList()}</div>
+                      </>
+                    )}
+
+                    {/* Show message when there's only one associated user */}
+                    {associatedUsers.length === 1 && (
+                      <div className="flex-1 flex items-center justify-center p-6">
+                        <div className="text-center text-muted-foreground">
+                          <User className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50 dark:text-muted-foreground/30" />
+                          <p className="text-sm">
+                            {user?.role === "CLIENT"
+                              ? "You have one lawyer assigned. Start chatting!"
+                              : "You have one client assigned. Start chatting!"}
+                          </p>
+                          <button
+                            onClick={() => startNewChat(associatedUsers[0].id)}
+                            className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            Start Chat
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Show message when there are no associated users */}
+                    {associatedUsers.length === 0 && (
+                      <div className="flex-1 flex items-center justify-center p-6">
+                        <div className="text-center text-muted-foreground">
+                          <User className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50 dark:text-muted-foreground/30" />
+                          <p className="text-sm">
+                            {user?.role === "CLIENT"
+                              ? "No lawyers assigned yet"
+                              : "No clients assigned yet"}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
@@ -674,6 +753,7 @@ export default function FloatingChatButton({
                       setView("list");
                       setSelectedChat(null);
                       setMessages([]);
+                      setActiveTab("recent"); // Reset to recent tab when going back
                     }}
                     className={`text-sm mb-2 transition-colors ${
                       resolvedTheme === "dark"

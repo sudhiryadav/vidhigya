@@ -20,19 +20,21 @@ export class ReportsService {
 
     const [totalQueries, queriesByType, dailyUsage, responseTimes] =
       await Promise.all([
-        this.prisma.documentQuery.count({ where }),
+        this.prisma.documentQuery.count({
+          where: { ...where, isDeleted: false },
+        }),
         this.prisma.documentQuery.groupBy({
           by: ['queryType'],
-          where,
+          where: { ...where, isDeleted: false },
           _count: { queryType: true },
         }),
         this.prisma.documentQuery.groupBy({
           by: ['createdAt'],
-          where,
+          where: { ...where, isDeleted: false },
           _count: { createdAt: true },
         }),
         this.prisma.documentQuery.findMany({
-          where: { ...where, responseTime: { not: null } },
+          where: { ...where, isDeleted: false, responseTime: { not: null } },
           select: { responseTime: true },
         }),
       ]);
@@ -111,7 +113,7 @@ export class ReportsService {
 
     const [caseQueries, queryTypes, recentQueries] = await Promise.all([
       this.prisma.documentQuery.findMany({
-        where: { ...where, caseId: { not: null } },
+        where: { ...where, isDeleted: false, caseId: { not: null } },
         include: {
           case: {
             select: {
@@ -125,11 +127,11 @@ export class ReportsService {
       }),
       this.prisma.documentQuery.groupBy({
         by: ['queryType'],
-        where: { ...where, caseId: { not: null } },
+        where: { ...where, isDeleted: false, caseId: { not: null } },
         _count: { queryType: true },
       }),
       this.prisma.documentQuery.findMany({
-        where,
+        where: { ...where, isDeleted: false },
         take: 10,
         orderBy: { createdAt: 'desc' },
         include: {
@@ -173,12 +175,14 @@ export class ReportsService {
 
     const [totalQueries, avgQueriesPerDay, peakUsageHour, mostUsedFeatures] =
       await Promise.all([
-        this.prisma.documentQuery.count({ where }),
-        this.getAverageQueriesPerDay(where),
-        this.getPeakUsageHour(where),
+        this.prisma.documentQuery.count({
+          where: { ...where, isDeleted: false },
+        }),
+        this.getAverageQueriesPerDay({ ...where, isDeleted: false }),
+        this.getPeakUsageHour({ ...where, isDeleted: false }),
         this.prisma.documentQuery.groupBy({
           by: ['queryType'],
-          where,
+          where: { ...where, isDeleted: false },
           _count: { queryType: true },
           orderBy: { _count: { queryType: 'desc' } },
           take: 5,
@@ -233,7 +237,7 @@ export class ReportsService {
   // Recent Activity
   async getRecentActivity(userId: string, limit: number = 10) {
     return this.prisma.documentQuery.findMany({
-      where: { userId },
+      where: { userId, isDeleted: false },
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -252,7 +256,7 @@ export class ReportsService {
   private async getAverageQueriesPerDay(where: any): Promise<number> {
     const result = await this.prisma.documentQuery.groupBy({
       by: ['createdAt'],
-      where,
+      where: { ...where, isDeleted: false },
       _count: { createdAt: true },
     });
 
@@ -271,7 +275,7 @@ export class ReportsService {
 
   private async getPeakUsageHour(where: any): Promise<number> {
     const result = await this.prisma.documentQuery.findMany({
-      where,
+      where: { ...where, isDeleted: false },
       select: { createdAt: true },
     });
 

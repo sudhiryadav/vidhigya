@@ -546,6 +546,7 @@ export class DocumentsController {
       const recentQueries = await this.prisma.documentQuery.findMany({
         where: {
           userId,
+          isDeleted: false, // Only get non-deleted queries
           // Optionally filter by case if needed
           // caseId: caseId,
         },
@@ -838,13 +839,36 @@ export class DocumentsController {
     const skip = (pageNum - 1) * limitNum;
 
     const queries = await this.prisma.documentQuery.findMany({
-      where: { userId: req.user.sub },
+      where: {
+        userId: req.user.sub,
+        isDeleted: false, // Only show non-deleted queries
+      },
       orderBy: { createdAt: 'desc' },
       skip,
       take: limitNum,
     });
 
     return queries;
+  }
+
+  @Delete('query-history')
+  async clearQueryHistory(@Request() req: AuthenticatedRequest) {
+    // Mark all document queries as deleted instead of hard deleting
+    const result = await this.prisma.documentQuery.updateMany({
+      where: {
+        userId: req.user.sub,
+        deletedAt: null, // Only update non-deleted queries
+      },
+      data: {
+        deletedAt: new Date(),
+        isDeleted: true,
+      },
+    });
+
+    return {
+      message: 'Query history cleared successfully',
+      deletedCount: result.count,
+    };
   }
 
   @Get(':id')

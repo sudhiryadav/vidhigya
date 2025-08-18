@@ -96,10 +96,7 @@ export default function ChatBubble() {
 
   // All useEffect hooks grouped together - MUST be before any conditional returns
   useEffect(() => {
-    console.log(
-      `ChatBubble component ${componentId} created for user:`,
-      user?.id
-    );
+    // ChatBubble component created
   }, [componentId, user?.id]);
 
   // Handle active instance management
@@ -110,10 +107,6 @@ export default function ChatBubble() {
         activeChatBubbleInstance &&
         activeChatBubbleInstance !== componentId
       ) {
-        console.log(
-          `[${componentId}] Another ChatBubble instance is already active:`,
-          activeChatBubbleInstance
-        );
         setIsActiveInstance(false);
         return;
       }
@@ -122,20 +115,12 @@ export default function ChatBubble() {
       if (!activeChatBubbleInstance) {
         activeChatBubbleInstance = componentId;
         setIsActiveInstance(true);
-        console.log(
-          `[${componentId}] ChatBubble instance activated for user:`,
-          user.id
-        );
       }
 
       return () => {
         // Only clear the active instance if this is the one that was active
         if (activeChatBubbleInstance === componentId) {
           activeChatBubbleInstance = null;
-          console.log(
-            `[${componentId}] ChatBubble instance destroyed for user:`,
-            user.id
-          );
           // Clear localStorage when component unmounts
           localStorage.removeItem("chatBubbleView");
           localStorage.removeItem("chatBubbleSelectedChatId");
@@ -153,26 +138,6 @@ export default function ChatBubble() {
       isAuthenticated &&
       isActiveInstance;
     setShouldRender(shouldRenderComponent);
-
-    if (!shouldRenderComponent) {
-      console.log("ChatBubble not rendering:", {
-        isOnChatPage,
-        isOnAuthPage,
-        hasUser: !!user,
-        isAuthenticated,
-        pathname,
-        user: user?.id,
-        componentId,
-        isActiveInstance,
-      });
-    } else {
-      console.log(
-        `[${componentId}] ChatBubble rendering for user:`,
-        user.id,
-        "on pathname:",
-        pathname
-      );
-    }
   }, [
     isOnChatPage,
     isOnAuthPage,
@@ -200,25 +165,14 @@ export default function ChatBubble() {
   useEffect(() => {
     if (!isOnChatPage && user && isAuthenticated && shouldRender) {
       const token = localStorage.getItem("token");
-      console.log("Token available:", !!token);
       if (token) {
-        console.log(
-          `[${componentId}] Connecting to socket from ChatBubble for user:`,
-          user.id
-        );
         getSocketService().connect(token);
 
         setTimeout(() => {
-          console.log("Checking socket connection status...");
           if (getSocketService().isSocketConnected()) {
-            console.log("Joining personal room for user:", user.id);
             getSocketService().joinPersonalRoom(user.id);
-          } else {
-            console.log("Socket not connected after 1 second");
           }
         }, 1000);
-      } else {
-        console.log("No token available for socket connection");
       }
 
       fetchChats();
@@ -230,31 +184,8 @@ export default function ChatBubble() {
   useEffect(() => {
     if (!shouldRender) return;
 
-    console.log(
-      `[${componentId}] Setting up global event listener for user:`,
-      user?.id
-    );
-
     const handleGlobalNewMessage = (event: CustomEvent) => {
-      console.log(`[${componentId}] Global new message received:`, {
-        chatId: event.detail.chatId,
-        currentView: view,
-        selectedChatId: selectedChat?.id,
-        messageSenderId: event.detail.message.senderId,
-        currentUserId: user?.id,
-        componentId: componentId,
-      });
-
       if (view !== "chat" || selectedChat?.id !== event.detail.chatId) {
-        console.log(
-          `[${componentId}] Updating unread count for chat:`,
-          event.detail.chatId
-        );
-        console.log(
-          `[${componentId}] Current chats:`,
-          chats.map((c) => ({ id: c.id, unread: c.unreadCount }))
-        );
-
         setChats((prevChats) => {
           const updatedChats = prevChats.map((chat) =>
             chat.id === event.detail.chatId
@@ -268,20 +199,12 @@ export default function ChatBubble() {
                 }
               : chat
           );
-          console.log(
-            `[${componentId}] Updated chats:`,
-            updatedChats.map((c) => ({ id: c.id, unread: c.unreadCount }))
-          );
           // Deduplicate to prevent duplicate keys
           return updatedChats.filter(
             (chat, index, self) =>
               index === self.findIndex((c) => c.id === chat.id)
           );
         });
-      } else {
-        console.log(
-          `[${componentId}] Not updating unread count - chat is currently focused`
-        );
       }
     };
 
@@ -291,10 +214,6 @@ export default function ChatBubble() {
     );
 
     return () => {
-      console.log(
-        `[${componentId}] Removing global event listener for user:`,
-        user?.id
-      );
       window.removeEventListener(
         "newMessage",
         handleGlobalNewMessage as EventListener
@@ -354,27 +273,12 @@ export default function ChatBubble() {
       (total, chat) => total + (chat.unreadCount || 0),
       0
     );
-    console.log(
-      "Total unread count:",
-      total,
-      "Chats:",
-      chats.map((c) => ({
-        id: c.id,
-        unread: c.unreadCount,
-        name: getParticipantName(c),
-      }))
-    );
+
     return total;
   };
 
   const debugState = () => {
-    console.log(`[${componentId}] ChatBubble state:`, {
-      isMinimized,
-      isExpanded,
-      isMaximized,
-      unreadCount: getUnreadCount(),
-      chatsCount: chats.length,
-    });
+    // Debug state function
   };
 
   const setupSocketConnection = () => {
@@ -382,7 +286,6 @@ export default function ChatBubble() {
     if (token) {
       getSocketService().connect(token);
       if (selectedChat) {
-        console.log("Joining chat:", selectedChat.id);
         getSocketService().joinChat(selectedChat.id);
       }
     }
@@ -476,23 +379,11 @@ export default function ChatBubble() {
       setIsLoading(true);
       const data = (await apiClient.getChats()) as Chat[];
 
-      // Log original data to check for duplicates
-      const chatIds = data.map((chat) => chat.id);
-      const duplicateIds = chatIds.filter(
-        (id, index) => chatIds.indexOf(id) !== index
-      );
-      if (duplicateIds.length > 0) {
-        console.warn("Found duplicate chat IDs:", duplicateIds);
-      }
-
       // Deduplicate chats by ID to prevent duplicate keys
       const uniqueChats = data.filter(
         (chat, index, self) => index === self.findIndex((c) => c.id === chat.id)
       );
 
-      console.log(
-        `Fetched ${data.length} chats, deduplicated to ${uniqueChats.length} unique chats`
-      );
       setChats(uniqueChats);
     } catch (error) {
       console.error("Error fetching chats:", error);
@@ -696,16 +587,6 @@ export default function ChatBubble() {
 
   // Call debug state
   debugState();
-
-  // Debug view state
-  console.log(`[${componentId}] ChatBubble view state:`, {
-    view,
-    selectedChat: selectedChat?.id,
-    isExpanded,
-    isMinimized,
-    isMaximized,
-    shouldRender,
-  });
 
   return (
     <div className="fixed bottom-4 right-4 z-50">

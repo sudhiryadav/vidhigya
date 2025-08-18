@@ -613,6 +613,8 @@ model DocumentQuery {
   queryType   QueryType     @default(GENERAL)
   responseTime Int?         // Response time in milliseconds
   tokensUsed  Int?          // Number of tokens used
+  isDeleted   Boolean       @default(false) // Soft delete flag
+  deletedAt   DateTime?     // Soft delete timestamp
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 

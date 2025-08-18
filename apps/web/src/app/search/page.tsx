@@ -327,8 +327,8 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
+    <div className="h-screen bg-background overflow-hidden">
+      <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8 flex flex-col">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">
@@ -340,7 +340,7 @@ export default function SearchPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="mb-6">
+        <div className="mb-6 flex-shrink-0">
           <div className="border-b border-border">
             <nav className="-mb-px flex space-x-8">
               <button
@@ -369,17 +369,14 @@ export default function SearchPage() {
 
         {/* AI Assistant Tab */}
         {activeTab === "qa" && (
-          <div className="bg-card rounded-lg shadow-sm border border-border">
-            <DocumentQA
-              onDraftClick={openDraft}
-              onNewDraftClick={createNewDraft}
-            />
+          <div className="flex-1 bg-card rounded-lg shadow-sm border border-border overflow-hidden min-h-0">
+            <DocumentQA />
           </div>
         )}
 
         {/* Document Search Tab */}
         {activeTab === "search" && (
-          <div className="space-y-6">
+          <div className="flex-1 space-y-6 overflow-y-auto min-h-0">
             {/* Search Bar */}
             <div className="bg-card rounded-lg shadow-sm border border-border p-6">
               <div className="flex flex-col sm:flex-row gap-4">
@@ -485,7 +482,7 @@ export default function SearchPage() {
             {/* Search Results */}
             {searchResults.length > 0 && (
               <div className="bg-card rounded-lg shadow-sm border border-border">
-                <div className="p-6">
+                <div className="p-6 max-h-96 overflow-y-auto">
                   <h3 className="text-lg font-medium text-foreground mb-4">
                     Search Results ({searchResults.filter(filterResult).length})
                   </h3>

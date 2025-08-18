@@ -59,11 +59,6 @@ export default function ChatPage() {
   }, [chatId]);
 
   useEffect(() => {
-    console.log("Messages state changed:", {
-      count: messages.length,
-      messageIds: messages.map((msg) => msg.id),
-      lastMessage: messages[messages.length - 1],
-    });
     scrollToBottom();
   }, [messages]);
 
@@ -148,26 +143,14 @@ export default function ChatPage() {
 
     // Ensure user joins their personal room to receive messages
     if (user?.id) {
-      console.log("Ensuring user joins personal room:", user.id);
-
       // Try to join immediately if already connected
       if (getSocketService().isSocketConnected()) {
-        console.log(
-          "Socket already connected, joining personal room immediately"
-        );
         getSocketService().joinPersonalRoom(user.id);
       } else {
         // Wait for connection and then join
-        console.log("Socket not connected, waiting for connection...");
         setTimeout(() => {
           if (getSocketService().isSocketConnected()) {
-            console.log(
-              "Socket connected, joining personal room for user:",
-              user.id
-            );
             getSocketService().joinPersonalRoom(user.id);
-          } else {
-            console.log("Socket still not connected after timeout");
           }
         }, 2000);
       }
@@ -179,22 +162,11 @@ export default function ChatPage() {
     }
 
     const handleNewMessage = (event: CustomEvent) => {
-      console.log("=== CLIENT SIDE: Received newMessage event ===");
-      console.log("Event detail:", event.detail);
-      console.log("Event detail message:", event.detail.message);
       const { message } = event.detail;
 
       // Check if message belongs to this chat by comparing both possible chat ID formats
       const currentChatId = chatId;
       const messageChatId = message?.chatId;
-
-      console.log("Message structure analysis:", {
-        messageExists: !!message,
-        messageChatId,
-        currentChatId,
-        messageKeys: message ? Object.keys(message) : [],
-        messageFull: message,
-      });
 
       // Chat ID can be in two formats: "senderId-receiverId" or "receiverId-senderId"
       // We need to check if the message belongs to this chat regardless of the order
@@ -204,26 +176,8 @@ export default function ChatPage() {
         (messageChatId === currentChatId ||
           messageChatId === currentChatId.split("-").reverse().join("-"));
 
-      console.log("Chat ID comparison:", {
-        currentChatId,
-        messageChatId,
-        reversedCurrentChatId: currentChatId.split("-").reverse().join("-"),
-        isMessageForThisChat,
-      });
-
       // Only add the message if it belongs to this chat
       if (isMessageForThisChat) {
-        console.log("Message belongs to this chat, processing...");
-        console.log("Message details:", {
-          id: message.id,
-          content: message.content,
-          senderId: message.senderId,
-          senderName: message.senderName,
-          type: message.type,
-          chatId: message.chatId,
-          receiverId: message.receiverId,
-        });
-
         // Ensure processedMessageIds is initialized
         if (!window.processedMessageIds) {
           window.processedMessageIds = new Set();
@@ -231,10 +185,6 @@ export default function ChatPage() {
 
         // Check if message was already processed globally
         if (window.processedMessageIds.has(message.id)) {
-          console.log(
-            "Message already processed globally, skipping:",
-            message.id
-          );
           return;
         }
 
@@ -256,18 +206,8 @@ export default function ChatPage() {
         }
 
         setMessages((prev) => {
-          console.log("Current messages in state:", prev.length);
-          console.log(
-            "Message IDs in state:",
-            prev.map((msg) => msg.id)
-          );
-
           // Check if message already exists in the current state
           if (prev.some((msg) => msg.id === message.id)) {
-            console.log(
-              "Message already exists in state, skipping:",
-              message.id
-            );
             return prev;
           }
 
@@ -294,7 +234,6 @@ export default function ChatPage() {
             return newMessages;
           }
 
-          console.log("Adding new message to state:", message);
           const newMessageForState = {
             id: message.id,
             content: message.content,
@@ -304,32 +243,16 @@ export default function ChatPage() {
             isRead: false,
             createdAt: new Date(message.createdAt),
           };
-          console.log("New message for state:", newMessageForState);
           return [...prev, newMessageForState];
-        });
-        console.log("=== CLIENT SIDE: newMessage processed successfully ===");
-      } else {
-        console.log("Message does not belong to this chat or is invalid:", {
-          message,
-          currentChatId,
-          messageChatId,
-          reversedCurrentChatId: currentChatId.split("-").reverse().join("-"),
-          isMessageForThisChat,
         });
       }
     };
 
     const handleMessageSent = (event: CustomEvent) => {
-      console.log("=== CLIENT SIDE: Received messageSent event ===");
-      console.log("Event detail:", event.detail);
       const { message } = event.detail;
 
       // Replace temporary message with real message
       if (message && message.senderId === user?.id) {
-        console.log(
-          "Replacing temporary message with real message:",
-          message.id
-        );
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id.startsWith("temp")
@@ -341,13 +264,6 @@ export default function ChatPage() {
               : msg
           )
         );
-        console.log("=== CLIENT SIDE: messageSent processed successfully ===");
-      } else {
-        console.log("Message sent event not for current user or invalid:", {
-          message,
-          currentUserId: user?.id,
-          messageSenderId: message?.senderId,
-        });
       }
     };
 
@@ -371,27 +287,12 @@ export default function ChatPage() {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || sending) return;
 
-    console.log("=== CLIENT SIDE: Starting message send process ===");
-    console.log("Message content:", newMessage);
-    console.log("Current user:", {
-      id: user?.id,
-      name: user?.name,
-      role: user?.role,
-      email: user?.email,
-    });
-    console.log("Chat ID from URL:", chatId);
-    console.log("All participants:", participants);
-    console.log("Current user ID:", user?.id);
-
     try {
       setSending(true);
 
       // Get the other participant's ID
       const otherParticipant = participants.find((p) => p.id !== user?.id);
       if (!otherParticipant) {
-        console.error("ERROR: No other participant found!");
-        console.error("Participants:", participants);
-        console.error("Current user ID:", user?.id);
         toast.error("No participant found");
         return;
       }
@@ -403,29 +304,10 @@ export default function ChatPage() {
 
       // Construct the chat ID in the format expected by the backend: "senderId-receiverId"
       const constructedChatId = `${user?.id}-${otherParticipant.id}`;
-      console.log("Constructed chat ID:", constructedChatId);
-      console.log("Expected format: senderId-receiverId");
-      console.log("Actual format:", constructedChatId);
 
       // Send message via socket for real-time delivery
       if (getSocketService().isSocketConnected()) {
-        console.log("=== SENDING VIA SOCKET ===");
-        console.log(
-          "Socket service state:",
-          getSocketService().getSocketState()
-        );
-        console.log("Constructed chat ID for socket:", constructedChatId);
-
-        // Log before calling sendMessage
-        console.log("About to call getSocketService().sendMessage with:", {
-          chatId: constructedChatId,
-          content: newMessage,
-          type: "TEXT",
-        });
-
         getSocketService().sendMessage(constructedChatId, newMessage, "TEXT");
-
-        console.log("sendMessage called successfully");
 
         // Add message to local state immediately for optimistic UI
         const tempMessage = {
@@ -438,56 +320,25 @@ export default function ChatPage() {
           createdAt: new Date(),
         };
 
-        console.log("Adding temp message to local state:", tempMessage);
         setMessages((prev) => [...prev, tempMessage]);
         setNewMessage("");
-        console.log("=== SOCKET SEND COMPLETED ===");
       } else {
-        console.log("=== FALLING BACK TO REST API ===");
-        console.log("Socket not connected, falling back to REST API");
-        console.log(
-          "Socket service state:",
-          getSocketService().getSocketState()
-        );
-        console.log("Constructed chat ID for REST API:", constructedChatId);
-
         // Fallback to REST API if socket is not connected
-        console.log("Calling apiClient.sendChatMessage with:", {
-          chatId: constructedChatId,
-          message: { content: newMessage, type: "TEXT" },
-        });
-
         const message = await apiClient.sendChatMessage(constructedChatId, {
           content: newMessage,
           type: "TEXT",
         });
 
-        console.log("REST API response:", message);
-
         if (message && typeof message === "object" && "id" in message) {
-          console.log("REST API message added to state:", message);
           setMessages((prev) => [...prev, message as Message]);
           setNewMessage("");
-        } else {
-          console.error("REST API response invalid:", message);
         }
-        console.log("=== REST API SEND COMPLETED ===");
       }
     } catch (error) {
-      console.error("=== ERROR IN MESSAGE SENDING ===");
-      console.error("Error details:", error);
-      console.error(
-        "Error message:",
-        error instanceof Error ? error.message : "Unknown error"
-      );
-      console.error(
-        "Error stack:",
-        error instanceof Error ? error.stack : "No stack trace"
-      );
+      console.error("Error sending message:", error);
       toast.error("Failed to send message");
     } finally {
       setSending(false);
-      console.log("=== MESSAGE SEND PROCESS COMPLETED ===");
     }
   };
 

@@ -582,7 +582,7 @@ export default function CasesPage() {
             {filteredLawyerCases.map((caseItem) => (
               <div
                 key={caseItem.id}
-                className="bg-card shadow rounded-lg p-6 hover:shadow-md transition-shadow"
+                className="bg-card border border-border rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
@@ -1032,7 +1032,7 @@ export default function CasesPage() {
             {filteredClientCases.map((caseItem) => (
               <div
                 key={caseItem.id}
-                className="bg-card shadow rounded-lg p-6 hover:shadow-md transition-shadow"
+                className="bg-card border border-border rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow"
               >
                 <div className="mb-4">
                   <h3 className="text-lg font-medium text-foreground mb-1">

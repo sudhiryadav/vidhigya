@@ -577,6 +577,12 @@ class ApiClient {
     return this.request(`/documents/query-history?${params.toString()}`);
   }
 
+  async clearDocumentQueryHistory(): Promise<any> {
+    return this.request("/documents/query-history", {
+      method: "DELETE",
+    });
+  }
+
   async getFeedbackAnalytics(
     startDate?: string,
     endDate?: string

@@ -53,7 +53,6 @@ export function ThemeToggle() {
               <button
                 key={themeOption.value}
                 onClick={() => {
-                  console.log("Setting theme to:", themeOption.value);
                   setTheme(themeOption.value);
                   setIsOpen(false);
                 }}
