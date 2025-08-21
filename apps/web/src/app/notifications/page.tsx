@@ -361,7 +361,7 @@ export default function NotificationsPage() {
                 { value: "EVENT_REMINDER", label: "Events" },
                 { value: "DOCUMENT_UPLOADED", label: "Documents" },
                 { value: "BILL_OVERDUE", label: "Payments" },
-                { value: "VIDEO_CALL_STARTED", label: "Video Calls" },
+                // { value: "VIDEO_CALL_STARTED", label: "Video Calls" },
                 { value: "CASE_UPDATE", label: "Case Updates" },
               ]}
               value={{
