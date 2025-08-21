@@ -1367,6 +1367,66 @@ async def upload_files(
         )
 
 
+@router.post("/restart-processing/{document_id}")
+async def restart_document_processing(
+    document_id: str,
+    api_key: str = Header(..., alias="X-API-Key"),
+):
+    """Restart processing for a document that appears to be stuck."""
+    try:
+        # Validate API key
+        if api_key != settings.AI_SERVICE_API_KEY:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+
+        # Check if document exists in processing status
+        current_status = get_processing_status(document_id)
+        if current_status["status"] == "NOT_FOUND":
+            raise HTTPException(
+                status_code=404, detail="Document not found in processing queue"
+            )
+
+        # Check if document is actually stuck (processing for too long)
+        if current_status["status"] in ["COMPLETED", "ERROR"]:
+            raise HTTPException(
+                status_code=400, detail="Document is not stuck in processing"
+            )
+
+        # Reset processing status to start fresh
+        update_processing_status(
+            document_id,
+            "PROCESSING",
+            f"Restarting processing for document {document_id}",
+            None,
+            0,
+        )
+
+        # Log the restart
+        log_to_backend(
+            "info",
+            f"Document processing restarted for {document_id}",
+        )
+
+        return {
+            "message": f"Processing restarted for document {document_id}",
+            "document_id": document_id,
+            "status": "RESTARTED",
+            "timestamp": datetime.datetime.now().isoformat(),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_to_backend(
+            "error",
+            f"Unexpected error restarting processing for {document_id}",
+            error=e,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while restarting processing",
+        )
+
+
 @router.get("/status/{document_id}")
 async def get_document_status(
     document_id: str,

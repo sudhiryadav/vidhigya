@@ -9,8 +9,8 @@ import { PrismaService } from '../prisma/prisma.service';
 export interface CreateEventDto {
   title: string;
   description?: string;
-  startTime: Date;
-  endTime: Date;
+  startTime: Date | string;
+  endTime: Date | string;
   location?: string;
   eventType:
     | 'HEARING'
@@ -28,8 +28,8 @@ export interface CreateEventDto {
 export interface UpdateEventDto {
   title?: string;
   description?: string;
-  startTime?: Date;
-  endTime?: Date;
+  startTime?: Date | string;
+  endTime?: Date | string;
   location?: string;
   eventType?:
     | 'HEARING'
@@ -55,8 +55,12 @@ export class CalendarService {
   async createEvent(createEventDto: CreateEventDto, userId: string) {
     const { participantIds, ...eventData } = createEventDto;
 
+    // Fix date formatting - ensure proper ISO-8601 format
+    const startTime = this.formatDateForPrisma(eventData.startTime);
+    const endTime = this.formatDateForPrisma(eventData.endTime);
+
     // Validate dates
-    if (new Date(eventData.startTime) >= new Date(eventData.endTime)) {
+    if (startTime >= endTime) {
       throw new BadRequestException('End time must be after start time');
     }
 
@@ -64,6 +68,8 @@ export class CalendarService {
     const event = await this.prisma.calendarEvent.create({
       data: {
         ...eventData,
+        startTime,
+        endTime,
         createdById: userId,
       },
       include: {
@@ -259,9 +265,10 @@ export class CalendarService {
 
     // Validate dates if both are provided
     if (updateEventDto.startTime && updateEventDto.endTime) {
-      if (
-        new Date(updateEventDto.startTime) >= new Date(updateEventDto.endTime)
-      ) {
+      const startTime = this.formatDateForPrisma(updateEventDto.startTime);
+      const endTime = this.formatDateForPrisma(updateEventDto.endTime);
+
+      if (startTime >= endTime) {
         throw new BadRequestException('End time must be after start time');
       }
     }
@@ -271,10 +278,10 @@ export class CalendarService {
 
     // Convert string dates to Date objects if they exist
     if (updateData.startTime) {
-      updateData.startTime = new Date(updateData.startTime);
+      updateData.startTime = this.formatDateForPrisma(updateData.startTime);
     }
     if (updateData.endTime) {
-      updateData.endTime = new Date(updateData.endTime);
+      updateData.endTime = this.formatDateForPrisma(updateData.endTime);
     }
 
     return this.prisma.calendarEvent.update({
@@ -515,5 +522,24 @@ export class CalendarService {
         name: 'asc',
       },
     });
+  }
+
+  /**
+   * Format date for Prisma - ensures proper ISO-8601 format
+   */
+  private formatDateForPrisma(date: Date | string): Date {
+    if (typeof date === 'string') {
+      // Handle incomplete ISO strings like "2025-08-21T18:07"
+      // Add seconds if missing
+      if (date.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
+        date = date + ':00';
+      }
+      // Add timezone if missing (assume local timezone)
+      if (!date.includes('Z') && !date.includes('+') && !date.includes('-')) {
+        date = date + 'Z';
+      }
+      return new Date(date);
+    }
+    return date;
   }
 }

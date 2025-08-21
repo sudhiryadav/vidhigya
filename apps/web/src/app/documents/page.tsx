@@ -84,6 +84,7 @@ const DocumentCard = ({
   onError,
   canDelete,
   apiClient,
+  onReupload,
 }: {
   document: Document;
   onView: (doc: Document) => void;
@@ -93,6 +94,7 @@ const DocumentCard = ({
   onError: (error: string) => void;
   canDelete: boolean;
   apiClient: any;
+  onReupload: () => void;
 }) => {
   const getFileIcon = (fileType: string) => {
     if (fileType.includes("pdf")) return "📄";
@@ -123,6 +125,12 @@ const DocumentCard = ({
       DRAFT: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
       PENDING:
         "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+      PROCESSING:
+        "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+      PROCESSED:
+        "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+      UPLOADED:
+        "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
       APPROVED:
         "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
       REJECTED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
@@ -157,6 +165,20 @@ const DocumentCard = ({
         {category.replace("_", " ")}
       </span>
     );
+  };
+
+  // Helper function to determine if actions should be visible
+  const shouldShowActions = (status: string) => {
+    // Hide actions during processing states
+    const processingStates = ["PROCESSING", "UPLOADED", "PENDING"];
+    return !processingStates.includes(status);
+  };
+
+  // Helper function to determine if download should be visible
+  const shouldShowDownload = (status: string) => {
+    // Only show download for completed/processed documents
+    const completedStates = ["PROCESSED", "APPROVED"];
+    return completedStates.includes(status);
   };
 
   return (
@@ -223,6 +245,26 @@ const DocumentCard = ({
           </div>
         )}
 
+      {/* Re-upload Message for DRAFT Status */}
+      {doc.status === "DRAFT" && (
+        <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs">!</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Document Processing Failed
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                This document encountered an error during processing. Please
+                re-upload to try again.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex items-center justify-between pt-4 border-t border-border">
         <div className="flex items-center space-x-2">
@@ -232,13 +274,15 @@ const DocumentCard = ({
           >
             <Eye className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onDownload(doc)}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <Download className="w-4 h-4" />
-          </button>
-          {canDelete && (
+          {shouldShowDownload(doc.status) && (
+            <button
+              onClick={() => onDownload(doc)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          )}
+          {canDelete && shouldShowActions(doc.status) && (
             <button
               onClick={() => onDelete(doc)}
               className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
@@ -247,9 +291,22 @@ const DocumentCard = ({
             </button>
           )}
         </div>
-        <button className="text-sm text-muted-foreground hover:text-foreground">
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
+        <div className="flex items-center space-x-2">
+          {shouldShowActions(doc.status) && (
+            <button className="text-sm text-muted-foreground hover:text-foreground">
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+          )}
+          {doc.status === "DRAFT" && (
+            <button
+              onClick={onReupload}
+              className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors"
+            >
+              <Upload className="w-3 h-3 mr-1" />
+              Re-upload
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -654,6 +711,7 @@ export default function DocumentsPage() {
                 }}
                 canDelete={isLawyer || isAdmin}
                 apiClient={apiClient}
+                onReupload={() => setShowUploadModal(true)}
               />
             ))
           )}

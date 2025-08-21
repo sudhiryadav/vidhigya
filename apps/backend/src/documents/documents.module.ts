@@ -6,6 +6,7 @@ import { QdrantModule } from '../config/qdrant.module';
 import { S3Module } from '../config/s3.module';
 import { LogsModule } from '../logs/logs.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { DocumentProcessingMonitorModule } from './document-processing-monitor.module';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 
@@ -19,6 +20,7 @@ import { DocumentsService } from './documents.service';
     MulterModule.register({
       dest: './uploads/documents',
     }),
+    DocumentProcessingMonitorModule,
   ],
   controllers: [DocumentsController],
   providers: [DocumentsService],

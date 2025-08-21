@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -308,6 +309,50 @@ export class S3Service {
     }
 
     await this.deleteFile(this.bucket, s3Key);
+  }
+
+  async checkObjectExists(bucket: string, key: string): Promise<boolean> {
+    this.ensureInitialized();
+
+    if (!bucket) {
+      throw new Error('Bucket parameter is required for checkObjectExists');
+    }
+
+    if (!key) {
+      throw new Error('Key parameter is required for checkObjectExists');
+    }
+
+    console.log(
+      `Checking if object exists in S3: bucket=${bucket}, key=${key}`,
+    );
+
+    const command = new HeadObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    });
+
+    try {
+      await this.s3Client.send(command);
+      console.log(`Object exists: ${key}`);
+      return true;
+    } catch (error: any) {
+      if (error.name === 'NotFound') {
+        console.log(`Object not found: ${key}`);
+        return false;
+      }
+      console.error(`Error checking object existence: ${error}`);
+      throw error;
+    }
+  }
+
+  async checkDocumentExists(s3Key: string): Promise<boolean> {
+    this.ensureInitialized();
+
+    if (!this.bucket) {
+      throw new Error('S3 bucket not initialized');
+    }
+
+    return this.checkObjectExists(this.bucket, s3Key);
   }
 
   generateFileName(originalName: string, userId: string): string {

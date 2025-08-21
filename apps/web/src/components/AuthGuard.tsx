@@ -3,7 +3,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
-import FloatingChatButton from "./FloatingChatButton";
 
 const publicRoutes = ["/login", "/register", "/forgot-password"];
 
@@ -72,8 +71,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      {/* Show FloatingChatButton on all authenticated pages */}
-      {isAuthenticated && <FloatingChatButton />}
+      {/* Hidden FloatingChatButton on all authenticated pages */}
+      {/* {isAuthenticated && <FloatingChatButton />} */}
     </>
   );
 }

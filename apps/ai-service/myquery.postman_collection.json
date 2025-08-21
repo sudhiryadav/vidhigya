@@ -30,6 +30,28 @@
                     }
                 },
                 {
+                    "name": "Restart Document Processing",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/admin/documents/restart-processing/{document_id}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "admin",
+                                "documents",
+                                "restart-processing",
+                                "{document_id}"
+                            ]
+                        },
+                        "description": "Restart processing for a document that appears to be stuck."
+                    }
+                },
+                {
                     "name": "Get Document Status",
                     "request": {
                         "method": "GET",

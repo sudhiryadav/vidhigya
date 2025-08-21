@@ -465,9 +465,23 @@ export default function CaseDetailPage() {
                             <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
                               {doc.title}
                             </h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                              {doc.category}
-                            </p>
+                            <div className="flex items-center space-x-2 mb-2">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {doc.category}
+                              </p>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  doc.status === "PROCESSED"
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                                    : doc.status === "PROCESSING" ||
+                                        doc.status === "UPLOADED"
+                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                                      : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                                }`}
+                              >
+                                {doc.status.replace("_", " ")}
+                              </span>
+                            </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
                               {formatFileSize(doc.fileSize)} •{" "}
                               {formatDate(doc.createdAt)}
@@ -477,14 +491,20 @@ export default function CaseDetailPage() {
                             <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
-                              <Download className="w-4 h-4" />
-                            </button>
-                            {canManageCase && (
-                              <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
-                                <Trash2 className="w-4 h-4" />
+                            {(doc.status === "PROCESSED" ||
+                              doc.status === "APPROVED") && (
+                              <button className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
+                                <Download className="w-4 h-4" />
                               </button>
                             )}
+                            {canManageCase &&
+                              !["PROCESSING", "UPLOADED", "PENDING"].includes(
+                                doc.status
+                              ) && (
+                                <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                           </div>
                         </div>
                       </div>

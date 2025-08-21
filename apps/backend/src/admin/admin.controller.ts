@@ -1,24 +1,19 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Put,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { DocumentProcessingMonitorService } from '../documents/document-processing-monitor.service';
 import { AdminService } from './admin.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('SUPER_ADMIN', 'ADMIN')
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly documentProcessingMonitorService: DocumentProcessingMonitorService,
+  ) {}
 
   @Get('stats')
   async getSystemStats() {
@@ -26,59 +21,25 @@ export class AdminController {
   }
 
   @Get('recent-activity')
-  getRecentActivity(@Query('limit') limit?: string) {
-    const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.adminService.getRecentActivity(limitNum);
+  async getRecentActivity() {
+    return this.adminService.getRecentActivity(10);
   }
 
   @Get('lawyers')
-  async getLawyers(
-    @Query('search') search?: string,
-    @Query('role') role?: string,
-    @Query('isActive') isActive?: string,
-  ) {
-    const filters = {
-      search,
-      role,
-      isActive:
-        isActive === 'true' ? true : isActive === 'false' ? false : undefined,
+  async getLawyers() {
+    return this.adminService.getLawyers();
+  }
+
+  @Get('document-processing/stats')
+  async getDocumentProcessingStats() {
+    return this.documentProcessingMonitorService.getProcessingStats();
+  }
+
+  @Post('document-processing/health-check')
+  async triggerDocumentProcessingHealthCheck() {
+    await this.documentProcessingMonitorService.manualHealthCheck();
+    return {
+      message: 'Document processing health check triggered successfully',
     };
-    return this.adminService.getLawyers(filters);
-  }
-
-  @Post('lawyers')
-  async createLawyer(
-    @Body()
-    data: {
-      name: string;
-      email: string;
-      password: string;
-      role: 'LAWYER' | 'ASSOCIATE' | 'PARALEGAL';
-      phone?: string;
-      specialization?: string;
-    },
-  ) {
-    return this.adminService.createLawyer(data);
-  }
-
-  @Put('lawyers/:id')
-  async updateLawyer(
-    @Param('id') id: string,
-    @Body()
-    data: {
-      name?: string;
-      email?: string;
-      role?: 'LAWYER' | 'ASSOCIATE' | 'PARALEGAL';
-      phone?: string;
-      isActive?: boolean;
-    },
-  ) {
-    return this.adminService.updateLawyer(id, data);
-  }
-
-  @Delete('lawyers/:id')
-  async deleteLawyer(@Param('id') id: string) {
-    await this.adminService.deleteLawyer(id);
-    return { message: 'Lawyer deleted successfully' };
   }
 }

@@ -189,6 +189,32 @@ export class ChatGateway {
     }
   }
 
+  @SubscribeMessage('markChatAsRead')
+  async handleMarkChatAsRead(
+    @MessageBody() data: { chatId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const user = client.data.user as AuthenticatedUser;
+    if (!user) {
+      return { error: 'Unauthorized' };
+    }
+
+    try {
+      await this.chatService.markChatAsRead(data.chatId, user.sub);
+
+      // Emit messagesRead event to notify all clients
+      this.server.emit('messagesRead', {
+        chatId: data.chatId,
+        userId: user.sub,
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking chat as read:', error);
+      return { error: 'Failed to mark chat as read' };
+    }
+  }
+
   @SubscribeMessage('getConversation')
   handleGetConversation(
     @MessageBody() data: { receiverId: string; limit?: number },

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AdminModule } from './admin/admin.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -31,6 +32,7 @@ import { VideoCallsModule } from './video-calls/video-calls.module';
       envFilePath: '.env',
     }),
     EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
     PrismaModule,
     S3Module,
     QdrantModule,

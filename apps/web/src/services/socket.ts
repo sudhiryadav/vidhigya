@@ -471,7 +471,7 @@ class SocketService {
     if (!this.socket?.connected) {
       return;
     }
-    this.socket.emit("mark_as_read", { chatId });
+    this.socket.emit("markChatAsRead", { chatId });
   }
 
   sendTypingStatus(chatId: string, isTyping: boolean) {

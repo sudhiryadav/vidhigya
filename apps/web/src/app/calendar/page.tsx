@@ -202,8 +202,30 @@ export default function CalendarPage() {
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Frontend date validation
     try {
-      const response = await apiClient.createCalendarEvent(createFormData);
+      // Validate and format dates
+      const startTime = validateAndFormatDate(
+        createFormData.startTime,
+        "start time"
+      );
+      const endTime = validateAndFormatDate(createFormData.endTime, "end time");
+
+      // Validate that end time is after start time
+      if (startTime >= endTime) {
+        toast.error("End time must be after start time");
+        return;
+      }
+
+      // Create validated form data
+      const validatedFormData = {
+        ...createFormData,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      };
+
+      const response = await apiClient.createCalendarEvent(validatedFormData);
       if (response) {
         toast.success("Event created successfully");
         setShowCreateModal(false);
@@ -222,7 +244,11 @@ export default function CalendarPage() {
       }
     } catch (error) {
       console.error("Error creating event:", error);
-      toast.error("Failed to create event");
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to create event");
+      }
     }
   };
 
@@ -247,9 +273,29 @@ export default function CalendarPage() {
     if (!selectedEvent) return;
 
     try {
+      // Frontend date validation
+      const startTime = validateAndFormatDate(
+        editFormData.startTime,
+        "start time"
+      );
+      const endTime = validateAndFormatDate(editFormData.endTime, "end time");
+
+      // Validate that end time is after start time
+      if (startTime >= endTime) {
+        toast.error("End time must be after start time");
+        return;
+      }
+
+      // Create validated form data
+      const validatedFormData = {
+        ...editFormData,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      };
+
       const response = await apiClient.updateCalendarEvent(
         selectedEvent.id,
-        editFormData
+        validatedFormData
       );
       if (response) {
         toast.success("Event updated successfully");
@@ -259,7 +305,11 @@ export default function CalendarPage() {
       }
     } catch (error) {
       console.error("Error updating event:", error);
-      toast.error("Failed to update event");
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to update event");
+      }
     }
   };
 
@@ -744,6 +794,9 @@ export default function CalendarPage() {
                     }
                     className="mt-1 block w-full border border-border rounded-md px-3 py-2 text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Select date and time
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -752,7 +805,12 @@ export default function CalendarPage() {
                   <input
                     type="datetime-local"
                     required
-                    value={createFormData.endTime}
+                    value={
+                      createFormData.startTime && createFormData.endTime
+                        ? createFormData.endTime
+                        : ""
+                    }
+                    min={createFormData.startTime || undefined}
                     onChange={(e) =>
                       setCreateFormData({
                         ...createFormData,
@@ -761,8 +819,28 @@ export default function CalendarPage() {
                     }
                     className="mt-1 block w-full border border-border rounded-md px-3 py-2 text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Must be after start time
+                  </p>
                 </div>
               </div>
+
+              {/* Date Preview */}
+              {(createFormData.startTime || createFormData.endTime) && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                    Date Preview:
+                  </p>
+                  <div className="space-y-1 text-xs text-blue-700 dark:text-blue-300">
+                    {createFormData.startTime && (
+                      <p>Start: {getDatePreview(createFormData.startTime)}</p>
+                    )}
+                    {createFormData.endTime && (
+                      <p>End: {getDatePreview(createFormData.endTime)}</p>
+                    )}
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Location
@@ -1200,3 +1278,63 @@ export default function CalendarPage() {
     </div>
   );
 }
+
+/**
+ * Validate and format date for API submission
+ * Ensures proper ISO-8601 format that Prisma expects
+ */
+const validateAndFormatDate = (dateString: string, fieldName: string): Date => {
+  if (!dateString) {
+    throw new Error(`${fieldName} is required`);
+  }
+
+  try {
+    // Handle datetime-local input format (e.g., "2025-08-21T18:07")
+    let formattedDate = dateString;
+
+    // Add seconds if missing
+    if (formattedDate.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
+      formattedDate = formattedDate + ":00";
+    }
+
+    // Add timezone if missing (assume local timezone)
+    if (
+      !formattedDate.includes("Z") &&
+      !formattedDate.includes("+") &&
+      !formattedDate.includes("-")
+    ) {
+      formattedDate = formattedDate + "Z";
+    }
+
+    const date = new Date(formattedDate);
+
+    // Validate the date is valid
+    if (isNaN(date.getTime())) {
+      throw new Error(`Invalid ${fieldName} format`);
+    }
+
+    return date;
+  } catch (error) {
+    throw new Error(`Invalid ${fieldName} format: ${dateString}`);
+  }
+};
+
+/**
+ * Get formatted date preview for display
+ */
+const getDatePreview = (dateString: string): string => {
+  if (!dateString) return "";
+  try {
+    const date = validateAndFormatDate(dateString, "date");
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZoneName: "short",
+    });
+  } catch {
+    return "Invalid date";
+  }
+};

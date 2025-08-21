@@ -1,6 +1,5 @@
 "use client";
 
-import FontSizeSelector from "@/components/FontSizeSelector";
 import ProfilePictureUpload from "@/components/ProfilePictureUpload";
 import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
@@ -515,6 +514,7 @@ export default function SettingsPage() {
                         />
                       </div>
 
+                      {/* Timezone setting hidden for now
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Timezone
@@ -547,6 +547,7 @@ export default function SettingsPage() {
                           className="w-full"
                         />
                       </div>
+                      */}
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -667,10 +668,11 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Font Size Settings */}
+                  {/* Font Size Settings - hidden for now
                   <div className="mt-8">
                     <FontSizeSelector />
                   </div>
+                  */}
                 </div>
               )}
 

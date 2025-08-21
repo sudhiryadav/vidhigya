@@ -79,13 +79,6 @@ export default function FloatingChatButton({
       fetchChats();
       fetchUsers();
       setActiveTab("recent"); // Reset to recent tab when expanding
-
-      // Set up periodic refresh to keep chats in sync with backend
-      const interval = setInterval(() => {
-        fetchChats();
-      }, 30000); // Refresh every 30 seconds
-
-      return () => clearInterval(interval);
     }
   }, [isExpanded]);
 
@@ -109,17 +102,105 @@ export default function FloatingChatButton({
       }
     };
 
+    const handleMessagesRead = (event: CustomEvent) => {
+      const { chatId, userId } = event.detail;
+
+      // If this is about our user reading messages, update the unread count
+      if (userId === user?.id) {
+        setChats((prevChats) => {
+          const updatedChats = prevChats.map((chat) =>
+            chat.id === chatId ? { ...chat, unreadCount: 0 } : chat
+          );
+          return updatedChats;
+        });
+      }
+    };
+
     window.addEventListener(
       "newMessage",
       handleGlobalNewMessage as EventListener
     );
+
+    window.addEventListener(
+      "messagesRead",
+      handleMessagesRead as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "newMessage",
+        handleGlobalNewMessage as EventListener
+      );
+      window.removeEventListener(
+        "messagesRead",
+        handleMessagesRead as EventListener
+      );
+    };
+  }, [isExpanded, user?.id]);
+
+  // Global event listener for new messages (always active when component is mounted)
+  useEffect(() => {
+    const handleGlobalNewMessage = (event: CustomEvent) => {
+      const { message } = event.detail;
+
+      // Always update the chat list with new message info
+      setChats((prevChats) => {
+        return prevChats.map((chat) => {
+          if (chat.id === message.chatId) {
+            // Update last message and unread count
+            const newUnreadCount =
+              message.senderId !== user?.id
+                ? (chat.unreadCount || 0) + 1
+                : chat.unreadCount || 0;
+
+            return {
+              ...chat,
+              lastMessage: {
+                id: message.id,
+                content: message.content,
+                senderId: message.senderId,
+                senderName: message.senderName || "Unknown",
+                type: message.type || "TEXT",
+                isRead: false,
+                createdAt: new Date(message.createdAt),
+              },
+              unreadCount: newUnreadCount,
+              updatedAt: new Date(message.createdAt),
+            };
+          }
+          return chat;
+        });
+      });
+    };
+
+    window.addEventListener(
+      "newMessage",
+      handleGlobalNewMessage as EventListener
+    );
+
     return () => {
       window.removeEventListener(
         "newMessage",
         handleGlobalNewMessage as EventListener
       );
     };
-  }, [isExpanded, user?.id]);
+  }, [user?.id]);
+
+  // Ensure socket connection is established when component mounts
+  useEffect(() => {
+    if (user && !getSocketService().isSocketConnected()) {
+      const token = localStorage.getItem("token");
+      if (token) {
+        getSocketService().connect(token);
+        // Join personal room to receive messages
+        setTimeout(() => {
+          if (getSocketService().isSocketConnected()) {
+            getSocketService().joinPersonalRoom(user.id);
+          }
+        }, 1000);
+      }
+    }
+  }, [user]);
 
   useEffect(() => {
     if (view === "chat" && selectedChat && user) {
@@ -208,23 +289,20 @@ export default function FloatingChatButton({
         // Mark messages as read
         if (messages && messages.length > 0) {
           try {
-            // Mark as read in backend
-            const response = await apiClient.markChatAsRead(selectedChat.id);
-            if (
-              response &&
-              typeof response === "object" &&
-              "success" in response &&
-              response.success
-            ) {
-              // Also notify socket service
+            // Mark as read via socket (this will trigger messagesRead event)
+            if (getSocketService().isSocketConnected()) {
               getSocketService().markAsRead(selectedChat.id);
-              // Update local state to clear unread count
-              setChats((prevChats) =>
-                prevChats.map((c) =>
-                  c.id === selectedChat.id ? { ...c, unreadCount: 0 } : c
-                )
-              );
+            } else {
+              // Fallback to REST API if socket not connected
+              await apiClient.markChatAsRead(selectedChat.id);
             }
+
+            // Update local state to clear unread count
+            setChats((prevChats) =>
+              prevChats.map((c) =>
+                c.id === selectedChat.id ? { ...c, unreadCount: 0 } : c
+              )
+            );
           } catch (error) {
             console.error("Error marking chat as read:", error);
             // Still update local state even if backend call fails
@@ -246,7 +324,9 @@ export default function FloatingChatButton({
 
     const handleNewMessage = async (event: CustomEvent) => {
       const { message } = event.detail;
-      if (message && message.chatId === selectedChat.id) {
+
+      // If this message is for the currently open chat, add it to messages
+      if (message && message.chatId === selectedChat?.id) {
         setMessages((prev) => {
           if (prev.some((msg) => msg.id === message.id)) {
             return prev;
@@ -266,33 +346,17 @@ export default function FloatingChatButton({
         });
 
         // Mark the chat as read when a message is received and chat is open
-        if (selectedChat && message.senderId !== user?.id) {
+        if (message.senderId !== user?.id) {
           try {
-            // Mark as read in backend
-            const response = await apiClient.markChatAsRead(selectedChat.id);
-            if (
-              response &&
-              typeof response === "object" &&
-              "success" in response &&
-              response.success
-            ) {
-              // Update local state
-              setChats((prevChats) =>
-                prevChats.map((chat) =>
-                  chat.id === selectedChat.id
-                    ? { ...chat, unreadCount: 0 }
-                    : chat
-                )
-              );
+            // Mark as read via socket (this will trigger messagesRead event)
+            if (getSocketService().isSocketConnected()) {
+              getSocketService().markAsRead(selectedChat.id);
+            } else {
+              // Fallback to REST API if socket not connected
+              await apiClient.markChatAsRead(selectedChat.id);
             }
           } catch (error) {
             console.error("Error marking chat as read:", error);
-            // Still update local state even if backend call fails
-            setChats((prevChats) =>
-              prevChats.map((chat) =>
-                chat.id === selectedChat.id ? { ...chat, unreadCount: 0 } : chat
-              )
-            );
           }
         }
       }
@@ -655,43 +719,26 @@ export default function FloatingChatButton({
                             key={chat.id}
                             onClick={async () => {
                               try {
-                                // Mark chat as read in backend
-                                const response = await apiClient.markChatAsRead(
-                                  chat.id
-                                );
-
-                                if (
-                                  response &&
-                                  typeof response === "object" &&
-                                  "success" in response &&
-                                  response.success
-                                ) {
-                                  // Mark chat as read by setting unreadCount to 0
-                                  const updatedChat = {
-                                    ...chat,
-                                    unreadCount: 0,
-                                  };
-                                  setSelectedChat(updatedChat);
-                                  setView("chat");
-                                  setChats((prevChats) =>
-                                    prevChats.map((c) =>
-                                      c.id === chat.id ? updatedChat : c
-                                    )
-                                  );
-
-                                  // Refresh chats list to ensure backend sync
-                                  setTimeout(() => {
-                                    fetchChats();
-                                  }, 100);
+                                // Mark chat as read via socket (this will trigger messagesRead event)
+                                if (getSocketService().isSocketConnected()) {
+                                  getSocketService().markAsRead(chat.id);
                                 } else {
-                                  console.error(
-                                    "Backend returned error:",
-                                    response
-                                  );
-                                  // Still open the chat even if marking as read fails
-                                  setSelectedChat(chat);
-                                  setView("chat");
+                                  // Fallback to REST API if socket not connected
+                                  await apiClient.markChatAsRead(chat.id);
                                 }
+
+                                // Mark chat as read by setting unreadCount to 0
+                                const updatedChat = {
+                                  ...chat,
+                                  unreadCount: 0,
+                                };
+                                setSelectedChat(updatedChat);
+                                setView("chat");
+                                setChats((prevChats) =>
+                                  prevChats.map((c) =>
+                                    c.id === chat.id ? updatedChat : c
+                                  )
+                                );
                               } catch (error) {
                                 console.error(
                                   "Error marking chat as read:",
