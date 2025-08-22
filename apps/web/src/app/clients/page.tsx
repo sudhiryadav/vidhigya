@@ -242,7 +242,7 @@ export default function ClientsPage() {
               Access Denied
             </h1>
             <p className="text-muted-foreground">
-              You don't have permission to access the clients page.
+              You don&apos;t have permission to access the clients page.
             </p>
           </div>
         </div>
