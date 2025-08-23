@@ -63,21 +63,21 @@ export class PermissionGuard implements CanActivate {
 
     switch (resource) {
       case PermissionResource.CASE:
-        return params.caseId || params.id;
+        return params?.caseId || params?.id;
       case PermissionResource.CLIENT:
-        return params.clientId || params.id;
+        return params?.clientId || params?.id;
       case PermissionResource.DOCUMENT:
-        return params.documentId || params.id;
+        return params?.documentId || params?.id;
       case PermissionResource.BILLING:
-        return params.billingId || params.id;
+        return params?.billingId || params?.id;
       case PermissionResource.CALENDAR:
-        return params.eventId || params.id;
+        return params?.eventId || params?.id;
       case PermissionResource.TASK:
-        return params.taskId || params.id;
+        return params?.taskId || params?.id;
       case PermissionResource.USER:
-        return params.userId || params.id;
+        return params?.userId || params?.id;
       default:
-        return params.id;
+        return params?.id;
     }
   }
 
@@ -89,10 +89,10 @@ export class PermissionGuard implements CanActivate {
 
     // Check various possible locations for practiceId
     return (
-      params.practiceId ||
-      body.practiceId ||
-      query.practiceId ||
-      body.practice?.id ||
+      params?.practiceId ||
+      body?.practiceId ||
+      query?.practiceId ||
+      body?.practice?.id ||
       request.user?.primaryPracticeId
     );
   }
