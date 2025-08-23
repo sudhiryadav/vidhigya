@@ -4,7 +4,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Currency } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -77,6 +76,9 @@ export class AuthService {
       throw new UnauthorizedException('Account is deactivated');
     }
 
+    // For now, return basic user info without practice details
+    // Practice information will be fetched separately when needed
+
     const payload = { email: user.email, sub: user.id, role: user.role };
     const token = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '30d' });
@@ -118,13 +120,7 @@ export class AuthService {
         name: registerRequest.name,
         role: registerRequest.role,
         phone: registerRequest.phone,
-        userSettings: registerRequest.currency
-          ? {
-              create: {
-                currency: registerRequest.currency as Currency,
-              },
-            }
-          : undefined,
+        // Note: userSettings will be created when user joins a practice
       },
     });
 

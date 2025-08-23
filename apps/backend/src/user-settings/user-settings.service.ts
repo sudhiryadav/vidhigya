@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export interface CreateUserSettingsDto {
   userId: string;
   currency?: Currency;
+  practiceId: string;
 }
 
 export interface UpdateUserSettingsDto {
@@ -107,9 +108,10 @@ export class UserSettingsService {
     });
 
     if (!existingSettings) {
-      // Create settings if they don't exist
+      // Create settings if they don't exist - use default practice
       return this.create({
         userId,
+        practiceId: 'default-practice',
         ...updateUserSettingsDto,
       });
     }

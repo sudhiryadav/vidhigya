@@ -1,51 +1,172 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { TaskPriority, TaskStatus } from '@prisma/client';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-
-export interface CreateTaskDto {
-  title: string;
-  description?: string;
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  dueDate?: Date;
-  caseId?: string;
-  assignedToId?: string;
-}
-
-export interface UpdateTaskDto {
-  title?: string;
-  description?: string;
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  dueDate?: Date;
-  caseId?: string;
-  assignedToId?: string;
-  completedAt?: Date;
-}
+import { AssignTaskDto, CreateTaskDto, UpdateTaskDto } from './dto/task.dto';
 
 @Injectable()
 export class TasksService {
   constructor(private prisma: PrismaService) {}
 
-  async createTask(createTaskDto: CreateTaskDto, userId: string) {
-    const { assignedToId, caseId, ...taskData } = createTaskDto;
+  async getAllTasks(userId: string) {
+    // First check if user is a super admin
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Super admins can see all tasks
+    if (user.role === 'SUPER_ADMIN') {
+      return this.prisma.task.findMany({
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          case: {
+            select: {
+              id: true,
+              caseNumber: true,
+              title: true,
+            },
+          },
+          client: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          practice: {
+            select: {
+              id: true,
+              name: true,
+              practiceType: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    } else {
+      // For non-super admins, get tasks from practices they're members of
+      const practiceMemberships = await this.prisma.practiceMember.findMany({
+        where: {
+          userId,
+          isActive: true,
+        },
+        select: {
+          practiceId: true,
+        },
+      });
+
+      const practiceIds = practiceMemberships.map((pm) => pm.practiceId);
+
+      if (practiceIds.length === 0) {
+        return [];
+      }
+
+      return this.prisma.task.findMany({
+        where: {
+          practiceId: {
+            in: practiceIds,
+          },
+        },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          case: {
+            select: {
+              id: true,
+              caseNumber: true,
+              title: true,
+            },
+          },
+          client: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          practice: {
+            select: {
+              id: true,
+              name: true,
+              practiceType: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    }
+  }
+
+  async createTask(userId: string, createTaskDto: CreateTaskDto) {
+    // First check if user is a super admin
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Super admins can create tasks in any practice
+    if (user.role === 'SUPER_ADMIN') {
+      // Continue without membership check
+    } else {
+      // For non-super admins, check if they have access to this practice
+      const practiceMember = await this.prisma.practiceMember.findFirst({
+        where: {
+          practiceId: createTaskDto.practiceId,
+          userId,
+          isActive: true,
+        },
+      });
+
+      if (!practiceMember) {
+        throw new ForbiddenException('Access denied to this practice');
+      }
+    }
 
     return this.prisma.task.create({
       data: {
-        ...taskData,
-        createdBy: {
-          connect: { id: userId },
-        },
-        ...(assignedToId && {
-          assignedTo: {
-            connect: { id: assignedToId },
-          },
-        }),
-        ...(caseId && {
-          case: {
-            connect: { id: caseId },
-          },
-        }),
+        ...createTaskDto,
+        createdById: userId,
+        dueDate: createTaskDto.dueDate ? new Date(createTaskDto.dueDate) : null,
       },
       include: {
         createdBy: {
@@ -69,55 +190,57 @@ export class TasksService {
             title: true,
           },
         },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        practice: {
+          select: {
+            id: true,
+            name: true,
+            practiceType: true,
+          },
+        },
       },
     });
   }
 
-  async findAll(
-    userId: string,
-    filters?: {
-      status?: TaskStatus;
-      priority?: TaskPriority;
-      caseId?: string;
-      assignedToId?: string;
-      dueDate?: Date;
-    },
-  ) {
-    const where: {
-      OR: Array<{ createdById: string } | { assignedToId: string }>;
-      status?: TaskStatus;
-      priority?: TaskPriority;
-      caseId?: string;
-      assignedToId?: string;
-      dueDate?: { lte: Date };
-    } = {
-      OR: [{ createdById: userId }, { assignedToId: userId }],
-    };
+  async getTasksByPractice(practiceId: string, userId: string) {
+    // First check if user is a super admin
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
 
-    if (filters?.status) {
-      where.status = filters.status;
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
-    if (filters?.priority) {
-      where.priority = filters.priority;
-    }
+    // Super admins can access any practice
+    if (user.role === 'SUPER_ADMIN') {
+      // Continue without membership check
+    } else {
+      // For non-super admins, check if they have access to this practice
+      const practiceMember = await this.prisma.practiceMember.findFirst({
+        where: {
+          practiceId,
+          userId,
+          isActive: true,
+        },
+      });
 
-    if (filters?.caseId) {
-      where.caseId = filters.caseId;
-    }
-
-    if (filters?.assignedToId) {
-      where.assignedToId = filters.assignedToId;
-    }
-
-    if (filters?.dueDate) {
-      where.dueDate = {
-        lte: filters.dueDate,
-      };
+      if (!practiceMember) {
+        throw new ForbiddenException('Access denied to this practice');
+      }
     }
 
     return this.prisma.task.findMany({
-      where,
+      where: {
+        practiceId,
+      },
       include: {
         createdBy: {
           select: {
@@ -140,21 +263,30 @@ export class TasksService {
             title: true,
           },
         },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        practice: {
+          select: {
+            id: true,
+            name: true,
+            practiceType: true,
+          },
+        },
       },
-      orderBy: [
-        { priority: 'desc' },
-        { dueDate: 'asc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
   }
 
-  async findOne(id: string, userId: string) {
-    const task = await this.prisma.task.findFirst({
-      where: {
-        id,
-        OR: [{ createdById: userId }, { assignedToId: userId }],
-      },
+  async getTaskById(taskId: string, userId: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
       include: {
         createdBy: {
           select: {
@@ -175,6 +307,20 @@ export class TasksService {
             id: true,
             caseNumber: true,
             title: true,
+          },
+        },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        practice: {
+          select: {
+            id: true,
+            name: true,
+            practiceType: true,
           },
         },
       },
@@ -182,92 +328,54 @@ export class TasksService {
 
     if (!task) {
       throw new NotFoundException('Task not found');
+    }
+
+    // Check if user has access to this task's practice
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Super admins can access any task
+    if (user.role === 'SUPER_ADMIN') {
+      // Continue without membership check
+    } else {
+      // For non-super admins, check if they have access to this task's practice
+      const practiceMember = await this.prisma.practiceMember.findFirst({
+        where: {
+          practiceId: task.practiceId,
+          userId,
+          isActive: true,
+        },
+      });
+
+      if (!practiceMember) {
+        throw new ForbiddenException('Access denied to this task');
+      }
     }
 
     return task;
   }
 
-  async update(id: string, updateTaskDto: UpdateTaskDto, userId: string) {
-    const task = await this.prisma.task.findFirst({
-      where: {
-        id,
-        createdById: userId,
-      },
-    });
-
-    if (!task) {
-      throw new NotFoundException(
-        'Task not found or you do not have permission to edit it',
-      );
-    }
-
-    const { assignedToId, caseId, ...taskData } = updateTaskDto;
-
-    return this.prisma.task.update({
-      where: { id },
-      data: {
-        ...taskData,
-        ...(assignedToId && {
-          assignedTo: {
-            connect: { id: assignedToId },
-          },
-        }),
-        ...(caseId && {
-          case: {
-            connect: { id: caseId },
-          },
-        }),
-      },
+  async updateTask(
+    taskId: string,
+    userId: string,
+    updateTaskDto: UpdateTaskDto,
+  ) {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
       include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+        practice: {
+          include: {
+            members: {
+              where: { userId },
+            },
           },
         },
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        case: {
-          select: {
-            id: true,
-            caseNumber: true,
-            title: true,
-          },
-        },
-      },
-    });
-  }
-
-  async remove(id: string, userId: string) {
-    const task = await this.prisma.task.findFirst({
-      where: {
-        id,
-        createdById: userId,
-      },
-    });
-
-    if (!task) {
-      throw new NotFoundException(
-        'Task not found or you do not have permission to delete it',
-      );
-    }
-
-    return this.prisma.task.delete({
-      where: { id },
-    });
-  }
-
-  async markAsComplete(id: string, userId: string) {
-    const task = await this.prisma.task.findFirst({
-      where: {
-        id,
-        OR: [{ createdById: userId }, { assignedToId: userId }],
       },
     });
 
@@ -275,11 +383,33 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
+    // Check if user has access to this task's practice
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Super admins can update any task
+    if (user.role === 'SUPER_ADMIN') {
+      // Continue without membership check
+    } else {
+      // For non-super admins, check if they have access to this task's practice
+      const practiceMember = task.practice.members[0];
+      if (!practiceMember) {
+        throw new ForbiddenException('Access denied to this task');
+      }
+    }
+
     return this.prisma.task.update({
-      where: { id },
+      where: { id: taskId },
       data: {
-        status: 'COMPLETED',
-        completedAt: new Date(),
+        ...updateTaskDto,
+        dueDate: updateTaskDto.dueDate ? new Date(updateTaskDto.dueDate) : null,
+        completedAt: updateTaskDto.status === 'COMPLETED' ? new Date() : null,
       },
       include: {
         createdBy: {
@@ -301,6 +431,152 @@ export class TasksService {
             id: true,
             caseNumber: true,
             title: true,
+          },
+        },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        practice: {
+          select: {
+            id: true,
+            name: true,
+            practiceType: true,
+          },
+        },
+      },
+    });
+  }
+
+  async deleteTask(taskId: string, userId: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        practice: {
+          include: {
+            members: {
+              where: { userId },
+            },
+          },
+        },
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    // Check if user has access to this task's practice
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Super admins can delete any task
+    if (user.role === 'SUPER_ADMIN') {
+      // Continue without membership check
+    } else {
+      // For non-super admins, check if they have access to this task's practice
+      const practiceMember = task.practice.members[0];
+      if (!practiceMember) {
+        throw new ForbiddenException('Access denied to this task');
+      }
+    }
+
+    return this.prisma.task.delete({
+      where: { id: taskId },
+    });
+  }
+
+  async assignTask(
+    taskId: string,
+    userId: string,
+    assignTaskDto: AssignTaskDto,
+  ) {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        practice: {
+          include: {
+            members: {
+              where: { userId },
+            },
+          },
+        },
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    // Check if user has access to this task's practice
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Super admins can assign any task
+    if (user.role === 'SUPER_ADMIN') {
+      // Continue without membership check
+    } else {
+      // For non-super admins, check if they have access to this task's practice
+      const practiceMember = task.practice.members[0];
+      if (!practiceMember) {
+        throw new ForbiddenException('Access denied to this task');
+      }
+    }
+
+    return this.prisma.task.update({
+      where: { id: taskId },
+      data: {
+        assignedToId: assignTaskDto.assignedToId,
+      },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        case: {
+          select: {
+            id: true,
+            caseNumber: true,
+            title: true,
+          },
+        },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        practice: {
+          select: {
+            id: true,
+            name: true,
+            practiceType: true,
           },
         },
       },
@@ -310,44 +586,7 @@ export class TasksService {
   async getMyTasks(userId: string) {
     return this.prisma.task.findMany({
       where: {
-        assignedToId: userId,
-        status: {
-          not: 'COMPLETED',
-        },
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        case: {
-          select: {
-            id: true,
-            caseNumber: true,
-            title: true,
-          },
-        },
-      },
-      orderBy: [{ priority: 'desc' }, { dueDate: 'asc' }],
-    });
-  }
-
-  async getOverdueTasks(userId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return this.prisma.task.findMany({
-      where: {
         OR: [{ createdById: userId }, { assignedToId: userId }],
-        status: {
-          not: 'COMPLETED',
-        },
-        dueDate: {
-          lt: today,
-        },
       },
       include: {
         createdBy: {
@@ -371,95 +610,24 @@ export class TasksService {
             title: true,
           },
         },
-      },
-      orderBy: [{ dueDate: 'asc' }, { priority: 'desc' }],
-    });
-  }
-
-  async getTasksByCase(caseId: string, userId: string) {
-    return this.prisma.task.findMany({
-      where: {
-        caseId,
-        OR: [{ createdById: userId }, { assignedToId: userId }],
-      },
-      include: {
-        createdBy: {
+        client: {
           select: {
             id: true,
             name: true,
             email: true,
           },
         },
-        assignedTo: {
+        practice: {
           select: {
             id: true,
             name: true,
-            email: true,
+            practiceType: true,
           },
         },
       },
-      orderBy: [
-        { priority: 'desc' },
-        { dueDate: 'asc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
-  }
-
-  async getTaskStats(userId: string) {
-    const [
-      totalTasks,
-      completedTasks,
-      pendingTasks,
-      overdueTasks,
-      highPriorityTasks,
-    ] = await Promise.all([
-      this.prisma.task.count({
-        where: {
-          OR: [{ createdById: userId }, { assignedToId: userId }],
-        },
-      }),
-      this.prisma.task.count({
-        where: {
-          OR: [{ createdById: userId }, { assignedToId: userId }],
-          status: 'COMPLETED',
-        },
-      }),
-      this.prisma.task.count({
-        where: {
-          OR: [{ createdById: userId }, { assignedToId: userId }],
-          status: 'PENDING',
-        },
-      }),
-      this.prisma.task.count({
-        where: {
-          OR: [{ createdById: userId }, { assignedToId: userId }],
-          status: {
-            not: 'COMPLETED',
-          },
-          dueDate: {
-            lt: new Date(),
-          },
-        },
-      }),
-      this.prisma.task.count({
-        where: {
-          OR: [{ createdById: userId }, { assignedToId: userId }],
-          priority: 'HIGH',
-          status: {
-            not: 'COMPLETED',
-          },
-        },
-      }),
-    ]);
-
-    return {
-      totalTasks,
-      completedTasks,
-      pendingTasks,
-      overdueTasks,
-      highPriorityTasks,
-      completionRate: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0,
-    };
   }
 }

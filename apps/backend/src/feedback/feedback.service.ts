@@ -7,6 +7,16 @@ export class FeedbackService {
   constructor(private prisma: PrismaService) {}
 
   async create(createFeedbackDto: CreateFeedbackDto, userId: string) {
+    // Get user's primary practice ID
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { primaryPracticeId: true },
+    });
+
+    if (!user?.primaryPracticeId) {
+      throw new Error('User has no primary practice');
+    }
+
     return this.prisma.feedback.create({
       data: {
         userId,
@@ -14,6 +24,7 @@ export class FeedbackService {
         feedback: createFeedbackDto.feedback,
         question: createFeedbackDto.question,
         answer: createFeedbackDto.answer,
+        practiceId: user.primaryPracticeId,
       },
       include: {
         user: {

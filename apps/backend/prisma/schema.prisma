@@ -7,79 +7,197 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Practice {
+  id                 String              @id @default(cuid())
+  name               String
+  practiceType       PracticeType        @default(INDIVIDUAL)
+  description        String?
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  billing            BillingRecord[]
+  events             CalendarEvent[]
+  callParticipants   CallParticipant[]
+  caseNotes          CaseNote[]
+  chatMessages       ChatMessage[]
+  clientPortals      ClientPortal[]
+  clients            Client[]
+  documentQueries    DocumentQuery[]
+  documentSignatures DocumentSignature[]
+  eventParticipants  EventParticipant[]
+  feedback           Feedback[]
+  fileShares         FileShare[]
+  firm               Firm?
+  cases              LegalCase[]
+  documents          LegalDocument[]
+  notifications      Notification[]
+  members            PracticeMember[]
+  tasks              Task[]
+  timeEntries        TimeEntry[]
+  userSettings       UserSettings[]
+  videoCalls         VideoCall[]
+
+  @@map("practices")
+}
+
+model Firm {
+  id                 String       @id @default(cuid())
+  practiceId         String       @unique
+  registrationNumber String?
+  address            String?
+  city               String?
+  state              String?
+  country            String       @default("India")
+  pincode            String?
+  phone              String?
+  email              String?
+  website            String?
+  taxId              String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  departments        Department[]
+  practice           Practice     @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+
+  @@map("firms")
+}
+
+model Department {
+  id           String           @id @default(cuid())
+  firmId       String
+  name         String
+  description  String?
+  practiceArea String?
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  firm         Firm             @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  members      PracticeMember[]
+
+  @@map("departments")
+}
+
+model PracticeMember {
+  id           String           @id @default(cuid())
+  practiceId   String
+  userId       String
+  role         PracticeRole     @default(STAFF)
+  departmentId String?
+  supervisorId String?
+  permissions  Json?
+  isActive     Boolean          @default(true)
+  joinDate     DateTime         @default(now())
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  department   Department?      @relation(fields: [departmentId], references: [id])
+  practice     Practice         @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  supervisor   PracticeMember?  @relation("StaffSupervision", fields: [supervisorId], references: [id])
+  supervised   PracticeMember[] @relation("StaffSupervision")
+  user         User             @relation("UserPractices", fields: [userId], references: [id], onDelete: Cascade)
+  primaryFor   User?            @relation("UserPrimaryPractice")
+
+  @@unique([practiceId, userId])
+  @@map("practice_members")
+}
+
+model Client {
+  id              String          @id @default(cuid())
+  practiceId      String
+  name            String
+  email           String?
+  phone           String?
+  address         String?
+  userId          String?
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  billing         BillingRecord[] @relation("ClientBilling")
+  events          CalendarEvent[] @relation("ClientEvents")
+  practice        Practice        @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  documentQueries DocumentQuery[] @relation("ClientDocumentQueries")
+  fileShares      FileShare[]     @relation("ClientFileShares")
+  documents       LegalDocument[] @relation("ClientDocuments")
+  tasks           Task[]          @relation("ClientTasks")
+  timeEntries     TimeEntry[]     @relation("ClientTimeEntries")
+  user            User?           @relation("ClientUser")
+  videoCalls      VideoCall[]     @relation("ClientVideoCalls")
+  cases           LegalCase[]
+
+  @@map("clients")
+}
+
 model Log {
   id        String   @id @default(cuid())
-  level     String   // info, error, warning, debug
+  level     String
   message   String
-  meta      Json?    // Additional metadata as JSON
-  userId    String?  // Optional user ID if log is associated with a user
-  user      User?    @relation(fields: [userId], references: [id])
+  meta      Json?
+  userId    String?
   createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@map("logs")
 }
 
 model User {
-  id                 String              @id @default(cuid())
-  email              String              @unique
-  name               String
-  password           String
-  role               UserRole            @default(CLIENT)
-  phone              String?
-  address            String?
-  avatarS3Key        String?             // S3 key for user's avatar
-  isActive           Boolean             @default(true)
-  emailVerified      Boolean             @default(false)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-
-  // Relations
-  assignedCases      LegalCase[]         @relation("AssignedLawyer")
-  clientCases        LegalCase[]         @relation("Client")
-  uploadedDocuments  LegalDocument[]
-  chatMessagesSent   ChatMessage[]       @relation("MessageSender")
-  chatMessagesReceived ChatMessage[]     @relation("MessageReceiver")
-  caseNotes          CaseNote[]
-  billingRecords     BillingRecord[]
-  userSettings       UserSettings?
-  documentSignatures DocumentSignature[]
-  fileShares         FileShare[]         @relation("FileOwner")
-  sharedFiles        FileShare[]         @relation("FileSharedWith")
-  notifications      Notification[]
-  createdEvents      CalendarEvent[]     @relation("EventCreator")
-  eventParticipants  EventParticipant[]
-  videoCalls         VideoCall[]         @relation("CallHost")
-  callParticipants   CallParticipant[]
-  timeEntries        TimeEntry[]
-  assignedTasks      Task[]              @relation("TaskAssignee")
-  createdTasks       Task[]              @relation("TaskCreator")
-  clientPortal       ClientPortal?
-  logs               Log[]
-  feedback           Feedback[]
-  documentQueries    DocumentQuery[]
+  id                   String              @id @default(cuid())
+  email                String              @unique
+  name                 String
+  password             String
+  role                 UserRole            @default(CLIENT)
+  phone                String?
+  isActive             Boolean             @default(true)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  address              String?
+  emailVerified        Boolean             @default(false)
+  avatarS3Key          String?
+  clientId             String?             @unique
+  primaryPracticeId    String?             @unique
+  billingRecords       BillingRecord[]
+  createdEvents        CalendarEvent[]     @relation("EventCreator")
+  callParticipants     CallParticipant[]
+  caseNotes            CaseNote[]
+  chatMessagesReceived ChatMessage[]       @relation("MessageReceiver")
+  chatMessagesSent     ChatMessage[]       @relation("MessageSender")
+  clientPortal         ClientPortal?
+  documentQueries      DocumentQuery[]
+  documentSignatures   DocumentSignature[]
+  eventParticipants    EventParticipant[]
+  feedback             Feedback[]
+  fileShares           FileShare[]         @relation("FileOwner")
+  sharedFiles          FileShare[]         @relation("FileSharedWith")
+  assignedCases        LegalCase[]         @relation("AssignedLawyer")
+  uploadedDocuments    LegalDocument[]
+  logs                 Log[]
+  notifications        Notification[]
+  practices            PracticeMember[]    @relation("UserPractices")
+  assignedTasks        Task[]              @relation("TaskAssignee")
+  createdTasks         Task[]              @relation("TaskCreator")
+  timeEntries          TimeEntry[]
+  userSettings         UserSettings?
+  client               Client?             @relation("ClientUser", fields: [clientId], references: [id])
+  primaryPractice      PracticeMember?     @relation("UserPrimaryPractice", fields: [primaryPracticeId], references: [id])
+  videoCalls           VideoCall[]         @relation("CallHost")
 
   @@map("users")
 }
 
 model Court {
-  id            String     @id @default(cuid())
-  name          String     @unique
-  type          CourtType
-  address       String
-  city          String
-  state         String
-  country       String     @default("India")
-  pincode       String?
-  phone         String?
-  email         String?
-  website       String?
-  jurisdiction  String?    // Jurisdiction area
-  isActive      Boolean    @default(true)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  
-  // Relations
-  cases         LegalCase[]
+  id           String      @id @default(cuid())
+  name         String      @unique
+  type         CourtType
+  address      String
+  city         String
+  state        String
+  country      String      @default("India")
+  pincode      String?
+  phone        String?
+  email        String?
+  website      String?
+  jurisdiction String?
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  cases        LegalCase[]
 
   @@map("courts")
 }
@@ -92,8 +210,6 @@ model LegalCase {
   status                  CaseStatus      @default(OPEN)
   priority                CasePriority    @default(MEDIUM)
   category                CaseCategory
-  courtId                 String?         // Reference to Court table
-  court                   Court?          @relation(fields: [courtId], references: [id])
   judge                   String?
   opposingParty           String?
   opposingLawyer          String?
@@ -104,59 +220,66 @@ model LegalCase {
   clientId                String
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt
+  courtId                 String?
+  practiceId              String
   billingRecords          BillingRecord[]
   events                  CalendarEvent[]
   notes                   CaseNote[]
+  documentQueries         DocumentQuery[]
   fileShares              FileShare[]
   assignedLawyer          User            @relation("AssignedLawyer", fields: [assignedLawyerId], references: [id])
-  client                  User            @relation("Client", fields: [clientId], references: [id])
+  client                  Client          @relation(fields: [clientId], references: [id])
+  court                   Court?          @relation(fields: [courtId], references: [id])
+  practice                Practice        @relation(fields: [practiceId], references: [id])
   documents               LegalDocument[]
   tasks                   Task[]
   timeEntries             TimeEntry[]
   videoCalls              VideoCall[]
-  documentQueries         DocumentQuery[]
 
   @@map("legal_cases")
 }
 
 model LegalDocument {
-  id           String              @id @default(cuid())
-  title        String
-  description  String?
-  fileUrl      String              // S3 key
-  originalFilename String?         // Original filename when uploaded
-  fileType     String
-  fileSize     Int
-  category     DocumentCategory
-  status       DocumentStatus      @default(DRAFT)
-  caseId       String?
-  uploadedById String
-  // AI Service fields
-  aiDocumentId String?             // Document ID from AI service
-  aiChunks     Int?                // Number of chunks processed by AI service
-  content      String?             // Extracted text content from AI service
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  signatures   DocumentSignature[]
-  fileShares   FileShare[]
-  case         LegalCase?          @relation(fields: [caseId], references: [id])
-  uploadedBy   User                @relation(fields: [uploadedById], references: [id])
+  id               String              @id @default(cuid())
+  title            String
+  description      String?
+  fileType         String
+  fileSize         Int
+  category         DocumentCategory
+  status           DocumentStatus      @default(DRAFT)
+  caseId           String?
+  uploadedById     String
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  fileUrl          String
+  aiChunks         Int?
+  aiDocumentId     String?
+  content          String?
+  originalFilename String?
+  clientId         String?
+  practiceId       String
+  signatures       DocumentSignature[]
+  fileShares       FileShare[]
+  case             LegalCase?          @relation(fields: [caseId], references: [id])
+  client           Client?             @relation("ClientDocuments", fields: [clientId], references: [id])
+  practice         Practice            @relation(fields: [practiceId], references: [id])
+  uploadedBy       User                @relation(fields: [uploadedById], references: [id])
 
   @@map("legal_documents")
 }
 
-
-
 model CaseNote {
-  id        String    @id @default(cuid())
-  content   String
-  type      NoteType  @default(GENERAL)
-  caseId    String
-  userId    String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  case      LegalCase @relation(fields: [caseId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
+  id         String    @id @default(cuid())
+  content    String
+  type       NoteType  @default(GENERAL)
+  caseId     String
+  userId     String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  practiceId String
+  case       LegalCase @relation(fields: [caseId], references: [id])
+  practice   Practice  @relation(fields: [practiceId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
 
   @@map("case_notes")
 }
@@ -170,6 +293,8 @@ model ChatMessage {
   isRead      Boolean     @default(false)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+  practiceId  String
+  practice    Practice    @relation(fields: [practiceId], references: [id])
   receiver    User        @relation("MessageReceiver", fields: [receiverId], references: [id])
   sender      User        @relation("MessageSender", fields: [senderId], references: [id])
 
@@ -179,7 +304,6 @@ model ChatMessage {
 model BillingRecord {
   id          String     @id @default(cuid())
   amount      Float
-  currency    Currency   @default(INR)
   description String
   billType    BillType
   status      BillStatus @default(PENDING)
@@ -189,22 +313,29 @@ model BillingRecord {
   userId      String
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  currency    Currency   @default(INR)
+  clientId    String?
+  practiceId  String
   case        LegalCase? @relation(fields: [caseId], references: [id])
+  client      Client?    @relation("ClientBilling", fields: [clientId], references: [id])
+  practice    Practice   @relation(fields: [practiceId], references: [id])
   user        User       @relation(fields: [userId], references: [id])
 
   @@map("billing_records")
 }
 
 model Notification {
-  id        String           @id @default(cuid())
-  title     String
-  message   String
-  type      NotificationType
-  isRead    Boolean          @default(false)
-  userId    String
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  user      User             @relation(fields: [userId], references: [id])
+  id         String           @id @default(cuid())
+  title      String
+  message    String
+  type       NotificationType
+  isRead     Boolean          @default(false)
+  userId     String
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  practiceId String
+  practice   Practice         @relation(fields: [practiceId], references: [id])
+  user       User             @relation(fields: [userId], references: [id])
 
   @@map("notifications")
 }
@@ -224,23 +355,29 @@ model CalendarEvent {
   createdById    String
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
+  clientId       String?
+  practiceId     String
   case           LegalCase?         @relation(fields: [caseId], references: [id])
+  client         Client?            @relation("ClientEvents", fields: [clientId], references: [id])
   createdBy      User               @relation("EventCreator", fields: [createdById], references: [id])
+  practice       Practice           @relation(fields: [practiceId], references: [id])
   participants   EventParticipant[]
 
   @@map("calendar_events")
 }
 
 model EventParticipant {
-  id        String            @id @default(cuid())
-  eventId   String
-  userId    String
-  status    ParticipantStatus @default(PENDING)
-  response  String?
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  event     CalendarEvent     @relation(fields: [eventId], references: [id])
-  user      User              @relation(fields: [userId], references: [id])
+  id         String            @id @default(cuid())
+  eventId    String
+  userId     String
+  status     ParticipantStatus @default(PENDING)
+  response   String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  practiceId String
+  event      CalendarEvent     @relation(fields: [eventId], references: [id])
+  practice   Practice          @relation(fields: [practiceId], references: [id])
+  user       User              @relation(fields: [userId], references: [id])
 
   @@unique([eventId, userId])
   @@map("event_participants")
@@ -259,24 +396,30 @@ model VideoCall {
   hostId       String
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+  clientId     String?
+  practiceId   String
   participants CallParticipant[]
   case         LegalCase?        @relation(fields: [caseId], references: [id])
+  client       Client?           @relation("ClientVideoCalls", fields: [clientId], references: [id])
   host         User              @relation("CallHost", fields: [hostId], references: [id])
+  practice     Practice          @relation(fields: [practiceId], references: [id])
 
   @@map("video_calls")
 }
 
 model CallParticipant {
-  id        String    @id @default(cuid())
-  callId    String
-  userId    String
-  joinedAt  DateTime?
-  leftAt    DateTime?
-  duration  Int?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  call      VideoCall @relation(fields: [callId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
+  id         String    @id @default(cuid())
+  callId     String
+  userId     String
+  joinedAt   DateTime?
+  leftAt     DateTime?
+  duration   Int?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  practiceId String
+  call       VideoCall @relation(fields: [callId], references: [id])
+  practice   Practice  @relation(fields: [practiceId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
 
   @@unique([callId, userId])
   @@map("call_participants")
@@ -294,7 +437,11 @@ model TimeEntry {
   userId      String
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  clientId    String?
+  practiceId  String
   case        LegalCase? @relation(fields: [caseId], references: [id])
+  client      Client?    @relation("ClientTimeEntries", fields: [clientId], references: [id])
+  practice    Practice   @relation(fields: [practiceId], references: [id])
   user        User       @relation(fields: [userId], references: [id])
 
   @@map("time_entries")
@@ -313,9 +460,13 @@ model Task {
   assignedToId String?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  clientId     String?
+  practiceId   String
   assignedTo   User?        @relation("TaskAssignee", fields: [assignedToId], references: [id])
   case         LegalCase?   @relation(fields: [caseId], references: [id])
+  client       Client?      @relation("ClientTasks", fields: [clientId], references: [id])
   createdBy    User         @relation("TaskCreator", fields: [createdById], references: [id])
+  practice     Practice     @relation(fields: [practiceId], references: [id])
 
   @@map("tasks")
 }
@@ -328,6 +479,8 @@ model ClientPortal {
   userId      String    @unique
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  practiceId  String
+  practice    Practice  @relation(fields: [practiceId], references: [id])
   user        User      @relation(fields: [userId], references: [id])
 
   @@map("client_portals")
@@ -343,7 +496,9 @@ model DocumentSignature {
   userId     String
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
+  practiceId String
   document   LegalDocument @relation(fields: [documentId], references: [id])
+  practice   Practice      @relation(fields: [practiceId], references: [id])
   user       User          @relation(fields: [userId], references: [id])
 
   @@map("document_signatures")
@@ -351,7 +506,6 @@ model DocumentSignature {
 
 model FileShare {
   id           String         @id @default(cuid())
-  fileUrl      String         // Changed from filePath to fileUrl for S3
   fileName     String
   fileType     String
   fileSize     Int
@@ -363,71 +517,125 @@ model FileShare {
   sharedWithId String?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+  fileUrl      String
+  clientId     String?
+  practiceId   String
   case         LegalCase?     @relation(fields: [caseId], references: [id])
+  client       Client?        @relation("ClientFileShares", fields: [clientId], references: [id])
   document     LegalDocument? @relation(fields: [documentId], references: [id])
   owner        User           @relation("FileOwner", fields: [ownerId], references: [id])
+  practice     Practice       @relation(fields: [practiceId], references: [id])
   sharedWith   User?          @relation("FileSharedWith", fields: [sharedWithId], references: [id])
 
   @@map("file_shares")
 }
 
 model UserSettings {
-  id                  String    @id @default(cuid())
-  userId              String    @unique
-  currency            Currency  @default(INR)
-  
-  // Notification settings
-  emailNotifications  Boolean   @default(true)
-  pushNotifications   Boolean   @default(true)
-  smsNotifications    Boolean   @default(false)
-  caseUpdates         Boolean   @default(true)
-  billingAlerts       Boolean   @default(true)
-  calendarReminders   Boolean   @default(true)
-  
-  // Privacy settings
-  profileVisibility   String    @default("public")
-  dataSharing         Boolean   @default(true)
-  twoFactorAuth       Boolean   @default(false)
-  
-  // Preference settings
-  language            String    @default("en")
-  timezone            String    @default("UTC")
-  dateFormat          String    @default("MM/DD/YYYY")
-  theme               String    @default("system")
-  fontSize            String    @default("sm")
-  
-  // Admin settings
-  maintenanceMode     Boolean   @default(false)
-  debugMode           Boolean   @default(false)
-  autoBackup          Boolean   @default(true)
-  dataRetention       String    @default("90")
-  sessionTimeout      String    @default("30")
-  passwordPolicy      String    @default("strong")
-  ipWhitelist         String    @default("")
-  auditLogging        Boolean   @default(true)
-  systemAlerts        Boolean   @default(true)
-  userActivity        Boolean   @default(false)
-  securityEvents      Boolean   @default(true)
-  backupNotifications  Boolean   @default(true)
-  emailProvider       String    @default("smtp")
-  smsProvider         String    @default("twilio")
-  storageProvider     String    @default("local")
-  analyticsEnabled    Boolean   @default(true)
-  
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  user                User      @relation(fields: [userId], references: [id])
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  currency            Currency @default(INR)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  analyticsEnabled    Boolean  @default(true)
+  auditLogging        Boolean  @default(true)
+  autoBackup          Boolean  @default(true)
+  backupNotifications Boolean  @default(true)
+  billingAlerts       Boolean  @default(true)
+  calendarReminders   Boolean  @default(true)
+  caseUpdates         Boolean  @default(true)
+  dataRetention       String   @default("90")
+  dataSharing         Boolean  @default(true)
+  dateFormat          String   @default("MM/DD/YYYY")
+  debugMode           Boolean  @default(false)
+  emailNotifications  Boolean  @default(true)
+  emailProvider       String   @default("smtp")
+  ipWhitelist         String   @default("")
+  language            String   @default("en")
+  maintenanceMode     Boolean  @default(false)
+  passwordPolicy      String   @default("strong")
+  profileVisibility   String   @default("public")
+  pushNotifications   Boolean  @default(true)
+  securityEvents      Boolean  @default(true)
+  sessionTimeout      String   @default("30")
+  smsNotifications    Boolean  @default(false)
+  smsProvider         String   @default("twilio")
+  storageProvider     String   @default("local")
+  systemAlerts        Boolean  @default(true)
+  theme               String   @default("system")
+  timezone            String   @default("UTC")
+  twoFactorAuth       Boolean  @default(false)
+  userActivity        Boolean  @default(false)
+  fontSize            String   @default("sm")
+  practiceId          String
+  practice            Practice @relation(fields: [practiceId], references: [id])
+  user                User     @relation(fields: [userId], references: [id])
 
   @@map("user_settings")
 }
 
-enum UserRole {
-  SUPER_ADMIN
-  ADMIN
-  LAWYER
+model Feedback {
+  id         String       @id @default(cuid())
+  userId     String
+  messageId  String
+  feedback   FeedbackType
+  question   String
+  answer     String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  practiceId String
+  practice   Practice     @relation(fields: [practiceId], references: [id])
+  user       User         @relation(fields: [userId], references: [id])
+
+  @@map("feedback")
+}
+
+model DocumentQuery {
+  id           String     @id @default(cuid())
+  userId       String
+  caseId       String?
+  question     String
+  answer       String
+  sources      Json?
+  queryType    QueryType  @default(GENERAL)
+  responseTime Int?
+  tokensUsed   Int?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+  isDeleted    Boolean    @default(false)
+  clientId     String?
+  practiceId   String
+  case         LegalCase? @relation(fields: [caseId], references: [id])
+  client       Client?    @relation("ClientDocumentQueries", fields: [clientId], references: [id])
+  practice     Practice   @relation(fields: [practiceId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
+
+  @@map("document_queries")
+}
+
+enum PracticeType {
+  INDIVIDUAL
+  FIRM
+  MIXED
+}
+
+enum PracticeRole {
+  OWNER
+  PARTNER
+  SENIOR_ASSOCIATE
   ASSOCIATE
   PARALEGAL
+  SUPPORT
+  STAFF
+}
+
+enum UserRole {
+  LAWYER
   CLIENT
+  ADMIN
+  ASSOCIATE
+  PARALEGAL
+  SUPER_ADMIN
 }
 
 enum CaseStatus {
@@ -585,40 +793,6 @@ enum CourtType {
   TRIBUNAL
   SPECIAL_COURT
   OTHER
-}
-
-model Feedback {
-  id          String        @id @default(cuid())
-  userId      String
-  user        User          @relation(fields: [userId], references: [id])
-  messageId   String        // ID of the AI response message
-  feedback    FeedbackType
-  question    String        // Original user question
-  answer      String        // AI response
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  @@map("feedback")
-}
-
-model DocumentQuery {
-  id          String        @id @default(cuid())
-  userId      String
-  user        User          @relation(fields: [userId], references: [id])
-  caseId      String?       // Optional: if query is related to a specific case
-  case        LegalCase?    @relation(fields: [caseId], references: [id])
-  question    String        // User's question
-  answer      String        // AI response
-  sources     Json?         // Array of source documents used
-  queryType   QueryType     @default(GENERAL)
-  responseTime Int?         // Response time in milliseconds
-  tokensUsed  Int?          // Number of tokens used
-  isDeleted   Boolean       @default(false) // Soft delete flag
-  deletedAt   DateTime?     // Soft delete timestamp
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  @@map("document_queries")
 }
 
 enum FeedbackType {

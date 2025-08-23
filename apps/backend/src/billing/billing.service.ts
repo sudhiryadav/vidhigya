@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { BillStatus, BillType, Currency } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -10,6 +14,7 @@ export interface CreateBillingRecordDto {
   dueDate?: Date;
   caseId?: string;
   userId: string;
+  practiceId: string;
 }
 
 export interface UpdateBillingRecordDto {
@@ -27,7 +32,41 @@ export interface UpdateBillingRecordDto {
 export class BillingService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper method to validate practice access
+  private async validatePracticeAccess(userId: string, practiceId: string) {
+    // Check if user is a super admin (bypass practice check)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    // Check if user is a member of the practice
+    const practiceMember = await this.prisma.practiceMember.findFirst({
+      where: {
+        practiceId,
+        userId,
+        isActive: true,
+      },
+    });
+
+    if (!practiceMember) {
+      throw new ForbiddenException('Access denied to this practice');
+    }
+
+    return true;
+  }
+
   async create(createBillingRecordDto: CreateBillingRecordDto) {
+    // Validate practice access
+    await this.validatePracticeAccess(
+      createBillingRecordDto.userId,
+      createBillingRecordDto.practiceId,
+    );
+
     return this.prisma.billingRecord.create({
       data: createBillingRecordDto,
       include: {
@@ -132,6 +171,9 @@ export class BillingService {
       throw new NotFoundException('Billing record not found');
     }
 
+    // Validate practice access
+    await this.validatePracticeAccess(userId, billingRecord.practiceId);
+
     return billingRecord;
   }
 
@@ -150,6 +192,9 @@ export class BillingService {
     if (!billingRecord) {
       throw new NotFoundException('Billing record not found');
     }
+
+    // Validate practice access
+    await this.validatePracticeAccess(userId, billingRecord.practiceId);
 
     return this.prisma.billingRecord.update({
       where: { id },
@@ -191,6 +236,9 @@ export class BillingService {
     if (!billingRecord) {
       throw new NotFoundException('Billing record not found');
     }
+
+    // Validate practice access
+    await this.validatePracticeAccess(userId, billingRecord.practiceId);
 
     return this.prisma.billingRecord.delete({
       where: { id },

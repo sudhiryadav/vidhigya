@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -23,6 +24,7 @@ export interface CreateEventDto {
   isRecurring?: boolean;
   recurrenceRule?: string;
   participantIds?: string[];
+  practiceId: string;
 }
 
 export interface UpdateEventDto {
@@ -52,7 +54,38 @@ export interface UpdateParticipantStatusDto {
 export class CalendarService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper method to validate practice access
+  private async validatePracticeAccess(userId: string, practiceId: string) {
+    // Check if user is a super admin (bypass practice check)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    // Check if user is a member of the practice
+    const practiceMember = await this.prisma.practiceMember.findFirst({
+      where: {
+        practiceId,
+        userId,
+        isActive: true,
+      },
+    });
+
+    if (!practiceMember) {
+      throw new ForbiddenException('Access denied to this practice');
+    }
+
+    return true;
+  }
+
   async createEvent(createEventDto: CreateEventDto, userId: string) {
+    // Validate practice access
+    await this.validatePracticeAccess(userId, createEventDto.practiceId);
+
     const { participantIds, ...eventData } = createEventDto;
 
     // Fix date formatting - ensure proper ISO-8601 format
@@ -107,6 +140,7 @@ export class CalendarService {
         eventId: event.id,
         userId: participantId,
         status: 'PENDING' as const,
+        practiceId: createEventDto.practiceId,
       }));
 
       await this.prisma.eventParticipant.createMany({
@@ -246,6 +280,9 @@ export class CalendarService {
       throw new NotFoundException('Event not found');
     }
 
+    // Validate practice access
+    await this.validatePracticeAccess(userId, event.practiceId);
+
     return event;
   }
 
@@ -262,6 +299,9 @@ export class CalendarService {
         'Event not found or you do not have permission to edit it',
       );
     }
+
+    // Validate practice access
+    await this.validatePracticeAccess(userId, event.practiceId);
 
     // Validate dates if both are provided
     if (updateEventDto.startTime && updateEventDto.endTime) {
@@ -331,6 +371,9 @@ export class CalendarService {
       );
     }
 
+    // Validate practice access
+    await this.validatePracticeAccess(userId, event.practiceId);
+
     return this.prisma.calendarEvent.delete({
       where: { id },
     });
@@ -392,6 +435,7 @@ export class CalendarService {
     eventId: string,
     participantIds: string[],
     userId: string,
+    practiceId: string,
   ) {
     const event = await this.prisma.calendarEvent.findFirst({
       where: {
@@ -406,10 +450,14 @@ export class CalendarService {
       );
     }
 
+    // Validate practice access
+    await this.validatePracticeAccess(userId, event.practiceId);
+
     const participants = participantIds.map((participantId) => ({
       eventId,
       userId: participantId,
       status: 'PENDING' as ParticipantStatus,
+      practiceId,
     }));
 
     return this.prisma.eventParticipant.createMany({
@@ -435,6 +483,9 @@ export class CalendarService {
         'Event not found or you do not have permission to remove participants',
       );
     }
+
+    // Validate practice access
+    await this.validatePracticeAccess(userId, event.practiceId);
 
     return this.prisma.eventParticipant.delete({
       where: {

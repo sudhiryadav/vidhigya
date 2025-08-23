@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -23,6 +24,7 @@ export interface CreateDocumentDto {
   caseId?: string;
   uploadedById: string;
   aiDocumentId?: string;
+  practiceId: string;
 }
 
 interface DocumentQuery {
@@ -39,7 +41,41 @@ export class DocumentsService {
     private readonly logsService: LogsService,
   ) {}
 
+  // Helper method to validate practice access
+  private async validatePracticeAccess(userId: string, practiceId: string) {
+    // Check if user is a super admin (bypass practice check)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    // Check if user is a member of the practice
+    const practiceMember = await this.prisma.practiceMember.findFirst({
+      where: {
+        practiceId,
+        userId,
+        isActive: true,
+      },
+    });
+
+    if (!practiceMember) {
+      throw new ForbiddenException('Access denied to this practice');
+    }
+
+    return true;
+  }
+
   async create(createDocumentDto: CreateDocumentDto) {
+    // Validate practice access
+    await this.validatePracticeAccess(
+      createDocumentDto.uploadedById,
+      createDocumentDto.practiceId,
+    );
+
     return this.prisma.legalDocument.create({
       data: createDocumentDto,
       include: {
@@ -134,6 +170,9 @@ export class DocumentsService {
       throw new NotFoundException('Document not found');
     }
 
+    // Validate practice access
+    await this.validatePracticeAccess(userId, document.practiceId);
+
     // Check if user has access to this document
     if (
       document.case &&
@@ -225,6 +264,19 @@ export class DocumentsService {
     queryType: QueryType = QueryType.GENERAL,
   ) {
     try {
+      // Get user's primary practice ID
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { primaryPracticeId: true },
+      });
+
+      if (!user?.primaryPracticeId) {
+        console.warn(
+          'User has no primary practice, skipping document query log',
+        );
+        return;
+      }
+
       const queryData: CreateDocumentQueryDto = {
         question,
         answer,
@@ -233,11 +285,13 @@ export class DocumentsService {
         queryType,
         responseTime,
         tokensUsed,
+        practiceId: user.primaryPracticeId,
       };
 
       await this.prisma.documentQuery.create({
         data: {
           userId,
+          practiceId: user.primaryPracticeId,
           ...queryData,
         },
       });

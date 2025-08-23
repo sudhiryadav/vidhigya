@@ -10,8 +10,12 @@ import { BillingModule } from './billing/billing.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { CasesModule } from './cases/cases.module';
 import { ChatModule } from './chat/chat.module';
-import { ClientPortalModule } from './client-portal/client-portal.module';
+// import { ClientPortalModule } from './client-portal/client-portal.module';
+import { ClientsModule } from './clients/clients.module';
+import { PracticesModule } from './practices/practices.module';
+import { TasksModule } from './tasks/tasks.module';
 
+import { PermissionModule } from './common/permissions/permission.module';
 import { QdrantModule } from './config/qdrant.module';
 import { S3Module } from './config/s3.module';
 import { CourtsModule } from './courts/courts.module';
@@ -21,9 +25,7 @@ import { LogsModule } from './logs/logs.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ReportsModule } from './reports/reports.module';
-import { TasksModule } from './tasks/tasks.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
-import { VideoCallsModule } from './video-calls/video-calls.module';
 
 @Module({
   imports: [
@@ -36,23 +38,27 @@ import { VideoCallsModule } from './video-calls/video-calls.module';
     PrismaModule,
     S3Module,
     QdrantModule,
+    PermissionModule,
 
     AuthModule,
-    CasesModule,
-    DocumentsModule,
-    LogsModule,
-    ChatModule,
+    PracticesModule,
+    ClientsModule,
+    UserSettingsModule,
     BillingModule,
     CalendarModule,
-    TasksModule,
-    NotificationsModule,
-    ClientPortalModule,
-    UserSettingsModule,
-    VideoCallsModule,
+    CasesModule,
+    DocumentsModule,
+    FeedbackModule,
+    ChatModule,
+    LogsModule,
     AdminModule,
     CourtsModule,
-    FeedbackModule,
     ReportsModule,
+    // Temporarily disabled due to practice system migration
+    // ClientPortalModule,
+    TasksModule,
+    NotificationsModule,
+    // VideoCallsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -8,6 +8,7 @@ interface CreateNotificationDto {
   message: string;
   type: NotificationType;
   userId: string;
+  practiceId: string;
 }
 
 @Injectable()
@@ -24,12 +25,17 @@ export class NotificationsService {
         message: data.message,
         type: data.type,
         userId: data.userId,
+        practiceId: data.practiceId,
       },
     });
   }
 
-  async findAll(userId: string, filters?: { isRead?: boolean; type?: string }) {
-    const where: Prisma.NotificationWhereInput = { userId };
+  async findAll(
+    userId: string,
+    practiceId: string,
+    filters?: { isRead?: boolean; type?: string },
+  ) {
+    const where: Prisma.NotificationWhereInput = { userId, practiceId };
 
     if (filters?.isRead !== undefined) {
       where.isRead = filters.isRead;
@@ -45,11 +51,12 @@ export class NotificationsService {
     });
   }
 
-  async findOne(id: string, userId: string) {
+  async findOne(id: string, userId: string, practiceId: string) {
     const notification = await this.prisma.notification.findFirst({
       where: {
         id,
         userId,
+        practiceId,
       },
       include: {
         user: {
@@ -69,11 +76,12 @@ export class NotificationsService {
     return notification;
   }
 
-  async markAsRead(id: string, userId: string) {
+  async markAsRead(id: string, userId: string, practiceId: string) {
     const notification = await this.prisma.notification.findFirst({
       where: {
         id,
         userId,
+        practiceId,
       },
     });
 
@@ -96,10 +104,11 @@ export class NotificationsService {
     });
   }
 
-  async markAllAsRead(userId: string) {
+  async markAllAsRead(userId: string, practiceId: string) {
     return this.prisma.notification.updateMany({
       where: {
         userId,
+        practiceId,
         isRead: false,
       },
       data: {
@@ -108,11 +117,12 @@ export class NotificationsService {
     });
   }
 
-  async remove(id: string, userId: string) {
+  async remove(id: string, userId: string, practiceId: string) {
     const notification = await this.prisma.notification.findFirst({
       where: {
         id,
         userId,
+        practiceId,
       },
     });
 
@@ -125,10 +135,11 @@ export class NotificationsService {
     });
   }
 
-  async getUnreadCount(userId: string) {
+  async getUnreadCount(userId: string, practiceId: string) {
     return this.prisma.notification.count({
       where: {
         userId,
+        practiceId,
         isRead: false,
       },
     });
@@ -156,6 +167,7 @@ export class NotificationsService {
       message,
       type: NotificationType.CASE_UPDATE,
       userId: assignedToId,
+      practiceId: task.practiceId,
     });
   }
 
@@ -183,6 +195,7 @@ export class NotificationsService {
       message,
       type: NotificationType.HEARING_REMINDER,
       userId: participantId,
+      practiceId: event.practiceId,
     });
   }
 
@@ -215,6 +228,7 @@ export class NotificationsService {
         message,
         type: NotificationType.DOCUMENT_UPLOAD,
         userId: document.case.assignedLawyerId,
+        practiceId: document.practiceId,
       });
     }
 
@@ -225,6 +239,7 @@ export class NotificationsService {
         message,
         type: NotificationType.DOCUMENT_UPLOAD,
         userId: document.case.clientId,
+        practiceId: document.practiceId,
       });
     }
   }
@@ -247,6 +262,7 @@ export class NotificationsService {
       message,
       type: NotificationType.BILLING,
       userId: clientId,
+      practiceId: bill.practiceId,
     });
   }
 
@@ -277,6 +293,7 @@ export class NotificationsService {
       message,
       type: NotificationType.SYSTEM,
       userId: participantId,
+      practiceId: call.practiceId,
     });
   }
 
@@ -307,6 +324,7 @@ export class NotificationsService {
       message,
       type: NotificationType.SYSTEM,
       userId: participantId,
+      practiceId: call.practiceId,
     });
 
     // Emit socket event for real-time notification
@@ -351,6 +369,7 @@ export class NotificationsService {
       message,
       type: NotificationType.SYSTEM,
       userId: participantId,
+      practiceId: call.practiceId,
     });
 
     // Emit socket event for real-time notification

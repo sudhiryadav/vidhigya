@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -26,6 +27,7 @@ export interface CreateCaseDto {
   estimatedCompletionDate?: Date;
   clientId: string;
   assignedLawyerId: string;
+  practiceId: string;
 }
 
 export interface UpdateCaseDto {
@@ -49,6 +51,7 @@ export interface CreateCaseNoteDto {
   type: NoteType;
   caseId: string;
   userId: string;
+  practiceId: string;
 }
 
 export interface UpdateCaseNoteDto {
@@ -60,8 +63,42 @@ export interface UpdateCaseNoteDto {
 export class CasesService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper method to validate practice access
+  private async validatePracticeAccess(userId: string, practiceId: string) {
+    // Check if user is a super admin (bypass practice check)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    // Check if user is a member of the practice
+    const practiceMember = await this.prisma.practiceMember.findFirst({
+      where: {
+        practiceId,
+        userId,
+        isActive: true,
+      },
+    });
+
+    if (!practiceMember) {
+      throw new ForbiddenException('Access denied to this practice');
+    }
+
+    return true;
+  }
+
   // Case Management
   async create(createCaseDto: CreateCaseDto) {
+    // Validate practice access
+    await this.validatePracticeAccess(
+      createCaseDto.assignedLawyerId,
+      createCaseDto.practiceId,
+    );
+
     // Check if case number already exists
     const existingCase = await this.prisma.legalCase.findUnique({
       where: { caseNumber: createCaseDto.caseNumber },
@@ -192,7 +229,6 @@ export class CasesService {
     const legalCase = await this.prisma.legalCase.findFirst({
       where: {
         id,
-        assignedLawyerId: userId,
       },
       include: {
         assignedLawyer: {
@@ -281,6 +317,9 @@ export class CasesService {
       throw new NotFoundException('Case not found');
     }
 
+    // Validate practice access
+    await this.validatePracticeAccess(userId, legalCase.practiceId);
+
     return legalCase;
   }
 
@@ -288,13 +327,15 @@ export class CasesService {
     const legalCase = await this.prisma.legalCase.findFirst({
       where: {
         id,
-        assignedLawyerId: userId,
       },
     });
 
     if (!legalCase) {
       throw new NotFoundException('Case not found');
     }
+
+    // Validate practice access
+    await this.validatePracticeAccess(userId, legalCase.practiceId);
 
     return this.prisma.legalCase.update({
       where: { id },
@@ -323,13 +364,15 @@ export class CasesService {
     const legalCase = await this.prisma.legalCase.findFirst({
       where: {
         id,
-        assignedLawyerId: userId,
       },
     });
 
     if (!legalCase) {
       throw new NotFoundException('Case not found');
     }
+
+    // Validate practice access
+    await this.validatePracticeAccess(userId, legalCase.practiceId);
 
     return this.prisma.legalCase.delete({
       where: { id },
@@ -338,6 +381,12 @@ export class CasesService {
 
   // Case Notes Management
   async createNote(createNoteDto: CreateCaseNoteDto) {
+    // Validate practice access
+    await this.validatePracticeAccess(
+      createNoteDto.userId,
+      createNoteDto.practiceId,
+    );
+
     return this.prisma.caseNote.create({
       data: createNoteDto,
       include: {
@@ -435,26 +484,26 @@ export class CasesService {
     });
 
     const where: {
-      role: 'CLIENT';
-      clientCases?: {
+      isActive: boolean;
+      cases?: {
         some: {
           assignedLawyerId: string;
         };
       };
     } = {
-      role: 'CLIENT',
+      isActive: true,
     };
 
     // For non-admin users, only show clients with cases assigned to them
     if (user?.role !== 'SUPER_ADMIN' && user?.role !== 'ADMIN') {
-      where.clientCases = {
+      where.cases = {
         some: {
           assignedLawyerId: lawyerId,
         },
       };
     }
 
-    return this.prisma.user.findMany({
+    return this.prisma.client.findMany({
       where,
       select: {
         id: true,
@@ -463,7 +512,7 @@ export class CasesService {
         phone: true,
         isActive: true,
         createdAt: true,
-        clientCases: {
+        cases: {
           select: {
             id: true,
             caseNumber: true,
@@ -493,27 +542,27 @@ export class CasesService {
 
     const where: {
       id: string;
-      role: 'CLIENT';
-      clientCases?: {
+      isActive: boolean;
+      cases?: {
         some: {
           assignedLawyerId: string;
         };
       };
     } = {
       id: clientId,
-      role: 'CLIENT',
+      isActive: true,
     };
 
     // For non-admin users, only show clients with cases assigned to them
     if (user?.role !== 'SUPER_ADMIN' && user?.role !== 'ADMIN') {
-      where.clientCases = {
+      where.cases = {
         some: {
           assignedLawyerId: lawyerId,
         },
       };
     }
 
-    const client = await this.prisma.user.findFirst({
+    const client = await this.prisma.client.findFirst({
       where,
       select: {
         id: true,
@@ -522,7 +571,7 @@ export class CasesService {
         phone: true,
         isActive: true,
         createdAt: true,
-        clientCases: {
+        cases: {
           select: {
             id: true,
             caseNumber: true,
@@ -615,10 +664,10 @@ export class CasesService {
           status: { in: ['CLOSED', 'ARCHIVED'] },
         },
       }),
-      this.prisma.user.count({
+      this.prisma.client.count({
         where: {
-          role: 'CLIENT',
-          clientCases: {
+          isActive: true,
+          cases: {
             some: {
               assignedLawyerId: lawyerId,
             },
@@ -695,10 +744,10 @@ export class CasesService {
         },
       }),
       // New clients this month
-      this.prisma.user.count({
+      this.prisma.client.count({
         where: {
-          role: 'CLIENT',
-          clientCases: {
+          isActive: true,
+          cases: {
             some: {
               assignedLawyerId: lawyerId,
               createdAt: {

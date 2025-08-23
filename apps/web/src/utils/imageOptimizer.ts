@@ -12,11 +12,11 @@ interface ImageOptimizationOptions {
 }
 
 const defaultOptions: Required<ImageOptimizationOptions> = {
-  maxWidth: 200,
-  maxHeight: 200,
+  maxWidth: 400,
+  maxHeight: 400,
   quality: 0.8,
   format: "jpeg",
-  maxFileSize: 1024 * 1024, // 1MB
+  maxFileSize: 1024 * 1024, // 1MB target, but will compress to meet backend limit
 };
 
 export class ImageOptimizer {
@@ -29,12 +29,8 @@ export class ImageOptimizer {
   ): Promise<File> {
     const opts = { ...defaultOptions, ...options };
 
-    // Check file size first
-    if (file.size > opts.maxFileSize) {
-      throw new Error(
-        `File size ${file.size} bytes exceeds maximum allowed size of ${opts.maxFileSize} bytes`
-      );
-    }
+    // Don't throw error for large files, instead compress them aggressively
+    const needsCompression = file.size > opts.maxFileSize;
 
     return new Promise((resolve, reject) => {
       const canvas = document.createElement("canvas");
@@ -44,12 +40,26 @@ export class ImageOptimizer {
       img.onload = () => {
         try {
           // Calculate new dimensions while maintaining aspect ratio
-          const { width, height } = this.calculateDimensions(
+          let { width, height } = this.calculateDimensions(
             img.width,
             img.height,
             opts.maxWidth,
             opts.maxHeight
           );
+
+          // If file is large, be more aggressive with compression
+          if (needsCompression) {
+            // Reduce dimensions further for large files
+            const scale = Math.min(
+              0.8,
+              Math.sqrt(opts.maxFileSize / file.size)
+            );
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+
+            // Also reduce quality for large files
+            opts.quality = Math.max(0.6, opts.quality * 0.8);
+          }
 
           // Set canvas dimensions
           canvas.width = width;
@@ -77,9 +87,31 @@ export class ImageOptimizer {
                       100
                     ).toFixed(1) + "%",
                   dimensions: `${width}x${height}`,
+                  quality: opts.quality,
                 });
 
-                resolve(optimizedFile);
+                // If still too large and we're compressing, try recursive compression
+                if (optimizedFile.size > opts.maxFileSize && needsCompression) {
+                  // Try even more aggressive compression
+                  const recursiveOptions = {
+                    ...opts,
+                    quality: Math.max(0.4, opts.quality * 0.7),
+                    maxWidth: Math.round(width * 0.8),
+                    maxHeight: Math.round(height * 0.8),
+                  };
+
+                  // Convert blob back to file and compress again
+                  const recursiveFile = new File([blob], file.name, {
+                    type: `image/${opts.format}`,
+                    lastModified: Date.now(),
+                  });
+
+                  ImageOptimizer.optimizeImage(recursiveFile, recursiveOptions)
+                    .then(resolve)
+                    .catch(() => resolve(optimizedFile)); // Fallback to current result
+                } else {
+                  resolve(optimizedFile);
+                }
               } else {
                 reject(new Error("Failed to create optimized image"));
               }

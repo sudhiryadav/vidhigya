@@ -50,27 +50,32 @@ export default function ProfilePictureUpload({
         fileType: file.type,
       });
 
-      // Validate file using ImageOptimizer
-      const validationError = ImageOptimizer.validateFile(
-        file,
-        parseInt(process.env.NEXT_PUBLIC_MAX_AVATAR_SIZE || "5242880") // 5MB from env
-      );
-      if (validationError) {
-        console.error("File validation failed:", validationError);
-        setValidationError(validationError);
+      // Check if file is extremely large (over 10MB) - these might be too large to compress effectively
+      const maxReasonableSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxReasonableSize) {
+        const errorMsg = `File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Please select a smaller image or compress it first.`;
+        setValidationError(errorMsg);
         return;
       }
 
-      // Show optimization progress
-      toast.loading("Optimizing image...", { id: "image-optimization" });
+      // For files under 5MB, they can go directly to optimization
+      // For files 5MB-10MB, they'll be aggressively compressed
 
-      // Optimize the image
+      // Show optimization progress with size info
+      const originalSizeMB = (file.size / 1024 / 1024).toFixed(1);
+      const message =
+        file.size > 1024 * 1024
+          ? `Optimizing large image (${originalSizeMB}MB)...`
+          : "Optimizing image...";
+      toast.loading(message, { id: "image-optimization" });
+
+      // Optimize the image - target 1MB but allow up to backend limit
       const optimizedFile = await ImageOptimizer.optimizeImage(file, {
         maxWidth: 400,
         maxHeight: 400,
         quality: 0.8,
         format: "jpeg",
-        maxFileSize: 1024 * 1024, // 1MB
+        maxFileSize: 1024 * 1024, // Target 1MB, but will compress aggressively if needed
       });
 
       console.log("Image optimization complete:", {
@@ -84,7 +89,18 @@ export default function ProfilePictureUpload({
       // Show optimization results
       const originalSize = ImageOptimizer.formatFileSize(file.size);
       const optimizedSize = ImageOptimizer.formatFileSize(optimizedFile.size);
-      toast.success(`Image optimized: ${originalSize} → ${optimizedSize}`);
+      const compressionRatio = (
+        ((file.size - optimizedFile.size) / file.size) *
+        100
+      ).toFixed(1);
+
+      if (file.size > 1024 * 1024) {
+        toast.success(
+          `Image compressed: ${originalSize} → ${optimizedSize} (${compressionRatio}% smaller)`
+        );
+      } else {
+        toast.success(`Image optimized: ${originalSize} → ${optimizedSize}`);
+      }
 
       // Create preview and base64 for auth context
       const reader = new FileReader();
@@ -103,8 +119,17 @@ export default function ProfilePictureUpload({
     } catch (error) {
       toast.dismiss("image-optimization");
       console.error("Image optimization error:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to process image";
+
+      let errorMessage = "Failed to process image";
+      if (error instanceof Error) {
+        if (error.message.includes("File size")) {
+          errorMessage =
+            "Image is too large even after compression. Please try a smaller image.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       setUploadError(errorMessage);
       toast.error(errorMessage);
     }
@@ -208,9 +233,9 @@ export default function ProfilePictureUpload({
               JPG, PNG, GIF, WebP
               <br />
               <span className="font-medium text-gray-700 dark:text-gray-300">
-                Max size:
+                Size:
               </span>{" "}
-              5MB
+              Up to 10MB (will be automatically compressed)
             </p>
 
             {/* Drag and Drop Upload Area */}
@@ -220,7 +245,7 @@ export default function ProfilePictureUpload({
                 "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"],
               }}
               maxFiles={1}
-              maxSize={5 * 1024 * 1024} // 5MB
+              maxSize={10 * 1024 * 1024} // 10MB - will be compressed
               disabled={isUploading}
               className="w-full max-w-xs mx-auto"
               showPreview={false}
@@ -234,35 +259,6 @@ export default function ProfilePictureUpload({
                 </p>
               </div>
             </DragAndDrop>
-
-            {/* File Info Display */}
-            {previewUrl && (
-              <div className="mt-3 p-3 bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-700 rounded-lg transition-all duration-200 ease-in-out hover:bg-green-200 dark:hover:bg-green-900/30">
-                <div className="flex items-center space-x-2">
-                  <div className="flex-shrink-0 w-4 h-4">
-                    <svg
-                      className="w-4 h-4 text-green-600 dark:text-green-400"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                      Image Selected
-                    </p>
-                    <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                      Your image has been processed and is ready for upload
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Error Messages */}
             {(validationError || uploadError) && (
@@ -295,7 +291,10 @@ export default function ProfilePictureUpload({
                         </p>
                         <ul className="list-disc list-inside mt-1 ml-2">
                           <li>A valid image file (JPG, PNG, GIF, or WebP)</li>
-                          <li>Under 5MB in size</li>
+                          <li>
+                            Under 10MB in size (will be automatically
+                            compressed)
+                          </li>
                           <li>Not corrupted or damaged</li>
                         </ul>
                       </div>

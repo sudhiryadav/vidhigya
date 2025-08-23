@@ -4,114 +4,90 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   Post,
-  Query,
+  Put,
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { TaskPriority, TaskStatus } from '@prisma/client';
+import { UserRole } from '@prisma/client';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CreateTaskDto, TasksService, UpdateTaskDto } from './tasks.service';
-
-interface AuthenticatedRequest extends Request {
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    role: string;
-  };
-}
-
-interface TaskQuery {
-  status?: string;
-  priority?: string;
-  caseId?: string;
-  assignedToId?: string;
-  dueDate?: string;
-}
-
-interface TaskFilters {
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  caseId?: string;
-  assignedToId?: string;
-  dueDate?: Date;
-}
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { AssignTaskDto, CreateTaskDto, UpdateTaskDto } from './dto/task.dto';
+import { TasksService } from './tasks.service';
 
 @Controller('tasks')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
-  @Post()
-  create(
-    @Body() createTaskDto: CreateTaskDto,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    return this.tasksService.createTask(createTaskDto, req.user.id);
+  @Get()
+  async getAllTasks(@Request() req) {
+    return this.tasksService.getAllTasks(req.user.sub);
   }
 
-  @Get()
-  findAll(@Request() req: AuthenticatedRequest, @Query() query: TaskQuery) {
-    const filters: TaskFilters = {};
+  @Post()
+  @Roles(
+    UserRole.LAWYER,
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.ASSOCIATE,
+  )
+  async createTask(@Request() req, @Body() createTaskDto: CreateTaskDto) {
+    return this.tasksService.createTask(req.user.sub, createTaskDto);
+  }
 
-    if (query.status) filters.status = query.status as TaskStatus;
-    if (query.priority) filters.priority = query.priority as TaskPriority;
-    if (query.caseId) filters.caseId = query.caseId;
-    if (query.assignedToId) filters.assignedToId = query.assignedToId;
-    if (query.dueDate) filters.dueDate = new Date(query.dueDate);
-
-    return this.tasksService.findAll(req.user.id, filters);
+  @Get('practice/:practiceId')
+  async getTasksByPractice(
+    @Param('practiceId') practiceId: string,
+    @Request() req,
+  ) {
+    return this.tasksService.getTasksByPractice(practiceId, req.user.sub);
   }
 
   @Get('my-tasks')
-  getMyTasks(@Request() req: AuthenticatedRequest) {
-    return this.tasksService.getMyTasks(req.user.id);
-  }
-
-  @Get('overdue')
-  getOverdueTasks(@Request() req: AuthenticatedRequest) {
-    return this.tasksService.getOverdueTasks(req.user.id);
-  }
-
-  @Get('stats')
-  getTaskStats(@Request() req: AuthenticatedRequest) {
-    return this.tasksService.getTaskStats(req.user.id);
-  }
-
-  @Get('case/:caseId')
-  getTasksByCase(
-    @Param('caseId') caseId: string,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    return this.tasksService.getTasksByCase(caseId, req.user.id);
+  async getMyTasks(@Request() req) {
+    return this.tasksService.getMyTasks(req.user.sub);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    return this.tasksService.findOne(id, req.user.id);
+  async getTaskById(@Param('id') id: string, @Request() req) {
+    return this.tasksService.getTaskById(id, req.user.sub);
   }
 
-  @Patch(':id')
-  update(
+  @Put(':id')
+  @Roles(
+    UserRole.LAWYER,
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.ASSOCIATE,
+  )
+  async updateTask(
     @Param('id') id: string,
+    @Request() req,
     @Body() updateTaskDto: UpdateTaskDto,
-    @Request() req: AuthenticatedRequest,
   ) {
-    return this.tasksService.update(id, updateTaskDto, req.user.id);
-  }
-
-  @Patch(':id/complete')
-  markAsComplete(
-    @Param('id') id: string,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    return this.tasksService.markAsComplete(id, req.user.id);
+    return this.tasksService.updateTask(id, req.user.sub, updateTaskDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    return this.tasksService.remove(id, req.user.id);
+  @Roles(UserRole.LAWYER, UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  async deleteTask(@Param('id') id: string, @Request() req) {
+    return this.tasksService.deleteTask(id, req.user.sub);
+  }
+
+  @Put(':id/assign')
+  @Roles(
+    UserRole.LAWYER,
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.ASSOCIATE,
+  )
+  async assignTask(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() assignTaskDto: AssignTaskDto,
+  ) {
+    return this.tasksService.assignTask(id, req.user.sub, assignTaskDto);
   }
 }

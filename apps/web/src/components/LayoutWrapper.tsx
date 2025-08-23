@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { RoleBasedNavigation } from "./RoleBasedNavigation";
+import { PermissionBasedNavigation } from "./PermissionBasedNavigation";
 
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
 
@@ -19,7 +19,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <RoleBasedNavigation />
+      <PermissionBasedNavigation />
       <main className="flex-1 md:ml-64 transition-all duration-300">
         {children}
       </main>

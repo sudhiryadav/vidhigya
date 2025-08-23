@@ -16,656 +16,414 @@ async function main() {
       password: superAdminPassword,
       name: 'Super Admin',
       role: 'SUPER_ADMIN',
-      phone: '+1 (555) 000-0001',
+      phone: '+91 98765-43210',
       isActive: true,
     },
   });
 
-  // Create Lawyers
-  const lawyerPassword = await bcrypt.hash('lawyer123', 10);
-  const lawyer1 = await prisma.user.upsert({
-    where: { email: 'lawyer@vidhigya.com' },
-    update: {},
-    create: {
-      email: 'lawyer@vidhigya.com',
-      password: lawyerPassword,
-      name: 'Lawyer John',
-      role: 'LAWYER',
-      phone: '+1 (555) 123-4567',
-      isActive: true,
-    },
-  });
+  console.log('✅ Created Super Admin:', superAdmin.name);
 
-  const lawyer2 = await prisma.user.upsert({
-    where: { email: 'sarah.johnson@vidhigya.com' },
-    update: {},
-    create: {
-      email: 'sarah.johnson@vidhigya.com',
-      password: lawyerPassword,
-      name: 'Sarah Johnson',
-      role: 'LAWYER',
-      phone: '+1 (555) 234-5678',
-      isActive: true,
-    },
-  });
-
-  // Create Associates
-  const associatePassword = await bcrypt.hash('associate123', 10);
-  const associate1 = await prisma.user.upsert({
-    where: { email: 'mike.wilson@vidhigya.com' },
-    update: {},
-    create: {
-      email: 'mike.wilson@vidhigya.com',
-      password: associatePassword,
-      name: 'Mike Wilson',
-      role: 'ASSOCIATE',
-      phone: '+1 (555) 345-6789',
-      isActive: true,
-    },
-  });
-
-  // Create Paralegals
-  const paralegalPassword = await bcrypt.hash('paralegal123', 10);
-  const paralegal1 = await prisma.user.upsert({
-    where: { email: 'emily.davis@vidhigya.com' },
-    update: {},
-    create: {
-      email: 'emily.davis@vidhigya.com',
-      password: paralegalPassword,
-      name: 'Emily Davis',
-      role: 'PARALEGAL',
-      phone: '+1 (555) 456-7890',
-      isActive: true,
-    },
-  });
-
-  // Create Clients
-  const clientPassword = await bcrypt.hash('client123', 10);
-  const client1 = await prisma.user.upsert({
-    where: { email: 'client@vidhigya.com' },
-    update: {},
-    create: {
-      email: 'client@vidhigya.com',
-      password: clientPassword,
-      name: 'Client Jane',
-      role: 'CLIENT',
-      phone: '+1 (555) 567-8901',
-      isActive: true,
-    },
-  });
-
-  const client2 = await prisma.user.upsert({
-    where: { email: 'robert.brown@vidhigya.com' },
-    update: {},
-    create: {
-      email: 'robert.brown@vidhigya.com',
-      password: clientPassword,
-      name: 'Robert Brown',
-      role: 'CLIENT',
-      phone: '+1 (555) 678-9012',
-      isActive: true,
-    },
-  });
-
-  const client3 = await prisma.user.upsert({
-    where: { email: 'maria.garcia@vidhigya.com' },
-    update: {},
-    create: {
-      email: 'maria.garcia@vidhigya.com',
-      password: clientPassword,
-      name: 'Maria Garcia',
-      role: 'CLIENT',
-      phone: '+1 (555) 789-0123',
-      isActive: true,
-    },
-  });
-
-  const client4 = await prisma.user.upsert({
-    where: { email: 'david.lee@vidhigya.com' },
-    update: {},
-    create: {
-      email: 'david.lee@vidhigya.com',
-      password: clientPassword,
-      name: 'David Lee',
-      role: 'CLIENT',
-      phone: '+1 (555) 890-1234',
-      isActive: true,
-    },
-  });
-
-  // Create Legal Cases
-  const case1 = await prisma.legalCase.create({
+  // Create Sample Law Firm Practice
+  const lawFirmPractice = await prisma.practice.create({
     data: {
-      caseNumber: 'CASE-2024-001',
-      title: 'Smith vs Johnson - Property Dispute',
-      description: 'Property boundary dispute between neighbors',
-      status: 'IN_PROGRESS',
-      priority: 'HIGH',
-      category: 'PROPERTY',
-      courtId: (
-        await prisma.court.findFirst({
-          where: { name: 'Tis Hazari District Court' },
-        })
-      )?.id,
-      judge: "Hon'ble Justice Ramesh Kumar",
-      opposingParty: 'Johnson Family',
-      opposingLawyer: 'Adv. Sarah Wilson',
-      assignedLawyerId: lawyer1.id,
-      clientId: client1.id,
-      nextHearingDate: new Date('2024-03-20T10:00:00Z'),
-    },
-  });
-
-  const case2 = await prisma.legalCase.create({
-    data: {
-      caseNumber: 'CASE-2024-002',
-      title: 'Employment Discrimination Case',
-      description: 'Workplace discrimination lawsuit',
-      status: 'OPEN',
-      priority: 'MEDIUM',
-      category: 'LABOR',
-      courtId: (
-        await prisma.court.findFirst({ where: { name: 'Delhi Labor Court' } })
-      )?.id,
-      judge: "Hon'ble Justice Priya Sharma",
-      opposingParty: 'TechCorp Solutions Ltd.',
-      opposingLawyer: 'Adv. Michael Brown',
-      assignedLawyerId: lawyer2.id,
-      clientId: client2.id,
-      nextHearingDate: new Date('2024-03-25T14:30:00Z'),
-    },
-  });
-
-  const case3 = await prisma.legalCase.create({
-    data: {
-      caseNumber: 'CASE-2024-003',
-      title: 'Contract Breach - Tech Startup',
-      description: 'Breach of contract in software development agreement',
-      status: 'PENDING',
-      priority: 'HIGH',
-      category: 'CORPORATE',
-      courtId: (
-        await prisma.court.findFirst({
-          where: { name: 'City Civil and Sessions Court, Mumbai' },
-        })
-      )?.id,
-      judge: "Hon'ble Justice Amit Patel",
-      opposingParty: 'InnovateTech Solutions',
-      opposingLawyer: 'Adv. Rajesh Kumar',
-      assignedLawyerId: lawyer1.id,
-      clientId: client3.id,
-      nextHearingDate: new Date('2024-03-28T09:00:00Z'),
-    },
-  });
-
-  const case4 = await prisma.legalCase.create({
-    data: {
-      caseNumber: 'CASE-2024-004',
-      title: 'Personal Injury - Car Accident',
-      description: 'Personal injury claim from automobile accident',
-      status: 'IN_PROGRESS',
-      priority: 'MEDIUM',
-      category: 'CIVIL',
-      courtId: (
-        await prisma.court.findFirst({
-          where: { name: 'City Civil Court, Chennai' },
-        })
-      )?.id,
-      judge: "Hon'ble Justice Lakshmi Devi",
-      opposingParty: 'Metro Transport Co.',
-      opposingLawyer: 'Adv. David Chen',
-      assignedLawyerId: lawyer2.id,
-      clientId: client4.id,
-      nextHearingDate: new Date('2024-04-02T11:00:00Z'),
-    },
-  });
-
-  const case5 = await prisma.legalCase.create({
-    data: {
-      caseNumber: 'CASE-2024-005',
-      title: 'Divorce Settlement',
-      description: 'Complex divorce case with property division',
-      status: 'OPEN',
-      priority: 'LOW',
-      category: 'FAMILY',
-      courtId: (
-        await prisma.court.findFirst({ where: { name: 'Family Court, Delhi' } })
-      )?.id,
-      judge: "Hon'ble Justice Meera Singh",
-      opposingParty: 'Spouse',
-      opposingLawyer: 'Adv. Jennifer Adams',
-      assignedLawyerId: lawyer1.id,
-      clientId: client1.id,
-      createdAt: new Date('2024-12-15T10:00:00Z'), // Last month
-    },
-  });
-
-  // Add a case from this month to demonstrate the new case counter
-  const case6 = await prisma.legalCase.create({
-    data: {
-      caseNumber: 'CASE-2025-001',
-      title: 'New Corporate Contract Review',
-      description: 'Review of new corporate partnership agreement',
-      status: 'OPEN',
-      priority: 'HIGH',
-      category: 'CORPORATE',
-      courtId: (
-        await prisma.court.findFirst({
-          where: { name: 'National Company Law Tribunal' },
-        })
-      )?.id,
-      judge: "Hon'ble Justice Sanjay Verma",
-      opposingParty: 'Global Enterprises Ltd.',
-      opposingLawyer: 'Adv. Robert Johnson',
-      assignedLawyerId: lawyer1.id,
-      clientId: client2.id,
-      createdAt: new Date(), // This month (current date)
-    },
-  });
-
-  // Create Legal Documents
-  await prisma.legalDocument.create({
-    data: {
-      title: 'Initial Complaint',
-      description: 'Original complaint filed with the court',
-      fileUrl: './uploads/documents/complaint.pdf',
-      fileType: 'application/pdf',
-      fileSize: 1024000,
-      category: 'PETITION',
-      status: 'FILED',
-      caseId: case1.id,
-      uploadedById: lawyer1.id,
-    },
-  });
-
-  await prisma.legalDocument.create({
-    data: {
-      title: 'Evidence - Property Survey',
-      description: 'Survey report showing property boundaries',
-      fileUrl:
-        'https://vidhigya-documents.s3.us-east-1.amazonaws.com/documents/survey.pdf',
-      fileType: 'application/pdf',
-      fileSize: 2048000,
-      category: 'EVIDENCE',
-      status: 'APPROVED',
-      caseId: case1.id,
-      uploadedById: associate1.id,
-    },
-  });
-
-  await prisma.legalDocument.create({
-    data: {
-      title: 'Employment Contract',
-      description: 'Original employment agreement',
-      fileUrl:
-        'https://vidhigya-documents.s3.us-east-1.amazonaws.com/documents/contract.pdf',
-      fileType: 'application/pdf',
-      fileSize: 1536000,
-      category: 'CONTRACT',
-      status: 'FILED',
-      caseId: case2.id,
-      uploadedById: lawyer2.id,
-    },
-  });
-
-  await prisma.legalDocument.create({
-    data: {
-      title: 'Witness Statement - John Doe',
-      description: 'Witness testimony regarding the incident',
-      fileUrl:
-        'https://vidhigya-documents.s3.us-east-1.amazonaws.com/documents/witness_statement.pdf',
-      fileType: 'application/pdf',
-      fileSize: 512000,
-      category: 'EVIDENCE',
-      status: 'APPROVED',
-      caseId: case2.id,
-      uploadedById: paralegal1.id,
-    },
-  });
-
-  await prisma.legalDocument.create({
-    data: {
-      title: 'Software Development Agreement',
-      description: 'Original contract between parties',
-      fileUrl:
-        'https://vidhigya-documents.s3.us-east-1.amazonaws.com/documents/software_contract.pdf',
-      fileType: 'application/pdf',
-      fileSize: 3072000,
-      category: 'CONTRACT',
-      status: 'FILED',
-      caseId: case3.id,
-      uploadedById: lawyer1.id,
-    },
-  });
-
-  await prisma.legalDocument.create({
-    data: {
-      title: 'Medical Records',
-      description: 'Hospital and medical treatment records',
-      fileUrl:
-        'https://vidhigya-documents.s3.us-east-1.amazonaws.com/documents/medical_records.pdf',
-      fileType: 'application/pdf',
-      fileSize: 4096000,
-      category: 'EVIDENCE',
-      status: 'APPROVED',
-      caseId: case4.id,
-      uploadedById: lawyer2.id,
-    },
-  });
-
-  // Create Billing Records
-  await prisma.billingRecord.create({
-    data: {
-      amount: 25000.0,
-      description: 'Legal consultation and document preparation',
-      billType: 'CONSULTATION',
-      status: 'PENDING',
-      dueDate: new Date('2024-03-15'),
-      caseId: case1.id,
-      userId: client1.id,
-      currency: 'INR',
-    },
-  });
-
-  await prisma.billingRecord.create({
-    data: {
-      amount: 15000.0,
-      description: 'Court appearance fee',
-      billType: 'COURT_APPEARANCE',
-      status: 'PAID',
-      dueDate: new Date('2024-02-28'),
-      caseId: case2.id,
-      userId: client2.id,
-      currency: 'INR',
-    },
-  });
-
-  await prisma.billingRecord.create({
-    data: {
-      amount: 32000.0,
-      description: 'Contract review and negotiation',
-      billType: 'CONSULTATION',
-      status: 'PENDING',
-      dueDate: new Date('2024-03-10'),
-      caseId: case3.id,
-      userId: client3.id,
-      currency: 'INR',
-    },
-  });
-
-  await prisma.billingRecord.create({
-    data: {
-      amount: 18000.0,
-      description: 'Medical records review and analysis',
-      billType: 'CONSULTATION',
-      status: 'PENDING',
-      dueDate: new Date('2024-03-20'),
-      caseId: case4.id,
-      userId: client4.id,
-      currency: 'INR',
-    },
-  });
-
-  await prisma.billingRecord.create({
-    data: {
-      amount: 9500.0,
-      description: 'Initial consultation and case assessment',
-      billType: 'CONSULTATION',
-      status: 'PAID',
-      dueDate: new Date('2024-02-15'),
-      caseId: case5.id,
-      userId: client1.id,
-      currency: 'INR',
-    },
-  });
-
-  // Add billing record for the new case
-  await prisma.billingRecord.create({
-    data: {
-      amount: 45000.0,
-      description: 'Corporate contract review and legal consultation',
-      billType: 'CONSULTATION',
-      status: 'PENDING',
-      dueDate: new Date('2025-02-15'),
-      caseId: case6.id,
-      userId: client2.id,
-      currency: 'INR',
-    },
-  });
-
-  // Add a billing record for admin to use the superAdmin variable
-  await prisma.billingRecord.create({
-    data: {
-      amount: 10000.0,
-      description: 'System administration fee',
-      billType: 'CONSULTATION',
-      status: 'PAID',
-      dueDate: new Date('2024-01-15'),
-      userId: superAdmin.id,
-      currency: 'INR',
-    },
-  });
-
-  // Create Calendar Events
-  const event1 = await prisma.calendarEvent.create({
-    data: {
-      title: 'Court Hearing - Smith vs Johnson',
-      description: 'Initial hearing for property dispute case',
-      startTime: new Date('2024-03-20T10:00:00Z'),
-      endTime: new Date('2024-03-20T11:30:00Z'),
-      eventType: 'HEARING',
-      location: 'County Courthouse, Room 302',
-      createdById: lawyer1.id,
-      caseId: case1.id,
-    },
-  });
-
-  const event2 = await prisma.calendarEvent.create({
-    data: {
-      title: 'Client Meeting - Employment Case',
-      description: 'Strategy meeting with client for discrimination case',
-      startTime: new Date('2024-03-22T14:00:00Z'),
-      endTime: new Date('2024-03-22T15:00:00Z'),
-      eventType: 'CLIENT_MEETING',
-      location: 'Law Office Conference Room',
-      createdById: lawyer2.id,
-      caseId: case2.id,
-    },
-  });
-
-  const event3 = await prisma.calendarEvent.create({
-    data: {
-      title: 'Mediation Session - Contract Dispute',
-      description: 'Mediation for software development contract breach',
-      startTime: new Date('2024-03-25T09:00:00Z'),
-      endTime: new Date('2024-03-25T12:00:00Z'),
-      eventType: 'OTHER',
-      location: 'Mediation Center, Suite 100',
-      createdById: lawyer1.id,
-      caseId: case3.id,
-    },
-  });
-
-  // Add participants to the events
-  await prisma.eventParticipant.create({
-    data: {
-      eventId: event1.id,
-      userId: lawyer1.id,
-      status: 'ACCEPTED',
-    },
-  });
-
-  await prisma.eventParticipant.create({
-    data: {
-      eventId: event1.id,
-      userId: client1.id,
-      status: 'PENDING',
-    },
-  });
-
-  await prisma.eventParticipant.create({
-    data: {
-      eventId: event2.id,
-      userId: lawyer2.id,
-      status: 'ACCEPTED',
-    },
-  });
-
-  await prisma.eventParticipant.create({
-    data: {
-      eventId: event2.id,
-      userId: client2.id,
-      status: 'ACCEPTED',
-    },
-  });
-
-  await prisma.eventParticipant.create({
-    data: {
-      eventId: event3.id,
-      userId: lawyer1.id,
-      status: 'ACCEPTED',
-    },
-  });
-
-  await prisma.eventParticipant.create({
-    data: {
-      eventId: event3.id,
-      userId: client3.id,
-      status: 'PENDING',
-    },
-  });
-
-  // Create Tasks
-  await prisma.task.create({
-    data: {
-      title: 'Review evidence documents',
-      description: 'Review and analyze all evidence for Smith vs Johnson case',
-      status: 'IN_PROGRESS',
-      priority: 'HIGH',
-      dueDate: new Date('2024-03-18'),
-      caseId: case1.id,
-      createdById: lawyer1.id,
-      assignedToId: associate1.id,
-    },
-  });
-
-  await prisma.task.create({
-    data: {
-      title: 'Prepare witness statements',
+      name: 'Johnson & Associates Law Firm',
+      practiceType: 'FIRM',
       description:
-        'Interview and prepare witness statements for employment case',
-      status: 'PENDING',
-      priority: 'MEDIUM',
-      dueDate: new Date('2024-03-25'),
-      caseId: case2.id,
-      createdById: lawyer2.id,
-      assignedToId: paralegal1.id,
+        'A premier law firm specializing in corporate law, litigation, and intellectual property',
+      isActive: true,
+      firm: {
+        create: {
+          registrationNumber: 'F-2024-001',
+          address: '123 Corporate Plaza, Business District',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          country: 'India',
+          pincode: '400001',
+          phone: '+91 22-1234-5678',
+          email: 'info@johnsonlaw.com',
+          website: 'www.johnsonlaw.com',
+          taxId: 'TAX-2024-001',
+        },
+      },
     },
   });
 
-  await prisma.task.create({
+  console.log('✅ Created Law Firm Practice:', lawFirmPractice.name);
+
+  // Create Super Admin Practice Member (access to law firm practice)
+  const superAdminMember = await prisma.practiceMember.create({
     data: {
-      title: 'Draft settlement proposal',
-      description: 'Prepare settlement proposal for contract dispute',
-      status: 'PENDING',
-      priority: 'HIGH',
-      dueDate: new Date('2024-03-23'),
-      caseId: case3.id,
-      createdById: lawyer1.id,
-      assignedToId: associate1.id,
+      practiceId: lawFirmPractice.id,
+      userId: superAdmin.id,
+      role: 'OWNER', // Super admin gets owner access
+      isActive: true,
     },
   });
 
-  await prisma.task.create({
-    data: {
-      title: 'Review medical records',
-      description: 'Analyze medical records for personal injury case',
-      status: 'IN_PROGRESS',
-      priority: 'MEDIUM',
-      dueDate: new Date('2024-03-30'),
-      caseId: case4.id,
-      createdById: lawyer2.id,
-      assignedToId: paralegal1.id,
+  // Update super admin with primaryPracticeId
+  await prisma.user.update({
+    where: { id: superAdmin.id },
+    data: { primaryPracticeId: superAdminMember.id },
+  });
+
+  // Create Firm Owner/Admin
+  const firmOwnerPassword = await bcrypt.hash('firm123', 10);
+  const firmOwner = await prisma.user.upsert({
+    where: { email: 'johnson@johnsonlaw.com' },
+    update: {},
+    create: {
+      email: 'johnson@johnsonlaw.com',
+      password: firmOwnerPassword,
+      name: 'Robert Johnson',
+      role: 'LAWYER',
+      phone: '+91 98765-43211',
+      isActive: true,
     },
   });
 
-  // Create Notifications
-  await prisma.notification.create({
+  // Create Practice Member for Firm Owner (OWNER role)
+  const firmOwnerMember = await prisma.practiceMember.create({
     data: {
-      title: 'New Case Assignment',
-      message: 'You have been assigned to case CASE-2024-001',
-      type: 'CASE_UPDATE',
-      isRead: false,
-      userId: lawyer1.id,
+      practiceId: lawFirmPractice.id,
+      userId: firmOwner.id,
+      role: 'OWNER',
+      isActive: true,
     },
   });
 
-  await prisma.notification.create({
-    data: {
-      title: 'Upcoming Hearing',
-      message: 'Court hearing scheduled for March 20, 2024',
-      type: 'HEARING_REMINDER',
-      isRead: false,
-      userId: client1.id,
+  // Update user with primaryPracticeId
+  await prisma.user.update({
+    where: { id: firmOwner.id },
+    data: { primaryPracticeId: firmOwnerMember.id },
+  });
+
+  console.log('✅ Created Firm Owner:', firmOwner.name);
+
+  // Create Firm Partner
+  const firmPartnerPassword = await bcrypt.hash('partner123', 10);
+  const firmPartner = await prisma.user.upsert({
+    where: { email: 'patel@johnsonlaw.com' },
+    update: {},
+    create: {
+      email: 'patel@johnsonlaw.com',
+      password: firmPartnerPassword,
+      name: 'Priya Patel',
+      role: 'LAWYER',
+      phone: '+91 98765-43212',
+      isActive: true,
     },
   });
 
-  await prisma.notification.create({
+  // Create Practice Member for Firm Partner
+  const firmPartnerMember = await prisma.practiceMember.create({
     data: {
-      title: 'Document Uploaded',
-      message: 'New document uploaded to your case CASE-2024-002',
-      type: 'DOCUMENT_UPLOAD',
-      isRead: false,
-      userId: client2.id,
+      practiceId: lawFirmPractice.id,
+      userId: firmPartner.id,
+      role: 'PARTNER',
+      isActive: true,
     },
   });
 
-  await prisma.notification.create({
-    data: {
-      title: 'Bill Due Soon',
-      message: 'Payment due for consultation services',
-      type: 'BILLING',
-      isRead: false,
-      userId: client3.id,
+  // Update user with primaryPracticeId
+  await prisma.user.update({
+    where: { id: firmPartner.id },
+    data: { primaryPracticeId: firmPartnerMember.id },
+  });
+
+  console.log('✅ Created Firm Partner:', firmPartner.name);
+
+  // Create Firm Associate
+  const firmAssociatePassword = await bcrypt.hash('associate123', 10);
+  const firmAssociate = await prisma.user.upsert({
+    where: { email: 'kumar@johnsonlaw.com' },
+    update: {},
+    create: {
+      email: 'kumar@johnsonlaw.com',
+      password: firmAssociatePassword,
+      name: 'Arun Kumar',
+      role: 'ASSOCIATE',
+      phone: '+91 98765-43213',
+      isActive: true,
     },
   });
+
+  // Create Practice Member for Firm Associate
+  const firmAssociateMember = await prisma.practiceMember.create({
+    data: {
+      practiceId: lawFirmPractice.id,
+      userId: firmAssociate.id,
+      role: 'ASSOCIATE',
+      isActive: true,
+    },
+  });
+
+  // Update user with primaryPracticeId
+  await prisma.user.update({
+    where: { id: firmAssociate.id },
+    data: { primaryPracticeId: firmAssociateMember.id },
+  });
+
+  console.log('✅ Created Firm Associate:', firmAssociate.name);
+
+  // Create Firm Paralegal
+  const firmParalegalPassword = await bcrypt.hash('paralegal123', 10);
+  const firmParalegal = await prisma.user.upsert({
+    where: { email: 'sharma@johnsonlaw.com' },
+    update: {},
+    create: {
+      email: 'sharma@johnsonlaw.com',
+      password: firmParalegalPassword,
+      name: 'Neha Sharma',
+      role: 'PARALEGAL',
+      phone: '+91 98765-43214',
+      isActive: true,
+    },
+  });
+
+  // Create Practice Member for Firm Paralegal
+  const firmParalegalMember = await prisma.practiceMember.create({
+    data: {
+      practiceId: lawFirmPractice.id,
+      userId: firmParalegal.id,
+      role: 'PARALEGAL',
+      isActive: true,
+    },
+  });
+
+  // Update user with primaryPracticeId
+  await prisma.user.update({
+    where: { id: firmParalegal.id },
+    data: { primaryPracticeId: firmParalegalMember.id },
+  });
+
+  console.log('✅ Created Firm Paralegal:', firmParalegal.name);
+
+  // Create Individual Lawyer Practice
+  const individualPractice = await prisma.practice.create({
+    data: {
+      name: 'Sarah Wilson Law Office',
+      practiceType: 'INDIVIDUAL',
+      description:
+        'Individual practice specializing in family law and estate planning',
+      isActive: true,
+    },
+  });
+
+  console.log('✅ Created Individual Practice:', individualPractice.name);
+
+  // Create Individual Lawyer
+  const individualLawyerPassword = await bcrypt.hash('individual123', 10);
+  const individualLawyer = await prisma.user.upsert({
+    where: { email: 'sarah@wilsonlaw.com' },
+    update: {},
+    create: {
+      email: 'sarah@wilsonlaw.com',
+      password: individualLawyerPassword,
+      name: 'Sarah Wilson',
+      role: 'LAWYER',
+      phone: '+91 98765-43215',
+      isActive: true,
+    },
+  });
+
+  // Create Practice Member for Individual Lawyer (OWNER role)
+  const individualLawyerMember = await prisma.practiceMember.create({
+    data: {
+      practiceId: individualPractice.id,
+      userId: individualLawyer.id,
+      role: 'OWNER',
+      isActive: true,
+    },
+  });
+
+  // Update user with primaryPracticeId
+  await prisma.user.update({
+    where: { id: individualLawyer.id },
+    data: { primaryPracticeId: individualLawyerMember.id },
+  });
+
+  console.log('✅ Created Individual Lawyer:', individualLawyer.name);
+
+  // Create Sample Clients for Law Firm
+  const client1 = await prisma.client.create({
+    data: {
+      name: 'TechCorp Solutions',
+      email: 'legal@techcorp.com',
+      phone: '+91 98765-43216',
+      address: '456 Tech Park, Innovation District, Mumbai, Maharashtra, India',
+      practiceId: lawFirmPractice.id,
+      isActive: true,
+    },
+  });
+
+  const client2 = await prisma.client.create({
+    data: {
+      name: 'Global Manufacturing Ltd',
+      email: 'legal@globalmfg.com',
+      phone: '+91 98765-43217',
+      address:
+        '789 Industrial Zone, Manufacturing District, Mumbai, Maharashtra, India',
+      practiceId: lawFirmPractice.id,
+      isActive: true,
+    },
+  });
+
+  console.log('✅ Created Firm Clients:', client1.name, 'and', client2.name);
+
+  // Create Sample Client for Individual Practice
+  const individualClient = await prisma.client.create({
+    data: {
+      name: 'Family Trust Estate',
+      email: 'trust@familyestate.com',
+      phone: '+91 98765-43218',
+      address:
+        '321 Heritage Lane, Residential Area, Mumbai, Maharashtra, India',
+      practiceId: individualPractice.id,
+      isActive: true,
+    },
+  });
+
+  console.log('✅ Created Individual Practice Client:', individualClient.name);
 
   // Create User Settings for all users
-  const allUsers = await prisma.user.findMany();
-  for (const user of allUsers) {
+  const users = [
+    superAdmin,
+    firmOwner,
+    firmPartner,
+    firmAssociate,
+    firmParalegal,
+    individualLawyer,
+  ];
+
+  for (const user of users) {
     await prisma.userSettings.upsert({
       where: { userId: user.id },
       update: {},
       create: {
         userId: user.id,
+        practiceId: user.primaryPracticeId || lawFirmPractice.id,
         currency: 'INR',
+        fontSize: 'md',
         emailNotifications: true,
         pushNotifications: true,
-        smsNotifications: false,
-        caseUpdates: true,
-        billingAlerts: true,
-        calendarReminders: true,
-        profileVisibility: 'public',
-        dataSharing: true,
-        twoFactorAuth: false,
-        language: 'en',
-        timezone: 'Asia/Kolkata',
-        dateFormat: 'DD/MM/YYYY',
-        theme: 'system',
       },
     });
   }
 
-  console.log('✅ Database seeding completed!');
-  console.log('📊 Created:');
-  console.log(`  - ${await prisma.user.count()} users`);
-  console.log(`  - ${await prisma.userSettings.count()} user settings`);
-  console.log(`  - ${await prisma.legalCase.count()} cases`);
-  console.log(`  - ${await prisma.legalDocument.count()} documents`);
-  console.log(`  - ${await prisma.billingRecord.count()} billing records`);
-  console.log(`  - ${await prisma.calendarEvent.count()} calendar events`);
-  console.log(`  - ${await prisma.task.count()} tasks`);
-  console.log(`  - ${await prisma.notification.count()} notifications`);
+  console.log('✅ Created User Settings for all users');
+
+  // Create Sample Cases
+  const firmCase = await prisma.legalCase.create({
+    data: {
+      caseNumber: 'CASE-2024-001',
+      title: 'TechCorp vs Competitor - Patent Infringement',
+      description: 'Patent infringement case involving software technology',
+      category: 'INTELLECTUAL_PROPERTY',
+      priority: 'HIGH',
+      status: 'OPEN',
+      clientId: client1.id,
+      assignedLawyerId: firmOwner.id,
+      practiceId: lawFirmPractice.id,
+    },
+  });
+
+  const individualCase = await prisma.legalCase.create({
+    data: {
+      caseNumber: 'CASE-2024-002',
+      title: 'Family Trust Estate Planning',
+      description: 'Comprehensive estate planning for family trust',
+      category: 'PROPERTY',
+      priority: 'MEDIUM',
+      status: 'OPEN',
+      clientId: individualClient.id,
+      assignedLawyerId: individualLawyer.id,
+      practiceId: individualPractice.id,
+    },
+  });
+
+  console.log('✅ Created Sample Cases');
+
+  // Create Sample Notifications
+  await prisma.notification.createMany({
+    data: [
+      {
+        title: 'Welcome to Vidhigya',
+        message: 'Thank you for joining our legal practice management platform',
+        type: 'SYSTEM',
+        userId: superAdmin.id,
+        practiceId: lawFirmPractice.id,
+        isRead: false,
+      },
+      {
+        title: 'New Case Assigned',
+        message: 'You have been assigned to TechCorp vs Competitor case',
+        type: 'CASE_UPDATE',
+        userId: firmOwner.id,
+        practiceId: lawFirmPractice.id,
+        isRead: false,
+      },
+      {
+        title: 'Document Uploaded',
+        message: 'New document uploaded for Family Trust Estate case',
+        type: 'DOCUMENT_UPLOAD',
+        userId: individualLawyer.id,
+        practiceId: individualPractice.id,
+        isRead: false,
+      },
+    ],
+  });
+
+  console.log('✅ Created Sample Notifications');
+
+  // Create Sample Tasks
+  await prisma.task.createMany({
+    data: [
+      {
+        title: 'Review TechCorp Patent Case',
+        description: 'Analyze patent documentation and prepare initial assessment',
+        status: 'PENDING',
+        priority: 'HIGH',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        caseId: firmCase.id,
+        createdById: firmOwner.id,
+        assignedToId: firmPartner.id,
+        practiceId: lawFirmPractice.id,
+      },
+      {
+        title: 'Prepare Estate Planning Documents',
+        description: 'Draft comprehensive estate planning documents for Family Trust',
+        status: 'IN_PROGRESS',
+        priority: 'MEDIUM',
+        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+        caseId: individualCase.id,
+        createdById: individualLawyer.id,
+        assignedToId: individualLawyer.id,
+        practiceId: individualPractice.id,
+      },
+      {
+        title: 'Client Meeting Preparation',
+        description: 'Prepare agenda and materials for TechCorp quarterly review',
+        status: 'PENDING',
+        priority: 'MEDIUM',
+        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+        clientId: client1.id,
+        createdById: firmOwner.id,
+        assignedToId: firmAssociate.id,
+        practiceId: lawFirmPractice.id,
+      },
+    ],
+  });
+
+  console.log('✅ Created Sample Tasks');
+
+  console.log('🎉 Database seeding completed successfully!');
+  console.log('\n📋 Login Credentials:');
+  console.log('Super Admin: admin@vidhigya.com / admin123');
+  console.log('Firm Owner: johnson@johnsonlaw.com / firm123');
+  console.log('Firm Partner: patel@johnsonlaw.com / partner123');
+  console.log('Firm Associate: kumar@johnsonlaw.com / associate123');
+  console.log('Firm Paralegal: sharma@johnsonlaw.com / paralegal123');
+  console.log('Individual Lawyer: sarah@wilsonlaw.com / individual123');
 }
 
 main()
@@ -673,6 +431,6 @@ main()
     console.error('❌ Error during seeding:', e);
     process.exit(1);
   })
-  .finally(() => {
-    void prisma.$disconnect();
+  .finally(async () => {
+    await prisma.$disconnect();
   });

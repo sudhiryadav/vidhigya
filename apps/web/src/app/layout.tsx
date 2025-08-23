@@ -3,6 +3,8 @@ import { LayoutWrapper } from "@/components/LayoutWrapper";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FontSizeProvider } from "@/contexts/FontSizeContext";
+import { PermissionProvider } from "@/contexts/PermissionContext";
+import { PracticeProvider } from "@/contexts/PracticeContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { VideoCallProvider } from "@/contexts/VideoCallContext";
@@ -35,11 +37,15 @@ export default function RootLayout({
             <SettingsProvider>
               <FontSizeProvider>
                 <VideoCallProvider>
-                  <ToastContainer>
-                    <AuthGuard>
-                      <LayoutWrapper>{children}</LayoutWrapper>
-                    </AuthGuard>
-                  </ToastContainer>
+                  <PracticeProvider>
+                    <PermissionProvider>
+                      <ToastContainer>
+                        <AuthGuard>
+                          <LayoutWrapper>{children}</LayoutWrapper>
+                        </AuthGuard>
+                      </ToastContainer>
+                    </PermissionProvider>
+                  </PracticeProvider>
                 </VideoCallProvider>
               </FontSizeProvider>
             </SettingsProvider>

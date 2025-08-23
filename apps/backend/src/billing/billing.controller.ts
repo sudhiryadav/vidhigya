@@ -11,6 +11,17 @@ import {
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import {
+  PermissionAction,
+  PermissionGuard,
+  PermissionResource,
+  RequireCreate,
+  RequireDelete,
+  RequireOwnResource,
+  RequireRead,
+  RequireUpdate,
+} from '../common/permissions';
 import {
   BillingService,
   CreateBillingRecordDto,
@@ -26,11 +37,12 @@ interface AuthenticatedRequest extends ExpressRequest {
 }
 
 @Controller('billing')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionGuard)
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
 
   @Post()
+  @RequireCreate(PermissionResource.BILLING)
   create(
     @Body() createBillingRecordDto: CreateBillingRecordDto,
     @Request() req: AuthenticatedRequest,
@@ -40,6 +52,7 @@ export class BillingController {
   }
 
   @Get()
+  @RequireRead(PermissionResource.BILLING)
   findAll(@Request() req: AuthenticatedRequest) {
     return this.billingService.findAll(req.user.sub);
   }
@@ -50,11 +63,13 @@ export class BillingController {
   }
 
   @Get(':id')
+  @RequireOwnResource(PermissionAction.READ, PermissionResource.BILLING)
   findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.billingService.findOne(id, req.user.sub);
   }
 
   @Patch(':id')
+  @RequireOwnResource(PermissionAction.UPDATE, PermissionResource.BILLING)
   update(
     @Param('id') id: string,
     @Body() updateBillingRecordDto: UpdateBillingRecordDto,
@@ -64,11 +79,13 @@ export class BillingController {
   }
 
   @Delete(':id')
+  @RequireDelete(PermissionResource.BILLING)
   remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.billingService.remove(id, req.user.sub);
   }
 
   @Post(':id/mark-paid')
+  @RequireUpdate(PermissionResource.BILLING)
   markAsPaid(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.billingService.markAsPaid(id, req.user.sub);
   }

@@ -41,4 +41,7 @@ export class CreateDocumentQueryDto {
   @IsOptional()
   @IsNumber()
   tokensUsed?: number;
+
+  @IsString()
+  practiceId: string;
 }

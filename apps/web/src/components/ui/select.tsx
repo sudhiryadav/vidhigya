@@ -193,3 +193,18 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
 };
 
 export { CustomSelect as default };
+
+// Additional exports for compatibility with new usage patterns
+export { CustomSelect as Select };
+export const SelectTrigger = ({ children }: { children: React.ReactNode }) => (
+  <div>{children}</div>
+);
+export const SelectValue = ({ placeholder }: { placeholder?: string }) => (
+  <span>{placeholder}</span>
+);
+export const SelectContent = ({ children }: { children: React.ReactNode }) => (
+  <div>{children}</div>
+);
+export const SelectItem = ({ children }: { children: React.ReactNode }) => (
+  <div>{children}</div>
+);

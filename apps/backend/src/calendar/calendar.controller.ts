@@ -11,6 +11,17 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import {
+  PermissionAction,
+  PermissionGuard,
+  PermissionResource,
+  RequireCreate,
+  RequireDelete,
+  RequireOwnResource,
+  RequireRead,
+  RequireUpdate,
+} from '../common/permissions';
 import {
   CalendarService,
   CreateEventDto,
@@ -45,7 +56,7 @@ interface CalendarFilters {
 }
 
 @Controller('calendar')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionGuard)
 export class CalendarController {
   constructor(
     private readonly calendarService: CalendarService,
@@ -53,6 +64,7 @@ export class CalendarController {
   ) {}
 
   @Post()
+  @RequireCreate(PermissionResource.CALENDAR)
   create(
     @Body() createEventDto: CreateEventDto,
     @Request() req: AuthenticatedRequest,
@@ -61,6 +73,7 @@ export class CalendarController {
   }
 
   @Get()
+  @RequireRead(PermissionResource.CALENDAR)
   findAll(@Request() req: AuthenticatedRequest, @Query() query: CalendarQuery) {
     const filters: CalendarFilters = {};
 
@@ -89,11 +102,13 @@ export class CalendarController {
   }
 
   @Get(':id')
+  @RequireRead(PermissionResource.CALENDAR)
   findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.calendarService.findOne(id, req.user.sub);
   }
 
   @Patch(':id')
+  @RequireOwnResource(PermissionAction.UPDATE, PermissionResource.CALENDAR)
   update(
     @Param('id') id: string,
     @Body() updateEventDto: UpdateEventDto,
@@ -103,11 +118,13 @@ export class CalendarController {
   }
 
   @Delete(':id')
+  @RequireDelete(PermissionResource.CALENDAR)
   remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.calendarService.remove(id, req.user.sub);
   }
 
   @Patch(':eventId/participants/:participantId/status')
+  @RequireUpdate(PermissionResource.CALENDAR)
   updateParticipantStatus(
     @Param('eventId') eventId: string,
     @Param('participantId') participantId: string,
@@ -123,19 +140,24 @@ export class CalendarController {
   }
 
   @Post(':eventId/participants')
+  @RequireUpdate(PermissionResource.CALENDAR)
   addParticipants(
     @Param('eventId') eventId: string,
     @Body() body: { participantIds: string[] },
     @Request() req: AuthenticatedRequest,
   ) {
+    // TODO: Get practiceId from user's current practice context
+    const practiceId = 'temp-practice-id'; // This should come from user context
     return this.calendarService.addParticipants(
       eventId,
       body.participantIds,
       req.user.sub,
+      practiceId,
     );
   }
 
   @Delete(':eventId/participants/:participantId')
+  @RequireUpdate(PermissionResource.CALENDAR)
   removeParticipant(
     @Param('eventId') eventId: string,
     @Param('participantId') participantId: string,
@@ -155,15 +177,20 @@ export class CalendarController {
   }
 
   @Post('google/connect')
-  async connectGoogleCalendar(@Body() body: { code: string }, @Request() req: AuthenticatedRequest) {
+  async connectGoogleCalendar(
+    @Body() body: { code: string },
+    @Request() req: AuthenticatedRequest,
+  ) {
     try {
-      const tokens = await this.googleCalendarService.exchangeCodeForToken(body.code);
+      const tokens = await this.googleCalendarService.exchangeCodeForToken(
+        body.code,
+      );
       // Store tokens in user settings or database
       // For now, return success message
-      return { 
+      return {
         message: 'Google Calendar connected successfully',
         accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token
+        refreshToken: tokens.refresh_token,
       };
     } catch (error) {
       throw new Error('Failed to connect Google Calendar: ' + error.message);
@@ -175,7 +202,10 @@ export class CalendarController {
     try {
       // This would require storing the user's access token
       // For now, return a message indicating the feature is available
-      return { message: 'Google Calendar sync available. Please connect your account first.' };
+      return {
+        message:
+          'Google Calendar sync available. Please connect your account first.',
+      };
     } catch (error) {
       throw new Error('Failed to sync with Google Calendar: ' + error.message);
     }

@@ -237,6 +237,47 @@ class ApiClient {
     });
   }
 
+  // New admin endpoints for admin pages
+  async getAdminDocuments(filters?: {
+    search?: string;
+    status?: string;
+    type?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.type) params.append("type", filters.type);
+    if (filters?.startDate) params.append("startDate", filters.startDate);
+    if (filters?.endDate) params.append("endDate", filters.endDate);
+
+    return this.request(`/admin/documents?${params.toString()}`);
+  }
+
+  async getAdminBillingRecords(filters?: {
+    search?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.startDate) params.append("startDate", filters.startDate);
+    if (filters?.endDate) params.append("endDate", filters.endDate);
+
+    return this.request(`/admin/billing?${params.toString()}`);
+  }
+
+  async getAdminAnalytics() {
+    return this.request("/admin/analytics");
+  }
+
+  async getAdminReports() {
+    return this.request("/admin/reports");
+  }
+
   // Dashboard endpoints
   async getDashboardStats() {
     return this.request("/cases/dashboard");
@@ -1276,82 +1317,158 @@ class ApiClient {
     });
   }
 
-  // Court Management
-  async getCourts(filters?: {
-    type?: string;
-    state?: string;
-    city?: string;
-    isActive?: boolean;
-  }) {
-    let url = "/courts";
-    if (filters) {
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          params.append(key, value.toString());
-        }
-      });
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
-    }
-    return this.request(url);
+  // Practice Management
+  async getPractices() {
+    return this.request("/practices");
   }
 
-  async getCourt(id: string) {
-    return this.request(`/courts/${id}`);
+  async getPractice(id: string) {
+    return this.request(`/practices/${id}`);
   }
 
-  async getCourtByName(name: string) {
-    return this.request(`/courts/name/${encodeURIComponent(name)}`);
-  }
-
-  async createCourt(courtData: any) {
-    return this.request("/courts", {
+  async createPractice(data: any) {
+    return this.request("/practices", {
       method: "POST",
-      body: JSON.stringify(courtData),
+      body: JSON.stringify(data),
     });
   }
 
-  async updateCourt(id: string, courtData: any) {
-    return this.request(`/courts/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(courtData),
+  async updatePractice(id: string, data: any) {
+    return this.request(`/practices/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
     });
   }
 
-  async deleteCourt(id: string) {
-    return this.request(`/courts/${id}`, {
+  async deletePractice(id: string) {
+    return this.request(`/practices/${id}`, {
       method: "DELETE",
     });
   }
 
-  async getCourtTypes() {
-    return this.request("/courts/types");
+  async addPracticeMember(practiceId: string, data: any) {
+    return this.request(`/practices/${practiceId}/members`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 
-  async getCourtStates() {
-    return this.request("/courts/states");
+  async updatePracticeMember(practiceId: string, memberId: string, data: any) {
+    return this.request(`/practices/${practiceId}/members/${memberId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   }
 
-  async getCourtCitiesByState(state: string) {
-    return this.request(`/courts/states/${encodeURIComponent(state)}/cities`);
+  async removePracticeMember(practiceId: string, memberId: string) {
+    return this.request(`/practices/${practiceId}/members/${memberId}`, {
+      method: "DELETE",
+    });
   }
 
-  async getCourtsByType(type: string) {
-    return this.request(`/courts/type/${encodeURIComponent(type)}`);
+  async getPracticeStats(practiceId: string) {
+    return this.request(`/practices/${practiceId}/stats`);
   }
 
-  async getCourtsByState(state: string) {
-    return this.request(`/courts/state/${encodeURIComponent(state)}`);
+  // Permission methods
+  async getCurrentUserPermissions(): Promise<unknown> {
+    return this.request("/permissions/me");
   }
 
-  async getCourtsByCity(city: string) {
-    return this.request(`/courts/city/${encodeURIComponent(city)}`);
+  async getUserPermissions(userId: string): Promise<unknown> {
+    return this.request(`/permissions/user/${userId}`);
   }
 
-  async searchCourts(query: string) {
-    return this.request(`/courts/search?q=${encodeURIComponent(query)}`);
+  async checkPermission(permissionCheck: any): Promise<unknown> {
+    return this.request("/permissions/check", {
+      method: "POST",
+      body: JSON.stringify(permissionCheck),
+    });
+  }
+
+  async checkBatchPermissions(checks: any[]): Promise<unknown> {
+    return this.request("/permissions/check-batch", {
+      method: "POST",
+      body: JSON.stringify({ checks }),
+    });
+  }
+
+  async canAccessPractice(practiceId: string): Promise<unknown> {
+    return this.request(`/permissions/practice/${practiceId}/access`);
+  }
+
+  async getAuditLogs(filter: any = {}): Promise<unknown> {
+    const queryParams = new URLSearchParams();
+    Object.entries(filter).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
+    });
+
+    return this.request(`/permissions/audit/logs?${queryParams.toString()}`);
+  }
+
+  async getPermissionStats(filter: any = {}): Promise<unknown> {
+    const queryParams = new URLSearchParams();
+    Object.entries(filter).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
+    });
+
+    return this.request(`/permissions/audit/stats?${queryParams.toString()}`);
+  }
+
+  async getFailedPermissionAttempts(
+    userId?: string,
+    limit?: number
+  ): Promise<unknown> {
+    const queryParams = new URLSearchParams();
+    if (userId) queryParams.append("userId", userId);
+    if (limit) queryParams.append("limit", String(limit));
+
+    return this.request(
+      `/permissions/audit/failures?${queryParams.toString()}`
+    );
+  }
+
+  async getCacheStats(): Promise<unknown> {
+    return this.request("/permissions/cache/stats");
+  }
+
+  async clearUserCache(userId: string): Promise<unknown> {
+    return this.request(`/permissions/cache/user/${userId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async clearPracticeCache(practiceId: string): Promise<unknown> {
+    return this.request(`/permissions/cache/practice/${practiceId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async clearAllCache(): Promise<unknown> {
+    return this.request("/permissions/cache/all", {
+      method: "DELETE",
+    });
+  }
+
+  async cleanupAuditLogs(days?: number): Promise<unknown> {
+    const queryParams = days ? `?days=${days}` : "";
+    return this.request(`/permissions/audit/cleanup${queryParams}`, {
+      method: "DELETE",
+    });
+  }
+
+  async getPermissionMatrix(): Promise<unknown> {
+    return this.request("/permissions/matrix");
+  }
+
+  async refreshPermissions(): Promise<unknown> {
+    return this.request("/permissions/refresh", {
+      method: "POST",
+    });
   }
 }
 

@@ -50,6 +50,22 @@ export default function ProfilePage({
 }: ProfilePageProps) {
   const { user, logout, updateAvatar, removeAvatar } = useAuth();
   const router = useRouter();
+
+  // Function to get role badge color
+  const getRoleBadgeColor = (role: string) => {
+    const roleColors: Record<string, string> = {
+      SUPER_ADMIN:
+        "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+      ADMIN: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+      LAWYER: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+      ASSOCIATE:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+      PARALEGAL:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+      CLIENT: "bg-muted text-muted-foreground",
+    };
+    return roleColors[role] || roleColors.CLIENT;
+  };
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -245,6 +261,15 @@ export default function ProfilePage({
             <div>
               <h1 className="text-3xl font-bold text-foreground">{title}</h1>
               <p className="text-muted-foreground mt-2">{subtitle}</p>
+              {user && (
+                <div className="mt-2">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}
+                  >
+                    {user.role.replace("_", " ")}
+                  </span>
+                </div>
+              )}
             </div>
             <button
               onClick={handleLogout}

@@ -1,1 +1,34 @@
-export interface User { id: string; email: string; name: string; role: UserRole; avatar?: string; phone?: string; isActive: boolean; createdAt: Date; updatedAt: Date; } export enum UserRole { LAWYER = "lawyer", CLIENT = "client", ADMIN = "admin", ASSOCIATE = "associate", PARALEGAL = "paralegal" } export interface AuthResponse { user: User; token: string; refreshToken: string; } export interface LoginRequest { email: string; password: string; } export interface RegisterRequest { email: string; password: string; name: string; role: UserRole; phone?: string; }
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  avatar?: string;
+  phone?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+export enum UserRole {
+  LAWYER = "lawyer",
+  CLIENT = "client",
+  ADMIN = "admin",
+  ASSOCIATE = "associate",
+  PARALEGAL = "paralegal",
+}
+export interface AuthResponse {
+  user: User;
+  token: string;
+  refreshToken: string;
+}
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  name: string;
+  role: UserRole;
+  phone?: string;
+}

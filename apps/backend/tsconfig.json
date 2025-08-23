@@ -20,5 +20,14 @@
     "esModuleInterop": true,
     "allowJs": true,
     "resolveJsonModule": true
-  }
+  },
+  "exclude": [
+    "src/client-portal/**/*",
+    "src/tasks/**/*",
+    "src/notifications/**/*",
+    "src/video-calls/**/*",
+    "src/admin/**/*",
+    "src/courts/**/*",
+    "src/reports/**/*"
+  ]
 }

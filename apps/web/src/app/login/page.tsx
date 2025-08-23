@@ -74,8 +74,12 @@ export default function LoginPage() {
         // Get role from email for better messaging
         let role = "User";
         if (demoEmail.includes("admin")) role = "Super Admin";
+        else if (demoEmail.includes("johnson")) role = "Firm Owner";
+        else if (demoEmail.includes("patel")) role = "Firm Partner";
+        else if (demoEmail.includes("kumar")) role = "Firm Associate";
+        else if (demoEmail.includes("sharma")) role = "Firm Paralegal";
+        else if (demoEmail.includes("sarah")) role = "Individual Lawyer";
         else if (demoEmail.includes("lawyer")) role = "Lawyer";
-        else if (demoEmail.includes("client")) role = "Client";
 
         toast.success(`Welcome! Logged in as ${role}`);
         // Login successful, AuthGuard will handle redirect
@@ -244,6 +248,10 @@ export default function LoginPage() {
               <h4 className="text-sm font-medium text-foreground mb-3">
                 Demo Credentials (Click to login):
               </h4>
+              <p className="text-xs text-muted-foreground mb-3">
+                Note: Client accounts are managed by their respective practices
+                and can be added by practice owners.
+              </p>
               <div className="space-y-2">
                 <button
                   type="button"
@@ -276,7 +284,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    handleDemoLogin("lawyer@vidhigya.com", "lawyer123")
+                    handleDemoLogin("sarah@wilsonlaw.com", "individual123")
                   }
                   disabled={loading || demoLoading !== null}
                   className="w-full text-left p-2 rounded-md hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors border border-transparent hover:border-green-200 dark:hover:border-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -284,50 +292,141 @@ export default function LoginPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-xs font-medium text-green-600 dark:text-green-400">
-                        Lawyer
+                        Individual Lawyer
                       </span>
                       <p className="text-xs text-muted-foreground">
-                        lawyer@vidhigya.com
+                        sarah@wilsonlaw.com
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {demoLoading === "lawyer@vidhigya.com" && (
+                      {demoLoading === "sarah@wilsonlaw.com" && (
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
                       )}
                       <span className="text-xs text-muted-foreground">
-                        Case management
+                        Solo practice
                       </span>
                     </div>
                   </div>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleDemoLogin("client@vidhigya.com", "client123")
-                  }
-                  disabled={loading || demoLoading !== null}
-                  className="w-full text-left p-2 rounded-md hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors border border-transparent hover:border-purple-200 dark:hover:border-purple-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
-                        Client
-                      </span>
-                      <p className="text-xs text-muted-foreground">
-                        client@vidhigya.com
-                      </p>
+                {/* Firm Practice Accounts */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                    Law Firm Practice
+                  </h5>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDemoLogin("johnson@johnsonlaw.com", "firm123")
+                    }
+                    disabled={loading || demoLoading !== null}
+                    className="w-full text-left p-2 rounded-md hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors border border-transparent hover:border-orange-200 dark:hover:border-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-medium text-orange-600 dark:text-orange-400">
+                          Firm Owner
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          johnson@johnsonlaw.com
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {demoLoading === "johnson@johnsonlaw.com" && (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600"></div>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          Practice owner
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {demoLoading === "client@vidhigya.com" && (
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-600"></div>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        Client portal
-                      </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDemoLogin("patel@johnsonlaw.com", "partner123")
+                    }
+                    disabled={loading || demoLoading !== null}
+                    className="w-full text-left p-2 rounded-md hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors border border-transparent hover:border-orange-200 dark:hover:border-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-medium text-orange-600 dark:text-orange-400">
+                          Firm Partner
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          patel@johnsonlaw.com
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {demoLoading === "patel@johnsonlaw.com" && (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600"></div>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          Partner access
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDemoLogin("kumar@johnsonlaw.com", "associate123")
+                    }
+                    disabled={loading || demoLoading !== null}
+                    className="w-full text-left p-2 rounded-md hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors border border-transparent hover:border-orange-200 dark:hover:border-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-medium text-orange-600 dark:text-orange-400">
+                          Firm Associate
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          kumar@johnsonlaw.com
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {demoLoading === "kumar@johnsonlaw.com" && (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600"></div>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          Associate access
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDemoLogin("sharma@johnsonlaw.com", "paralegal123")
+                    }
+                    disabled={loading || demoLoading !== null}
+                    className="w-full text-left p-2 rounded-md hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors border border-transparent hover:border-orange-200 dark:hover:border-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-medium text-orange-600 dark:text-orange-400">
+                          Firm Paralegal
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          sharma@johnsonlaw.com
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {demoLoading === "sharma@johnsonlaw.com" && (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600"></div>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          Paralegal access
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

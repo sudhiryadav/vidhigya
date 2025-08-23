@@ -20,6 +20,14 @@ import { randomUUID } from 'crypto';
 import { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import {
+  PermissionGuard,
+  PermissionResource,
+  RequireCreate,
+  RequireDelete,
+  RequireRead,
+} from '../common/permissions';
 import { ConversationContextService } from '../common/services/conversation-context.service';
 import { QdrantService } from '../config/qdrant.service';
 import { S3Service } from '../config/s3.config';
@@ -63,7 +71,7 @@ interface UploadDocumentBody {
 }
 
 @Controller('documents')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionGuard)
 export class DocumentsController {
   constructor(
     private readonly documentsService: DocumentsService,
@@ -75,6 +83,7 @@ export class DocumentsController {
   ) {}
 
   @Post()
+  @RequireCreate(PermissionResource.DOCUMENT)
   create(
     @Body() createDocumentDto: CreateDocumentDto,
     @Request() req: AuthenticatedRequest,
@@ -90,6 +99,7 @@ export class DocumentsController {
   }
 
   @Post('upload')
+  @RequireCreate(PermissionResource.DOCUMENT)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(), // Use memory storage to get file.buffer
@@ -176,6 +186,7 @@ export class DocumentsController {
         caseId: body.caseId || undefined,
         uploadedById: req.user.sub,
         aiDocumentId: randomUUID(),
+        practiceId: req.user.primaryPracticeId || 'temp-practice-id', // TODO: Get actual practiceId from user context
       };
 
       createdDocument = await this.documentsService.create(createDocumentDto);
@@ -427,10 +438,10 @@ export class DocumentsController {
         req.user.sub,
         query,
         JSON.stringify(searchResults),
-        undefined,
-        searchResults,
-        undefined,
-        undefined,
+        undefined, // caseId
+        searchResults, // sources
+        undefined, // responseTime
+        undefined, // tokensUsed
         QueryType.DOCUMENT_ANALYSIS,
       );
 
@@ -774,10 +785,10 @@ export class DocumentsController {
         userId,
         query,
         result.answer,
-        undefined,
-        searchResults,
-        undefined,
-        undefined,
+        undefined, // caseId
+        searchResults, // sources
+        undefined, // responseTime
+        undefined, // tokensUsed
         QueryType.GENERAL,
       );
 
@@ -852,6 +863,7 @@ export class DocumentsController {
   }
 
   @Delete('query-history')
+  @RequireDelete(PermissionResource.DOCUMENT)
   async clearQueryHistory(@Request() req: AuthenticatedRequest) {
     // Mark all document queries as deleted instead of hard deleting
     const result = await this.prisma.documentQuery.updateMany({
@@ -872,11 +884,13 @@ export class DocumentsController {
   }
 
   @Get(':id')
+  @RequireRead(PermissionResource.DOCUMENT)
   findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.documentsService.findOne(id, req.user.sub);
   }
 
   @Delete(':id')
+  @RequireDelete(PermissionResource.DOCUMENT)
   async remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     console.log(
       `Starting document deletion for ID: ${id} by user: ${req.user.sub}`,

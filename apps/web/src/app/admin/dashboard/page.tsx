@@ -174,10 +174,10 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-foreground">
             Welcome back, {user?.name}!
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
+          <p className="text-muted-foreground mt-2">
             Here&apos;s an overview of your legal practice management system.
           </p>
         </div>
@@ -218,7 +218,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Quick Actions */}
           <div className="lg:col-span-1">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
               Quick Actions
             </h2>
             <div className="space-y-3">
@@ -255,23 +255,23 @@ export default function AdminDashboard() {
 
           {/* System Health */}
           <div className="lg:col-span-1">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
               System Health
             </h2>
             <div className="space-y-4">
               <div className="card">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white">
+                    <h3 className="font-medium text-foreground">
                       Overall Status
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-muted-foreground">
                       System performance and uptime
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                    <span className="text-sm font-medium text-green-600">
                       {stats?.systemHealth}
                     </span>
                   </div>
@@ -281,16 +281,14 @@ export default function AdminDashboard() {
               <div className="card">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      Database
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <h3 className="font-medium text-foreground">Database</h3>
+                    <p className="text-sm text-muted-foreground">
                       Connection and performance
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                    <span className="text-sm font-medium text-green-600">
                       Healthy
                     </span>
                   </div>

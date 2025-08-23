@@ -7,7 +7,6 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { NotificationEmitterService } from '../notifications/notification-emitter.service';
 import { ChatService } from './chat.service';
 
 interface AuthenticatedUser {
@@ -28,12 +27,10 @@ export class ChatGateway {
   constructor(
     private readonly chatService: ChatService,
     private readonly jwtService: JwtService,
-    private readonly notificationEmitter: NotificationEmitterService,
   ) {}
 
   afterInit() {
-    // Set the socket server in the notification emitter
-    this.notificationEmitter.setSocketServer(this.server);
+    // Socket server initialized
   }
 
   handleConnection(client: Socket) {

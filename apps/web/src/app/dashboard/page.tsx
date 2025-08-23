@@ -140,6 +140,22 @@ export default function Dashboard() {
   const { getSetting } = useSettings();
   const router = useRouter();
 
+  // Function to get role badge color
+  const getRoleBadgeColor = (role: string) => {
+    const roleColors: Record<string, string> = {
+      SUPER_ADMIN:
+        "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+      ADMIN: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+      LAWYER: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+      ASSOCIATE:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+      PARALEGAL:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+      CLIENT: "bg-muted text-muted-foreground",
+    };
+    return roleColors[role] || roleColors.CLIENT;
+  };
+
   // Get user's currency preference
   const userCurrency = getSetting("currency") || "INR";
 
@@ -635,6 +651,15 @@ export default function Dashboard() {
             <p className="text-muted-foreground mt-2">
               Here&apos;s what&apos;s happening with your practice today.
             </p>
+            {user && (
+              <div className="mt-2">
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}
+                >
+                  {user.role.replace("_", " ")}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Statistics Grid */}
@@ -991,6 +1016,15 @@ export default function Dashboard() {
             <p className="text-muted-foreground mt-2">
               Here&apos;s an overview of your legal matters and recent activity.
             </p>
+            {user && (
+              <div className="mt-2">
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}
+                >
+                  {user.role.replace("_", " ")}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Statistics Grid */}

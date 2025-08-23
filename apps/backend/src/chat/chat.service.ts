@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -296,6 +297,16 @@ export class ChatService {
 
     const receiverId = user1Id === senderId ? user2Id : user1Id;
 
+    // Get user's primary practice ID
+    const user = await this.prisma.user.findUnique({
+      where: { id: senderId },
+      select: { primaryPracticeId: true },
+    });
+
+    if (!user?.primaryPracticeId) {
+      throw new BadRequestException('User has no primary practice');
+    }
+
     // Create the message
     const message = await this.prisma.chatMessage.create({
       data: {
@@ -304,6 +315,7 @@ export class ChatService {
         senderId,
         receiverId,
         isRead: false,
+        practiceId: user.primaryPracticeId,
       },
       include: {
         sender: {
@@ -316,14 +328,28 @@ export class ChatService {
       },
     });
 
+    // Fetch the message with sender details
+    const messageWithSender = await this.prisma.chatMessage.findUnique({
+      where: { id: message.id },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+        },
+      },
+    });
+
     return {
-      id: message.id,
-      content: message.content,
-      senderId: message.senderId,
-      senderName: message.sender.name,
-      type: message.messageType,
-      isRead: message.isRead,
-      createdAt: message.createdAt,
+      id: messageWithSender.id,
+      content: messageWithSender.content,
+      senderId: messageWithSender.senderId,
+      senderName: messageWithSender.sender.name,
+      type: messageWithSender.messageType,
+      isRead: messageWithSender.isRead,
+      createdAt: messageWithSender.createdAt,
     };
   }
 
