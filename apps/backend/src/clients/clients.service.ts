@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PracticeRole } from '@prisma/client';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClientDto, UpdateClientDto } from './dto/client.dto';
 
@@ -284,8 +284,10 @@ export class ClientsService {
       // Continue without membership check
     } else {
       // For non-super admins, check if they have access to this client's practice
-      const practiceMember = client.practice.members[0];
-      if (!practiceMember || practiceMember.role !== PracticeRole.OWNER) {
+      const isPracticeMember = client.practice.members.some(
+        (m) => m.userId === userId,
+      );
+      if (!isPracticeMember) {
         throw new ForbiddenException(
           'Insufficient permissions to delete client',
         );

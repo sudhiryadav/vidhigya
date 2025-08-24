@@ -3,12 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PracticeRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AddMemberDto,
   CreatePracticeDto,
-  UpdateMemberRoleDto,
   UpdatePracticeDto,
 } from './dto/practice.dto';
 
@@ -34,7 +32,6 @@ export class PracticesService {
         members: {
           create: {
             userId,
-            role: PracticeRole.OWNER,
             isActive: true,
           },
         },
@@ -158,8 +155,9 @@ export class PracticesService {
       throw new NotFoundException('Practice not found');
     }
 
-    const member = practice.members[0];
-    if (!member || member.role !== PracticeRole.OWNER) {
+    // Check if user is a member of this practice
+    const isMember = practice.members.some((m) => m.userId === userId);
+    if (!isMember) {
       throw new ForbiddenException(
         'Insufficient permissions to update practice',
       );
@@ -203,8 +201,9 @@ export class PracticesService {
       throw new NotFoundException('Practice not found');
     }
 
-    const member = practice.members[0];
-    if (!member || member.role !== PracticeRole.OWNER) {
+    // Check if user is a member of this practice
+    const isMember = practice.members.some((m) => m.userId === userId);
+    if (!isMember) {
       throw new ForbiddenException('Insufficient permissions to add members');
     }
 
@@ -233,56 +232,8 @@ export class PracticesService {
       data: {
         practiceId,
         userId: existingUser.id,
-        role: addMemberDto.role,
         isActive: true,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
-    });
-  }
-
-  async updateMemberRole(
-    practiceId: string,
-    adminUserId: string,
-    memberId: string,
-    updateMemberRoleDto: UpdateMemberRoleDto,
-  ) {
-    const practice = await this.prisma.practice.findUnique({
-      where: { id: practiceId },
-      include: {
-        members: {
-          where: { userId: adminUserId },
-        },
-      },
-    });
-
-    if (!practice) {
-      throw new NotFoundException('Practice not found');
-    }
-
-    const adminMember = practice.members[0];
-    if (!adminMember || adminMember.role !== PracticeRole.OWNER) {
-      throw new ForbiddenException(
-        'Insufficient permissions to update member roles',
-      );
-    }
-
-    // Cannot change OWNER role
-    if (updateMemberRoleDto.role === PracticeRole.OWNER) {
-      throw new ForbiddenException('Cannot change role to OWNER');
-    }
-
-    return this.prisma.practiceMember.update({
-      where: { id: memberId },
-      data: { role: updateMemberRoleDto.role },
       include: {
         user: {
           select: {
@@ -314,8 +265,11 @@ export class PracticesService {
       throw new NotFoundException('Practice not found');
     }
 
-    const adminMember = practice.members[0];
-    if (!adminMember || adminMember.role !== PracticeRole.OWNER) {
+    // Check if admin user is a member of this practice
+    const isAdminMember = practice.members.some(
+      (m) => m.userId === adminUserId,
+    );
+    if (!isAdminMember) {
       throw new ForbiddenException(
         'Insufficient permissions to remove members',
       );
@@ -327,11 +281,6 @@ export class PracticesService {
 
     if (!memberToRemove) {
       throw new NotFoundException('Member not found');
-    }
-
-    // Cannot remove OWNER
-    if (memberToRemove.role === PracticeRole.OWNER) {
-      throw new ForbiddenException('Cannot remove practice owner');
     }
 
     return this.prisma.practiceMember.update({

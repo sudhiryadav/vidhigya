@@ -596,13 +596,13 @@ export default function CalendarPage() {
             {getDaysInMonth(currentDate).map((date, index) => (
               <div
                 key={index}
-                className={`min-h-[120px] bg-card p-2 ${
+                className={`min-h-[120px] bg-card p-3 ${
                   date && isToday(date) ? "bg-blue-50 dark:bg-blue-900/20" : ""
                 } ${date && isSelected(date) ? "ring-2 ring-blue-500" : ""}`}
               >
                 {date && (
                   <>
-                    <div className="text-sm font-medium text-foreground mb-1">
+                    <div className="text-sm font-medium text-foreground mb-1 pl-1">
                       {date.getDate()}
                     </div>
                     <div className="space-y-1">

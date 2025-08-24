@@ -835,6 +835,7 @@ export class DocumentsController {
   }
 
   @Get()
+  @RequireRead(PermissionResource.DOCUMENT)
   findAll(@Request() req: AuthenticatedRequest, @Query() query: DocumentQuery) {
     return this.documentsService.findAll(req.user.sub, query);
   }

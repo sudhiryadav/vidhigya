@@ -1,4 +1,4 @@
-import { PracticeRole, PracticeType } from '@prisma/client';
+import { PracticeType } from '@prisma/client';
 import {
   IsBoolean,
   IsEmail,
@@ -52,14 +52,6 @@ export class UpdatePracticeDto {
 export class AddMemberDto {
   @IsEmail()
   email: string;
-
-  @IsEnum(PracticeRole)
-  role: PracticeRole;
-}
-
-export class UpdateMemberRoleDto {
-  @IsEnum(PracticeRole)
-  role: PracticeRole;
 }
 
 export class CreateFirmDto {

@@ -36,6 +36,7 @@ model Practice {
   timeEntries        TimeEntry[]
   userSettings       UserSettings[]
   videoCalls         VideoCall[]
+  primaryForUsers    User[]              @relation("UserPrimaryPractice")
 
   @@map("practices")
 }
@@ -77,23 +78,21 @@ model Department {
 }
 
 model PracticeMember {
-  id           String           @id @default(cuid())
+  id           String   @id @default(cuid())
   practiceId   String
   userId       String
-  role         PracticeRole     @default(STAFF)
   departmentId String?
   supervisorId String?
   permissions  Json?
-  isActive     Boolean          @default(true)
-  joinDate     DateTime         @default(now())
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  isActive     Boolean  @default(true)
+  joinDate     DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   department   Department?      @relation(fields: [departmentId], references: [id])
   practice     Practice         @relation(fields: [practiceId], references: [id], onDelete: Cascade)
   supervisor   PracticeMember?  @relation("StaffSupervision", fields: [supervisorId], references: [id])
   supervised   PracticeMember[] @relation("StaffSupervision")
   user         User             @relation("UserPractices", fields: [userId], references: [id], onDelete: Cascade)
-  primaryFor   User?            @relation("UserPrimaryPractice")
 
   @@unique([practiceId, userId])
   @@map("practice_members")
@@ -151,7 +150,7 @@ model User {
   emailVerified        Boolean             @default(false)
   avatarS3Key          String?
   clientId             String?             @unique
-  primaryPracticeId    String?             @unique
+  primaryPracticeId    String?
   billingRecords       BillingRecord[]
   createdEvents        CalendarEvent[]     @relation("EventCreator")
   callParticipants     CallParticipant[]
@@ -175,7 +174,7 @@ model User {
   timeEntries          TimeEntry[]
   userSettings         UserSettings?
   client               Client?             @relation("ClientUser", fields: [clientId], references: [id])
-  primaryPractice      PracticeMember?     @relation("UserPrimaryPractice", fields: [primaryPracticeId], references: [id])
+  primaryPractice      Practice?           @relation("UserPrimaryPractice", fields: [primaryPracticeId], references: [id])
   videoCalls           VideoCall[]         @relation("CallHost")
 
   @@map("users")
@@ -619,15 +618,7 @@ enum PracticeType {
   MIXED
 }
 
-enum PracticeRole {
-  OWNER
-  PARTNER
-  SENIOR_ASSOCIATE
-  ASSOCIATE
-  PARALEGAL
-  SUPPORT
-  STAFF
-}
+
 
 enum UserRole {
   LAWYER

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { usePractice } from "@/contexts/PracticeContext";
 import {
   BarChart3,
   Bell,
@@ -117,17 +118,19 @@ const navigationItems = [
   },
   {
     name: "Analytics",
-    href: "/analytics",
+    href: "/admin/analytics",
     icon: BarChart3,
     action: PermissionAction.READ,
     resource: PermissionResource.ANALYTICS,
+    roles: ["SUPER_ADMIN", "ADMIN"], // Only visible to firm owners and super admins
   },
   {
     name: "Reports",
-    href: "/reports",
+    href: "/admin/reports",
     icon: FileText,
     action: PermissionAction.READ,
     resource: PermissionResource.REPORT,
+    roles: ["SUPER_ADMIN", "ADMIN"], // Only visible to firm owners and super admins
   },
   {
     name: "Notifications",
@@ -192,6 +195,14 @@ const navigationItems = [
     roles: ["SUPER_ADMIN", "ADMIN"],
     action: PermissionAction.READ,
     resource: PermissionResource.REPORT,
+  },
+  {
+    name: "Module Management",
+    href: "/admin/modules",
+    icon: Settings,
+    roles: ["SUPER_ADMIN", "ADMIN"],
+    action: PermissionAction.MANAGE,
+    resource: PermissionResource.MODULE,
   },
 ];
 
@@ -271,6 +282,7 @@ export function PermissionBasedNavigation() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, hasRole } = useAuth();
+  const { currentPractice } = usePractice();
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -340,9 +352,23 @@ export function PermissionBasedNavigation() {
         <div className="flex flex-col h-full">
           {/* Logo and Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
-            <Link href="/" className="flex items-center space-x-2">
-              <Logo size="md" />
-            </Link>
+            <div className="flex flex-col items-start space-y-1">
+              <Link href="/" className="flex items-center space-x-2">
+                <Logo size="md" />
+              </Link>
+              {/* Firm Name Display */}
+              {currentPractice?.firm?.name && (
+                <p className="text-xs text-muted-foreground font-medium ml-2">
+                  {currentPractice.firm.name}
+                </p>
+              )}
+              {/* Practice Name Display (fallback if no firm name) */}
+              {!currentPractice?.firm?.name && currentPractice?.name && (
+                <p className="text-xs text-muted-foreground font-medium ml-2">
+                  {currentPractice.name}
+                </p>
+              )}
+            </div>
             <div className="flex items-center space-x-2">
               {hasRole(["SUPER_ADMIN", "ADMIN"]) && (
                 <span
@@ -455,8 +481,22 @@ export function PermissionBasedNavigation() {
       {/* Top bar for mobile */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center space-x-3">
-            <Logo size="md" />
+          <div className="flex flex-col items-start space-y-1">
+            <div className="flex items-center space-x-3">
+              <Logo size="md" />
+            </div>
+            {/* Firm Name Display for Mobile */}
+            {currentPractice?.firm?.name && (
+              <p className="text-xs text-muted-foreground font-medium ml-3">
+                {currentPractice.firm.name}
+              </p>
+            )}
+            {/* Practice Name Display for Mobile (fallback if no firm name) */}
+            {!currentPractice?.firm?.name && currentPractice?.name && (
+              <p className="text-xs text-muted-foreground font-medium ml-3">
+                {currentPractice.name}
+              </p>
+            )}
           </div>
           <div className="flex items-center space-x-2">
             <NotificationBell />

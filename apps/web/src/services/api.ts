@@ -1,3 +1,6 @@
+import { NavigationModule } from "../types/modules";
+import { Practice } from "../types/practices";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 class ApiClient {
@@ -1375,6 +1378,11 @@ class ApiClient {
     return this.request("/permissions/me");
   }
 
+  // Practice endpoints
+  async getUserPractices(): Promise<Practice[]> {
+    return this.request("/practices");
+  }
+
   async getUserPermissions(userId: string): Promise<unknown> {
     return this.request(`/permissions/user/${userId}`);
   }
@@ -1468,6 +1476,59 @@ class ApiClient {
   async refreshPermissions(): Promise<unknown> {
     return this.request("/permissions/refresh", {
       method: "POST",
+    });
+  }
+
+  // Module Management endpoints
+  async getModules(practiceId?: string): Promise<NavigationModule[]> {
+    const queryParams = practiceId ? `?practiceId=${practiceId}` : "";
+    return this.request(`/admin/modules${queryParams}`);
+  }
+
+  async getModuleById(id: string): Promise<NavigationModule> {
+    return this.request(`/admin/modules/${id}`);
+  }
+
+  async createModule(moduleData: any): Promise<NavigationModule> {
+    return this.request("/admin/modules", {
+      method: "POST",
+      body: JSON.stringify(moduleData),
+    });
+  }
+
+  async updateModule(id: string, moduleData: any): Promise<NavigationModule> {
+    return this.request(`/admin/modules/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(moduleData),
+    });
+  }
+
+  async deleteModule(id: string): Promise<void> {
+    return this.request(`/admin/modules/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async toggleModuleVisibility(id: string): Promise<NavigationModule> {
+    return this.request(`/admin/modules/${id}/toggle-visibility`, {
+      method: "PUT",
+    });
+  }
+
+  async toggleModuleActivation(id: string): Promise<NavigationModule> {
+    return this.request(`/admin/modules/${id}/toggle-activation`, {
+      method: "PUT",
+    });
+  }
+
+  async reorderModules(
+    moduleOrders: Array<{ id: string; order: number }>,
+    practiceId?: string
+  ): Promise<NavigationModule[]> {
+    const queryParams = practiceId ? `?practiceId=${practiceId}` : "";
+    return this.request(`/admin/modules/reorder${queryParams}`, {
+      method: "PUT",
+      body: JSON.stringify(moduleOrders),
     });
   }
 }

@@ -55,7 +55,6 @@ async function main() {
     data: {
       practiceId: lawFirmPractice.id,
       userId: superAdmin.id,
-      role: 'OWNER', // Super admin gets owner access
       isActive: true,
     },
   });
@@ -63,7 +62,7 @@ async function main() {
   // Update super admin with primaryPracticeId
   await prisma.user.update({
     where: { id: superAdmin.id },
-    data: { primaryPracticeId: superAdminMember.id },
+    data: { primaryPracticeId: lawFirmPractice.id },
   });
 
   // Create Firm Owner/Admin
@@ -86,7 +85,6 @@ async function main() {
     data: {
       practiceId: lawFirmPractice.id,
       userId: firmOwner.id,
-      role: 'OWNER',
       isActive: true,
     },
   });
@@ -94,7 +92,7 @@ async function main() {
   // Update user with primaryPracticeId
   await prisma.user.update({
     where: { id: firmOwner.id },
-    data: { primaryPracticeId: firmOwnerMember.id },
+    data: { primaryPracticeId: lawFirmPractice.id },
   });
 
   console.log('✅ Created Firm Owner:', firmOwner.name);
@@ -119,7 +117,6 @@ async function main() {
     data: {
       practiceId: lawFirmPractice.id,
       userId: firmPartner.id,
-      role: 'PARTNER',
       isActive: true,
     },
   });
@@ -127,7 +124,7 @@ async function main() {
   // Update user with primaryPracticeId
   await prisma.user.update({
     where: { id: firmPartner.id },
-    data: { primaryPracticeId: firmPartnerMember.id },
+    data: { primaryPracticeId: lawFirmPractice.id },
   });
 
   console.log('✅ Created Firm Partner:', firmPartner.name);
@@ -152,7 +149,6 @@ async function main() {
     data: {
       practiceId: lawFirmPractice.id,
       userId: firmAssociate.id,
-      role: 'ASSOCIATE',
       isActive: true,
     },
   });
@@ -160,7 +156,7 @@ async function main() {
   // Update user with primaryPracticeId
   await prisma.user.update({
     where: { id: firmAssociate.id },
-    data: { primaryPracticeId: firmAssociateMember.id },
+    data: { primaryPracticeId: lawFirmPractice.id },
   });
 
   console.log('✅ Created Firm Associate:', firmAssociate.name);
@@ -185,7 +181,6 @@ async function main() {
     data: {
       practiceId: lawFirmPractice.id,
       userId: firmParalegal.id,
-      role: 'PARALEGAL',
       isActive: true,
     },
   });
@@ -193,7 +188,7 @@ async function main() {
   // Update user with primaryPracticeId
   await prisma.user.update({
     where: { id: firmParalegal.id },
-    data: { primaryPracticeId: firmParalegalMember.id },
+    data: { primaryPracticeId: lawFirmPractice.id },
   });
 
   console.log('✅ Created Firm Paralegal:', firmParalegal.name);
@@ -226,12 +221,11 @@ async function main() {
     },
   });
 
-  // Create Practice Member for Individual Lawyer (OWNER role)
+  // Create Practice Member for Individual Lawyer
   const individualLawyerMember = await prisma.practiceMember.create({
     data: {
       practiceId: individualPractice.id,
       userId: individualLawyer.id,
-      role: 'OWNER',
       isActive: true,
     },
   });
@@ -239,7 +233,7 @@ async function main() {
   // Update user with primaryPracticeId
   await prisma.user.update({
     where: { id: individualLawyer.id },
-    data: { primaryPracticeId: individualLawyerMember.id },
+    data: { primaryPracticeId: individualPractice.id },
   });
 
   console.log('✅ Created Individual Lawyer:', individualLawyer.name);
@@ -380,7 +374,8 @@ async function main() {
     data: [
       {
         title: 'Review TechCorp Patent Case',
-        description: 'Analyze patent documentation and prepare initial assessment',
+        description:
+          'Analyze patent documentation and prepare initial assessment',
         status: 'PENDING',
         priority: 'HIGH',
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
@@ -391,7 +386,8 @@ async function main() {
       },
       {
         title: 'Prepare Estate Planning Documents',
-        description: 'Draft comprehensive estate planning documents for Family Trust',
+        description:
+          'Draft comprehensive estate planning documents for Family Trust',
         status: 'IN_PROGRESS',
         priority: 'MEDIUM',
         dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
@@ -402,7 +398,8 @@ async function main() {
       },
       {
         title: 'Client Meeting Preparation',
-        description: 'Prepare agenda and materials for TechCorp quarterly review',
+        description:
+          'Prepare agenda and materials for TechCorp quarterly review',
         status: 'PENDING',
         priority: 'MEDIUM',
         dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now

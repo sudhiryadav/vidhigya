@@ -21,7 +21,6 @@ import { PermissionResource } from '../common/permissions/permission.types';
 import {
   AddMemberDto,
   CreatePracticeDto,
-  UpdateMemberRoleDto,
   UpdatePracticeDto,
 } from './dto/practice.dto';
 import { PracticesService } from './practices.service';
@@ -75,22 +74,6 @@ export class PracticesController {
     @Body() addMemberDto: AddMemberDto,
   ) {
     return this.practicesService.addMember(id, req.user.sub, addMemberDto);
-  }
-
-  @Put(':id/members/:memberId/role')
-  @RequireUpdate(PermissionResource.USER)
-  async updateMemberRole(
-    @Param('id') id: string,
-    @Param('memberId') memberId: string,
-    @Request() req,
-    @Body() updateMemberRoleDto: UpdateMemberRoleDto,
-  ) {
-    return this.practicesService.updateMemberRole(
-      id,
-      req.user.sub,
-      memberId,
-      updateMemberRoleDto,
-    );
   }
 
   @Delete(':id/members/:memberId')

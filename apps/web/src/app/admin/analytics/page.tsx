@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/ToastContainer";
+import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
   Activity,
@@ -37,25 +38,54 @@ interface AnalyticsData {
 }
 
 export default function AdminAnalyticsPage() {
+  const { user } = useAuth();
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(
     null
   );
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const { showSuccess, showError } = useToast();
 
+  // Debug logging
+  console.log("AdminAnalyticsPage rendered", { user, loading, error });
+
+  // Check if user has permission to access analytics
+  const isAdmin = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
+
   useEffect(() => {
+    if (!isAdmin) {
+      setError("You don't have permission to access this page");
+      setLoading(false);
+      return;
+    }
     loadAnalytics();
-  }, []);
+  }, [isAdmin]);
 
   const loadAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.getAdminAnalytics();
+      setError(null);
+      console.log("Loading analytics data...");
+
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Request timeout")), 10000)
+      );
+
+      const analyticsPromise = apiClient.getAdminAnalytics();
+      const response = await Promise.race([analyticsPromise, timeoutPromise]);
+
+      console.log("Analytics response:", response);
       setAnalyticsData(response as AnalyticsData);
     } catch (error) {
       console.error("Failed to load analytics:", error);
-      showError("Failed to load analytics data");
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to load analytics data";
+      setError(errorMessage);
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -121,7 +151,30 @@ export default function AdminAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading analytics data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-foreground mb-2">
+            Error Loading Analytics
+          </h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <button
+            onClick={() => window.history.back()}
+            className="btn-secondary"
+          >
+            Go Back
+          </button>
+        </div>
       </div>
     );
   }
@@ -131,7 +184,43 @@ export default function AdminAnalyticsPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No analytics data available</p>
+          <h2 className="text-xl font-semibold text-foreground mb-2">
+            Analytics Dashboard
+          </h2>
+          <p className="text-muted-foreground mb-4">
+            {error
+              ? "Failed to load analytics data"
+              : "No analytics data available"}
+          </p>
+          {error && (
+            <button onClick={loadAnalytics} className="btn-primary">
+              Retry
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Final permission check before rendering
+  if (!isAdmin) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-foreground mb-2">
+            Access Denied
+          </h2>
+          <p className="text-muted-foreground mb-4">
+            You don't have permission to access the analytics page. This page is
+            only available to administrators.
+          </p>
+          <button
+            onClick={() => window.history.back()}
+            className="btn-secondary"
+          >
+            Go Back
+          </button>
         </div>
       </div>
     );

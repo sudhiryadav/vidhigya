@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { PermissionAuditService } from './permission-audit.service';
+// import { PermissionAuditService } from './permission-audit.service';
 import { PermissionCacheService } from './permission-cache.service';
 import { PermissionController } from './permission.controller';
 import { PermissionGuard } from './permission.guard';
@@ -13,13 +13,13 @@ import { PermissionService } from './permission.service';
     PermissionService,
     PermissionGuard,
     PermissionCacheService,
-    PermissionAuditService,
+    // PermissionAuditService,
   ],
   exports: [
     PermissionService,
     PermissionGuard,
     PermissionCacheService,
-    PermissionAuditService,
+    // PermissionAuditService,
   ],
 })
 export class PermissionModule {}

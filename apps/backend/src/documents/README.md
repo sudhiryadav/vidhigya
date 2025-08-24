@@ -36,8 +36,8 @@ The system implements a comprehensive permission matrix with:
 
 ### 3. Role Hierarchy
 
-- **SUPER_ADMIN**: Full system access across all practices
-- **ADMIN**: Full practice management with limited system access, can create new practices
+- **SUPER_ADMIN**: Full system access across all practices, can manage all modules system-wide
+- **ADMIN**: Full practice management with enhanced module control, can view all practices but manage only within own practice, can create/edit/delete modules for their practice
 - **LAWYER**: Full case and client management within practice, can create new practices
 - **ASSOCIATE**: Case management with limited editing permissions
 - **PARALEGAL**: Document management and task handling
@@ -78,6 +78,9 @@ The system implements a comprehensive permission matrix with:
 - **Type Safety**: Full TypeScript support with strict typing
 - **Developer Friendly**: Simple decorators and reusable components
 - **Multi-tenant**: Strict practice isolation with configurable cross-practice access
+- **Module Management**: Dynamic navigation module control for admins
+- **Practice-Level Control**: ADMIN users can manage modules within their practice
+- **System-Wide Control**: SUPER_ADMIN can manage all modules across all practices
 
 ## Usage Examples
 

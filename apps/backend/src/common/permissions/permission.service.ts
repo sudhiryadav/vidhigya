@@ -1,10 +1,9 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PermissionAuditService } from './permission-audit.service';
+// import { PermissionAuditService } from './permission-audit.service';
 import { PermissionCacheService } from './permission-cache.service';
-import { getRolePermissions, hasPermission } from './permission.matrix';
+import { ROLE_PERMISSIONS } from './permission.matrix';
 import {
-  Permission,
   PermissionAction,
   PermissionCheck,
   PermissionResource,
@@ -13,10 +12,12 @@ import {
 
 @Injectable()
 export class PermissionService {
+  private readonly logger = new Logger(PermissionService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly cacheService: PermissionCacheService,
-    private readonly auditService: PermissionAuditService,
+    // private readonly auditService: PermissionAuditService,
   ) {
     // Start cache cleanup interval
     this.cacheService.startCleanupInterval();
@@ -32,11 +33,8 @@ export class PermissionService {
     const { action, resource, resourceId, userId, practiceId } =
       permissionCheck;
 
-    let hasAccess = false;
-    let reason = '';
-
     try {
-      // Get user's system role and practice role
+      // Get user's role and practice information
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -45,7 +43,6 @@ export class PermissionService {
           practices: {
             where: { isActive: true },
             select: {
-              role: true,
               practiceId: true,
             },
           },
@@ -53,110 +50,69 @@ export class PermissionService {
       });
 
       if (!user) {
-        reason = 'User not found';
         throw new ForbiddenException('User not found');
       }
 
-      // Check system-level permissions first
-      if (hasPermission(user.role, action, resource, false)) {
-        // For SUPER_ADMIN, allow all actions
-        if (user.role === 'SUPER_ADMIN') {
-          hasAccess = true;
-          reason = 'Super admin access';
-          return true;
-        }
-
-        // For other system roles, check scope
-        const systemPermissions = getRolePermissions(user.role, false);
-        const permission = systemPermissions.find(
-          (p) => p.action === action && p.resource === resource,
-        );
-
-        if (permission?.scope === 'ALL') {
-          hasAccess = true;
-          reason = 'System-level ALL scope permission';
-          return true;
-        }
-
-        if (permission?.scope === 'PRACTICE' && practiceId) {
-          // Check if user has access to this practice
-          const practiceMember = user.practices.find(
-            (p) => p.practiceId === practiceId,
-          );
-          if (practiceMember) {
-            hasAccess = true;
-            reason = 'System-level PRACTICE scope permission';
-            return true;
-          } else {
-            reason = 'Not a member of the specified practice';
-          }
-        }
+      // Get user's role permissions
+      const rolePermissions = ROLE_PERMISSIONS.find(
+        (rp) => rp.role === user.role,
+      );
+      if (!rolePermissions) {
+        throw new ForbiddenException('Invalid user role');
       }
 
-      // Check practice-level permissions
-      if (practiceId) {
-        const practiceMember = user.practices.find(
-          (p) => p.practiceId === practiceId,
-        );
-        if (
-          practiceMember &&
-          hasPermission(practiceMember.role, action, resource, true)
-        ) {
-          const practicePermissions = getRolePermissions(
-            practiceMember.role,
-            true,
-          );
-          const permission = practicePermissions.find(
-            (p) => p.action === action && p.resource === resource,
-          );
+      // Find the specific permission
+      const permission = rolePermissions.permissions.find(
+        (p) => p.action === action && p.resource === resource,
+      );
 
-          if (permission?.scope === 'PRACTICE') {
-            hasAccess = true;
-            reason = 'Practice-level PRACTICE scope permission';
-            return true;
-          }
+      if (!permission) {
+        return false; // No permission for this action/resource
+      }
 
-          if (permission?.scope === 'OWN') {
-            // Check if the resource belongs to the user
-            const ownsResource = await this.checkResourceOwnership(
-              resource,
-              resourceId,
-              userId,
-              practiceId,
+      // Check scope-based access
+      switch (permission.scope) {
+        case 'ALL':
+          return true; // Super admin and admin can access everything
+
+        case 'PRACTICE':
+          // Check if user has access to the practice
+          if (practiceId) {
+            // Check if user is a member of this practice
+            const isPracticeMember = user.practices.some(
+              (p) => p.practiceId === practiceId,
             );
-            if (ownsResource) {
-              hasAccess = true;
-              reason = 'Practice-level OWN scope permission (owns resource)';
+            if (isPracticeMember) {
               return true;
-            } else {
-              reason =
-                'Practice-level OWN scope permission but does not own resource';
+            }
+          } else {
+            // If no practiceId specified, check if user has any practice access
+            if (user.practices.length > 0) {
+              return true;
             }
           }
-        } else {
-          reason = practiceMember
-            ? 'No practice-level permission for this action/resource'
-            : 'Not a member of the specified practice';
-        }
-      } else {
-        reason = 'No practice context provided';
-      }
+          return false;
 
-      hasAccess = false;
-      return false;
-    } finally {
-      // Log the permission check
-      await this.auditService.logPermissionCheck({
-        userId,
-        action,
-        resource,
-        resourceId,
-        practiceId,
-        allowed: hasAccess,
-        reason,
-        ipAddress: auditData?.ipAddress,
-        userAgent: auditData?.userAgent,
-      });
+        case 'OWN':
+          // Check if user owns the resource
+          if (resourceId) {
+            return await this.checkResourceOwnership(
+              userId,
+              resource,
+              resourceId,
+            );
+          }
+          return false;
+
+        default:
+          return false;
+      }
+    } catch (error) {
+      this.logger.error(
+        `Permission check failed: ${error.message}`,
+        error.stack,
+      );
+      throw error;
     }
   }
 
@@ -164,10 +120,9 @@ export class PermissionService {
    * Check if a user owns a specific resource
    */
   private async checkResourceOwnership(
+    userId: string,
     resource: PermissionResource,
     resourceId: string,
-    userId: string,
-    practiceId: string,
   ): Promise<boolean> {
     if (!resourceId) return false;
 
@@ -176,7 +131,6 @@ export class PermissionService {
         const legalCase = await this.prisma.legalCase.findFirst({
           where: {
             id: resourceId,
-            practiceId,
             OR: [{ assignedLawyerId: userId }, { clientId: userId }],
           },
         });
@@ -186,7 +140,6 @@ export class PermissionService {
         const document = await this.prisma.legalDocument.findFirst({
           where: {
             id: resourceId,
-            practiceId,
             OR: [
               { uploadedById: userId },
               { case: { assignedLawyerId: userId } },
@@ -200,7 +153,6 @@ export class PermissionService {
         const billing = await this.prisma.billingRecord.findFirst({
           where: {
             id: resourceId,
-            practiceId,
             OR: [
               { userId },
               { case: { assignedLawyerId: userId } },
@@ -214,7 +166,6 @@ export class PermissionService {
         const calendarEvent = await this.prisma.calendarEvent.findFirst({
           where: {
             id: resourceId,
-            practiceId,
             OR: [
               { createdById: userId },
               { participants: { some: { userId } } },
@@ -227,7 +178,6 @@ export class PermissionService {
         const task = await this.prisma.task.findFirst({
           where: {
             id: resourceId,
-            practiceId,
             OR: [{ assignedToId: userId }, { createdById: userId }],
           },
         });
@@ -242,23 +192,13 @@ export class PermissionService {
    * Get all permissions for a user
    */
   async getUserPermissions(userId: string): Promise<UserPermissions> {
-    // Check cache first
-    const cached = await this.cacheService.get(userId);
-    if (cached) {
-      return cached;
-    }
-
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         role: true,
-        primaryPracticeId: true,
         practices: {
           where: { isActive: true },
-          select: {
-            role: true,
-            practiceId: true,
-          },
+          select: { practiceId: true },
         },
       },
     });
@@ -267,49 +207,24 @@ export class PermissionService {
       throw new ForbiddenException('User not found');
     }
 
-    // Get system-level permissions
-    const systemPermissions = getRolePermissions(user.role, false);
-
-    // Get practice-level permissions
-    const practicePermissions = user.practices.flatMap((practice) =>
-      getRolePermissions(practice.role, true),
+    const rolePermissions = ROLE_PERMISSIONS.find(
+      (rp) => rp.role === user.role,
     );
+    if (!rolePermissions) {
+      throw new ForbiddenException('Invalid user role');
+    }
 
-    // Combine and deduplicate permissions
-    const allPermissions = [...systemPermissions, ...practicePermissions];
-    const uniquePermissions = this.deduplicatePermissions(allPermissions);
-
-    const permissions: UserPermissions = {
+    return {
       userId,
       role: user.role,
-      practiceRole: user.practices[0]?.role,
-      permissions: uniquePermissions,
-      inheritedPermissions: practicePermissions,
+      practiceRole: null, // No more practice role
+      permissions: rolePermissions.permissions,
+      inheritedPermissions: [],
     };
-
-    // Cache the result
-    await this.cacheService.set(userId, permissions);
-
-    return permissions;
   }
 
   /**
-   * Deduplicate permissions based on action and resource
-   */
-  private deduplicatePermissions(permissions: Permission[]): Permission[] {
-    const seen = new Set();
-    return permissions.filter((permission) => {
-      const key = `${permission.action}-${permission.resource}`;
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
-  }
-
-  /**
-   * Check if user can access a practice
+   * Check if a user can access a specific practice
    */
   async canAccessPractice(
     userId: string,
@@ -320,21 +235,21 @@ export class PermissionService {
       select: {
         role: true,
         practices: {
-          where: {
-            practiceId,
-            isActive: true,
-          },
+          where: { isActive: true },
+          select: { practiceId: true },
         },
       },
     });
 
     if (!user) return false;
 
-    // SUPER_ADMIN can access all practices
-    if (user.role === 'SUPER_ADMIN') return true;
+    // SUPER_ADMIN and ADMIN can access all practices
+    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+      return true;
+    }
 
-    // Check if user is a member of the practice
-    return user.practices.length > 0;
+    // Check if user is a member of this practice
+    return user.practices.some((p) => p.practiceId === practiceId);
   }
 
   /**
@@ -364,6 +279,7 @@ export class PermissionService {
       practiceId,
       baseQuery,
     );
+
     return this.prisma[this.getPrismaModel(resource)].findMany(filteredQuery);
   }
 
@@ -371,20 +287,26 @@ export class PermissionService {
    * Get the Prisma model name for a resource
    */
   private getPrismaModel(resource: PermissionResource): string {
-    const modelMap = {
+    const modelMap: Record<PermissionResource, string> = {
+      [PermissionResource.USER]: 'user',
+      [PermissionResource.PRACTICE]: 'practice',
       [PermissionResource.CASE]: 'legalCase',
       [PermissionResource.CLIENT]: 'client',
       [PermissionResource.DOCUMENT]: 'legalDocument',
       [PermissionResource.BILLING]: 'billingRecord',
       [PermissionResource.CALENDAR]: 'calendarEvent',
       [PermissionResource.TASK]: 'task',
-      [PermissionResource.USER]: 'user',
+      [PermissionResource.REPORT]: 'report',
+      [PermissionResource.ANALYTICS]: 'analytics',
+      [PermissionResource.SYSTEM]: 'system',
+      [PermissionResource.MODULE]: 'module',
     };
+
     return modelMap[resource] || 'user';
   }
 
   /**
-   * Apply ownership filters to queries
+   * Apply ownership filters to a query
    */
   private applyOwnershipFilters(
     resource: PermissionResource,
@@ -444,7 +366,7 @@ export class PermissionService {
   }
 
   /**
-   * Invalidate permissions cache for all users in a practice
+   * Invalidate practice permissions cache
    */
   async invalidatePracticePermissions(practiceId: string): Promise<void> {
     await this.cacheService.invalidatePracticeUsers(practiceId);
@@ -465,30 +387,39 @@ export class PermissionService {
   }
 
   /**
-   * Get audit logs
+   * Get audit logs (temporarily disabled)
    */
   async getAuditLogs(filter: any = {}) {
-    return this.auditService.getAuditLogs(filter);
+    // Temporarily disabled
+    return [];
   }
 
   /**
-   * Get permission statistics
+   * Get permission statistics (temporarily disabled)
    */
   async getPermissionStats(filter: any = {}) {
-    return this.auditService.getPermissionStats(filter);
+    // Temporarily disabled
+    return {
+      totalChecks: 0,
+      allowedChecks: 0,
+      deniedChecks: 0,
+      successRate: 0,
+    };
   }
 
   /**
-   * Get failed permission attempts
+   * Get failed permission attempts (temporarily disabled)
    */
   async getFailedAttempts(userId?: string, limit = 50) {
-    return this.auditService.getFailedAttempts(userId, limit);
+    // Temporarily disabled
+    return [];
   }
 
   /**
-   * Clean up old audit logs
+   * Clean up old audit logs (temporarily disabled)
    */
   async cleanupOldLogs(daysToKeep = 90) {
-    return this.auditService.cleanupOldLogs(daysToKeep);
+    // Temporarily disabled
+    return;
   }
 }

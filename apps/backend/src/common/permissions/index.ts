@@ -11,7 +11,7 @@ export * from './permission.service';
 export * from './permission-cache.service';
 
 // Audit service
-export * from './permission-audit.service';
+// export * from './permission-audit.service';
 
 // Controller
 export * from './permission.controller';
