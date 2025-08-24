@@ -427,7 +427,7 @@ export function PermissionBasedNavigation() {
 
               {/* User Menu Dropdown */}
               {userMenuOpen && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-lg shadow-xl z-50">
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-background border border-border rounded-lg shadow-xl z-50 backdrop-blur-sm bg-opacity-95">
                   <div className="p-2 space-y-1.5">
                     <button
                       onClick={handleProfileClick}
