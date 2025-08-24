@@ -9,13 +9,13 @@ export default function TestThemePage() {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+        <h1 className="text-3xl font-bold text-foreground mb-8">
           Theme Test Page
         </h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-xl font-semibold text-foreground mb-4">
               Current Theme
             </h2>
             <p className="text-gray-600 dark:text-gray-300 mb-2">
@@ -48,7 +48,7 @@ export default function TestThemePage() {
           </div>
 
           <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-xl font-semibold text-foreground mb-4">
               Theme Elements Test
             </h2>
             <div className="space-y-4">
@@ -77,7 +77,7 @@ export default function TestThemePage() {
         </div>
 
         <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-xl font-semibold text-foreground mb-4">
             Form Elements Test
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

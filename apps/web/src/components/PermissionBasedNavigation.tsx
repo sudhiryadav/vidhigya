@@ -46,12 +46,6 @@ const navigationItems = [
     icon: Settings,
     roles: ["SUPER_ADMIN"],
   },
-  {
-    name: "All Practices",
-    href: "/admin/practices",
-    icon: Building2,
-    roles: ["SUPER_ADMIN"],
-  },
 
   // General navigation items with permission requirements
   {
@@ -336,9 +330,9 @@ export function PermissionBasedNavigation() {
           className="p-2 bg-card rounded-lg shadow-lg border border-border"
         >
           {mobileMenuOpen ? (
-            <X className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+            <X className="w-6 h-6 text-muted-foreground" />
           ) : (
-            <Menu className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+            <Menu className="w-6 h-6 text-muted-foreground" />
           )}
         </button>
       </div>
@@ -433,8 +427,8 @@ export function PermissionBasedNavigation() {
 
               {/* User Menu Dropdown */}
               {userMenuOpen && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-border rounded-lg shadow-lg z-50">
-                  <div className="p-2 space-y-1">
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-lg shadow-xl z-50">
+                  <div className="p-2 space-y-1.5">
                     <button
                       onClick={handleProfileClick}
                       className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors duration-200"

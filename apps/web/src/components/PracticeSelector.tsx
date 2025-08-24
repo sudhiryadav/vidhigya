@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { usePermissions } from "../contexts/PermissionContext";
 import { usePractice } from "../contexts/PracticeContext";
 import { PermissionAction, PermissionResource } from "../types/permissions";
+import LoadingOverlay from "./LoadingOverlay";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -89,39 +90,38 @@ export const PracticeSelector: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center space-x-2">
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-        <span className="text-sm text-muted-foreground">Loading...</span>
-      </div>
-    );
-  }
-
   return (
     <div className="flex items-center space-x-2">
-      <CustomSelect
-        value={
-          currentPractice
-            ? { value: currentPractice.id, label: currentPractice.name }
-            : undefined
-        }
-        onChange={(option) => option && handlePracticeChange(option.value)}
-        options={userPractices.map((practice) => ({
-          value: practice.id,
-          label: (
-            <div className="flex items-center space-x-2">
-              {getPracticeIcon(practice.practiceType)}
-              <span>{practice.name}</span>
-              <span className="text-xs text-muted-foreground">
-                ({practice.practiceType})
-              </span>
-            </div>
-          ) as any,
-        }))}
-        placeholder="Select Practice"
-        className="w-48"
+      <LoadingOverlay
+        isVisible={isLoading}
+        title="Loading Practices"
+        message="Please wait while we fetch your practice information..."
+        absolute={false}
       />
+      {!isLoading && (
+        <CustomSelect
+          value={
+            currentPractice
+              ? { value: currentPractice.id, label: currentPractice.name }
+              : undefined
+          }
+          onChange={(option) => option && handlePracticeChange(option.value)}
+          options={userPractices.map((practice) => ({
+            value: practice.id,
+            label: (
+              <div className="flex items-center space-x-2">
+                {getPracticeIcon(practice.practiceType)}
+                <span>{practice.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  ({practice.practiceType})
+                </span>
+              </div>
+            ) as any,
+          }))}
+          placeholder="Select Practice"
+          className="w-48"
+        />
+      )}
 
       {userPractices.length === 0 && canCreatePractice && (
         <>

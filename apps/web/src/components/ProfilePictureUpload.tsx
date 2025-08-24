@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { ImageOptimizer } from "@/utils/imageOptimizer";
+import LoadingOverlay from "./LoadingOverlay";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import DragAndDrop from "./DragAndDrop";
@@ -220,10 +221,10 @@ export default function ProfilePictureUpload({
 
         {showUploadArea && (
           <div className="text-center">
-            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+            <h4 className="text-sm font-medium text-foreground mb-1">
               Profile Picture
             </h4>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+            <p className="text-xs text-muted-foreground mb-2">
               Upload a new profile picture
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">
@@ -354,14 +355,12 @@ export default function ProfilePictureUpload({
             )}
 
             {/* Uploading Indicator */}
-            {isUploading && (
-              <div className="flex items-center justify-center p-4 bg-blue-100 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700 rounded-lg mt-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 dark:border-blue-400"></div>
-                <span className="ml-2 text-sm text-blue-800 dark:text-blue-300 font-medium">
-                  Uploading...
-                </span>
-              </div>
-            )}
+            <LoadingOverlay 
+              isVisible={isUploading}
+              title="Uploading Profile Picture"
+              message="Please wait while we upload your profile picture..."
+              absolute={false}
+            />
           </div>
         )}
       </div>

@@ -40,24 +40,20 @@ export default function DebugThemePage() {
             <div className="space-y-4">
               <div>
                 <strong className="theme-test-text">Theme Context:</strong>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Selected: {theme}
-                </p>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-muted-foreground">Selected: {theme}</p>
+                <p className="text-muted-foreground">
                   Resolved: {resolvedTheme}
                 </p>
               </div>
 
               <div>
                 <strong className="theme-test-text">HTML Element:</strong>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Classes: {htmlClasses}
-                </p>
+                <p className="text-muted-foreground">Classes: {htmlClasses}</p>
               </div>
 
               <div>
                 <strong className="theme-test-text">System Preference:</strong>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-muted-foreground">
                   {window.matchMedia("(prefers-color-scheme: dark)").matches
                     ? "Dark"
                     : "Light"}
@@ -106,7 +102,7 @@ export default function DebugThemePage() {
               <p className="text-gray-800 dark:text-gray-200 font-medium">
                 Background Test
               </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 This should be light gray in light mode, dark gray in dark mode
               </p>
             </div>
@@ -140,10 +136,8 @@ export default function DebugThemePage() {
 
           <div className="space-y-4">
             <div className="p-4 bg-card border border-border rounded">
-              <p className="text-gray-900 dark:text-white font-medium">
-                Standard Card
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
+              <p className="text-foreground font-medium">Standard Card</p>
+              <p className="text-muted-foreground text-sm">
                 Using bg-card and text-foreground
               </p>
             </div>
@@ -164,7 +158,7 @@ export default function DebugThemePage() {
           <h2 className="theme-test-text text-xl font-semibold mb-4">
             Console Log
           </h2>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             Check the browser console for detailed theme change logs.
           </p>
         </div>

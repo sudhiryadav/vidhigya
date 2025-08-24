@@ -1429,7 +1429,7 @@ export default function VideoCallsPage() {
         isOpen={showJoinWithMeetingIdModal}
         onClose={handleJoinWithMeetingIdCancel}
         header={
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-lg font-semibold text-foreground">
             Join Video Call
           </h2>
         }

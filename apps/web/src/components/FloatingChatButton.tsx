@@ -16,6 +16,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import LoadingOverlay from "./LoadingOverlay";
 
 interface Chat {
   id: string;
@@ -504,8 +505,12 @@ export default function FloatingChatButton({
     if (isLoading) {
       return (
         <div className="text-center text-muted-foreground py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-sm">Loading users...</p>
+          <LoadingOverlay
+            isVisible={true}
+            title="Loading Users"
+            message="Please wait while we fetch user information..."
+            absolute={false}
+          />
         </div>
       );
     }

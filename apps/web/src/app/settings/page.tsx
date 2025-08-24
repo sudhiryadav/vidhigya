@@ -174,10 +174,8 @@ export default function SettingsPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Settings
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+          <p className="text-muted-foreground mt-2">
             Manage your account settings and preferences
           </p>
         </div>
@@ -222,10 +220,10 @@ export default function SettingsPage() {
                     <div className="flex items-center space-x-3">
                       {Icon && <Icon className="w-6 h-6 text-blue-600" />}
                       <div>
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                        <h2 className="text-xl font-semibold text-foreground">
                           {activeTabData?.name}
                         </h2>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-muted-foreground">
                           {activeTabData?.description}
                         </p>
                       </div>
@@ -238,7 +236,7 @@ export default function SettingsPage() {
               {activeTab === "profile" && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    <h3 className="text-lg font-medium text-foreground mb-4">
                       Profile Picture
                     </h3>
                     <ProfilePictureUpload
@@ -253,13 +251,13 @@ export default function SettingsPage() {
               {activeTab === "notifications" && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    <h3 className="text-lg font-medium text-foreground mb-4">
                       Notification Channels
                     </h3>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-foreground">
                             Email Notifications
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -286,7 +284,7 @@ export default function SettingsPage() {
 
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-foreground">
                             SMS Notifications
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -311,7 +309,7 @@ export default function SettingsPage() {
 
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-foreground">
                             Push Notifications
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -339,13 +337,13 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    <h3 className="text-lg font-medium text-foreground mb-4">
                       Notification Types
                     </h3>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-foreground">
                             Case Updates
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -368,7 +366,7 @@ export default function SettingsPage() {
 
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-foreground">
                             Billing Alerts
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -391,7 +389,7 @@ export default function SettingsPage() {
 
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-foreground">
                             Calendar Reminders
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -423,13 +421,13 @@ export default function SettingsPage() {
               {activeTab === "privacy" && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    <h3 className="text-lg font-medium text-foreground mb-4">
                       Security Settings
                     </h3>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-foreground">
                             Two-Factor Authentication
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -452,7 +450,7 @@ export default function SettingsPage() {
 
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-foreground">
                             Data Sharing
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -480,7 +478,7 @@ export default function SettingsPage() {
               {activeTab === "preferences" && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    <h3 className="text-lg font-medium text-foreground mb-4">
                       Display Settings
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -3,6 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
+import LoadingOverlay from "./LoadingOverlay";
 
 const publicRoutes = ["/login", "/register", "/forgot-password"];
 
@@ -56,20 +57,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, isAuthenticated, pathname, router]);
 
-  // Show loading while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
+      <LoadingOverlay
+        isVisible={loading}
+        title="Loading Authentication"
+        message="Please wait while we verify your credentials..."
+        absolute={false}
+      />
+
       {children}
       {/* Hidden FloatingChatButton on all authenticated pages */}
       {/* {isAuthenticated && <FloatingChatButton />} */}

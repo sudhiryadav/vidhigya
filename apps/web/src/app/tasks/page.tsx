@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingOverlay from "@/components/LoadingOverlay";
 import ModalDialog from "@/components/ui/ModalDialog";
 import CustomSelect, { SelectOption } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
@@ -450,17 +451,17 @@ export default function TasksPage() {
 
         {/* Tasks List */}
         <div className="bg-card rounded-lg shadow-sm border border-border">
-          {loading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-gray-500 dark:text-gray-400">
-                Loading tasks...
-              </p>
-            </div>
-          ) : filteredTasks.length === 0 ? (
+          <LoadingOverlay
+            isVisible={loading}
+            title="Loading Tasks"
+            message="Please wait while we fetch your tasks..."
+            absolute={false}
+          />
+
+          {!loading && filteredTasks.length === 0 ? (
             <div className="p-8 text-center">
               <CheckCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              <h3 className="text-lg font-medium text-foreground mb-2">
                 No tasks found
               </h3>
               <p className="text-gray-500 dark:text-gray-400">
@@ -504,7 +505,7 @@ export default function TasksPage() {
                     <tr key={task.id} className="hover:bg-muted">
                       <td className="px-6 py-4">
                         <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white break-words max-w-xs">
+                          <div className="text-sm font-medium text-foreground break-words max-w-xs">
                             {task.title}
                           </div>
                           {task.description && (
@@ -518,7 +519,7 @@ export default function TasksPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white break-words max-w-xs">
+                        <div className="text-sm font-medium text-foreground break-words max-w-xs">
                           {task.assignedTo?.name || "Unassigned"}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400 break-words max-w-xs">
@@ -584,7 +585,7 @@ export default function TasksPage() {
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                         {task.case ? (
                           <div>
-                            <div className="font-medium text-gray-900 dark:text-white">
+                            <div className="font-medium text-foreground">
                               {task.case.caseNumber}
                             </div>
                             <div className="text-xs break-words max-w-xs">
@@ -1001,33 +1002,25 @@ export default function TasksPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  Title:
-                </p>
+                <p className="text-sm font-medium text-foreground">Title:</p>
                 <p className="text-gray-500 dark:text-gray-400">
                   {selectedTask.title}
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  Status:
-                </p>
+                <p className="text-sm font-medium text-foreground">Status:</p>
                 <p className="text-gray-500 dark:text-gray-400">
                   {selectedTask.status}
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  Priority:
-                </p>
+                <p className="text-sm font-medium text-foreground">Priority:</p>
                 <p className="text-gray-500 dark:text-gray-400">
                   {selectedTask.priority}
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  Due Date:
-                </p>
+                <p className="text-sm font-medium text-foreground">Due Date:</p>
                 <p className="text-gray-500 dark:text-gray-400">
                   {selectedTask.dueDate
                     ? formatDate(selectedTask.dueDate)
@@ -1035,7 +1028,7 @@ export default function TasksPage() {
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                <p className="text-sm font-medium text-foreground">
                   Assigned To:
                 </p>
                 <p className="text-gray-500 dark:text-gray-400">
@@ -1043,7 +1036,7 @@ export default function TasksPage() {
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                <p className="text-sm font-medium text-foreground">
                   Created By:
                 </p>
                 <p className="text-gray-500 dark:text-gray-400">
@@ -1051,7 +1044,7 @@ export default function TasksPage() {
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                <p className="text-sm font-medium text-foreground">
                   Created At:
                 </p>
                 <p className="text-gray-500 dark:text-gray-400">
@@ -1059,7 +1052,7 @@ export default function TasksPage() {
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                <p className="text-sm font-medium text-foreground">
                   Completed At:
                 </p>
                 <p className="text-gray-500 dark:text-gray-400">
@@ -1070,7 +1063,7 @@ export default function TasksPage() {
               </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <p className="text-sm font-medium text-foreground">
                 Description:
               </p>
               <p className="text-gray-500 dark:text-gray-400">
@@ -1078,13 +1071,11 @@ export default function TasksPage() {
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                Case:
-              </p>
+              <p className="text-sm font-medium text-foreground">Case:</p>
               <p className="text-gray-500 dark:text-gray-400">
                 {selectedTask.case ? (
                   <div>
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="font-medium text-foreground">
                       {selectedTask.case.caseNumber}
                     </div>
                     <div className="text-xs">{selectedTask.case.title}</div>
@@ -1127,7 +1118,7 @@ export default function TasksPage() {
       >
         <div className="text-center">
           <Trash2 className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <h3 className="text-lg font-medium text-foreground mb-2">
             Are you sure you want to delete this task?
           </h3>
           <p className="text-gray-500 dark:text-gray-400 mb-4">

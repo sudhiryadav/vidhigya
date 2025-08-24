@@ -406,7 +406,7 @@ export default function NotificationsPage() {
           {filteredNotifications.length === 0 ? (
             <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
               <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              <h3 className="text-lg font-medium text-foreground mb-2">
                 No notifications found
               </h3>
               <p className="text-muted-foreground">

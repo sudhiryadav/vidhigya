@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingOverlay from "@/components/LoadingOverlay";
 import ModalDialog from "@/components/ui/ModalDialog";
 import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
@@ -708,12 +709,14 @@ export default function BillingPage() {
 
         {/* Bills List */}
         <div className="bg-card rounded-lg shadow-sm border border-border">
-          {loading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-muted-foreground">Loading bills...</p>
-            </div>
-          ) : filteredBills.length === 0 ? (
+          <LoadingOverlay
+            isVisible={loading}
+            title="Loading Bills"
+            message="Please wait while we fetch your billing information..."
+            absolute={false}
+          />
+
+          {!loading && filteredBills.length === 0 ? (
             <div className="p-8 text-center">
               <CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">

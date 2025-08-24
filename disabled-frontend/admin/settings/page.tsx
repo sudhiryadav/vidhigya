@@ -225,10 +225,10 @@ export default function AdminSettings() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             System Settings
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-muted-foreground">
             Manage system-wide settings and configurations
           </p>
         </div>
@@ -292,21 +292,21 @@ export default function AdminSettings() {
               {/* System Tab */}
               {activeTab === "system" && (
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                  <h2 className="text-xl font-semibold text-foreground mb-6">
                     System Configuration
                   </h2>
                   <div className="space-y-6">
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-medium text-foreground">
                         General
                       </h3>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-gray-900 dark:text-white font-medium">
+                            <p className="text-foreground font-medium">
                               Maintenance Mode
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm text-muted-foreground">
                               Put the system in maintenance mode
                             </p>
                           </div>
@@ -327,10 +327,10 @@ export default function AdminSettings() {
                         </div>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-gray-900 dark:text-white font-medium">
+                            <p className="text-foreground font-medium">
                               Debug Mode
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm text-muted-foreground">
                               Enable debug logging
                             </p>
                           </div>
@@ -351,10 +351,10 @@ export default function AdminSettings() {
                         </div>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-gray-900 dark:text-white font-medium">
+                            <p className="text-foreground font-medium">
                               Auto Backup
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm text-muted-foreground">
                               Automatically backup data
                             </p>
                           </div>
@@ -377,12 +377,12 @@ export default function AdminSettings() {
                     </div>
 
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-medium text-foreground">
                         Data Management
                       </h3>
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Data Retention (days)
                           </label>
                           <CustomSelect
@@ -425,17 +425,17 @@ export default function AdminSettings() {
               {/* Security Tab */}
               {activeTab === "security" && (
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                  <h2 className="text-xl font-semibold text-foreground mb-6">
                     Security Settings
                   </h2>
                   <div className="space-y-6">
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-medium text-foreground">
                         Authentication
                       </h3>
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Session Timeout (minutes)
                           </label>
                           <CustomSelect
@@ -471,7 +471,7 @@ export default function AdminSettings() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Password Policy
                           </label>
                           <CustomSelect
@@ -510,12 +510,12 @@ export default function AdminSettings() {
                     </div>
 
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-medium text-foreground">
                         Access Control
                       </h3>
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             IP Whitelist
                           </label>
                           <textarea
@@ -533,10 +533,10 @@ export default function AdminSettings() {
                         </div>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-gray-900 dark:text-white font-medium">
+                            <p className="text-foreground font-medium">
                               Audit Logging
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm text-muted-foreground">
                               Log all system activities
                             </p>
                           </div>
@@ -564,21 +564,21 @@ export default function AdminSettings() {
               {/* Notifications Tab */}
               {activeTab === "notifications" && (
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                  <h2 className="text-xl font-semibold text-foreground mb-6">
                     System Notifications
                   </h2>
                   <div className="space-y-6">
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-medium text-foreground">
                         Alert Settings
                       </h3>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-gray-900 dark:text-white font-medium">
+                            <p className="text-foreground font-medium">
                               System Alerts
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm text-muted-foreground">
                               Critical system notifications
                             </p>
                           </div>
@@ -599,10 +599,10 @@ export default function AdminSettings() {
                         </div>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-gray-900 dark:text-white font-medium">
+                            <p className="text-foreground font-medium">
                               User Activity
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm text-muted-foreground">
                               Monitor user actions
                             </p>
                           </div>
@@ -623,10 +623,10 @@ export default function AdminSettings() {
                         </div>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-gray-900 dark:text-white font-medium">
+                            <p className="text-foreground font-medium">
                               Security Events
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm text-muted-foreground">
                               Security-related notifications
                             </p>
                           </div>
@@ -647,10 +647,10 @@ export default function AdminSettings() {
                         </div>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-gray-900 dark:text-white font-medium">
+                            <p className="text-foreground font-medium">
                               Backup Notifications
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm text-muted-foreground">
                               Backup status updates
                             </p>
                           </div>
@@ -680,17 +680,17 @@ export default function AdminSettings() {
               {/* Integrations Tab */}
               {activeTab === "integrations" && (
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                  <h2 className="text-xl font-semibold text-foreground mb-6">
                     Third-Party Integrations
                   </h2>
                   <div className="space-y-6">
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-medium text-foreground">
                         Communication
                       </h3>
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Email Provider
                           </label>
                           <CustomSelect
@@ -724,7 +724,7 @@ export default function AdminSettings() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             SMS Provider
                           </label>
                           <CustomSelect
@@ -757,12 +757,12 @@ export default function AdminSettings() {
                     </div>
 
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-medium text-foreground">
                         Storage & Analytics
                       </h3>
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Storage Provider
                           </label>
                           <CustomSelect
@@ -801,10 +801,10 @@ export default function AdminSettings() {
                         </div>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-gray-900 dark:text-white font-medium">
+                            <p className="text-foreground font-medium">
                               Analytics
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm text-muted-foreground">
                               Enable usage analytics
                             </p>
                           </div>

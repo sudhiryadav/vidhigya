@@ -107,23 +107,25 @@ export default function LoginPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-700 login-page">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5 dark:opacity-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.15)_1px,transparent_0)] dark:bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.1)_1px,transparent_0)] bg-[length:20px_20px]"></div>
+        </div>
         <div className="max-w-md w-full space-y-8">
           {/* Logo and Header */}
           <div className="text-center">
             <div className="mx-auto mb-4">
               <Logo size="xl" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Welcome back
-            </h2>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            <h2 className="text-3xl font-bold text-foreground">Welcome back</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
               Sign in to your Vidhigya account
             </p>
           </div>
 
           {/* Login Form */}
-          <div className="bg-card border border-border rounded-xl shadow-lg dark:shadow-xl p-8">
+          <div className="bg-card/80 backdrop-blur-sm border border-border rounded-xl shadow-lg dark:shadow-xl p-8">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {errors.root && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
@@ -244,7 +246,7 @@ export default function LoginPage() {
             </form>
 
             {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-muted rounded-lg">
+            <div className="mt-6 p-4 bg-muted/60 backdrop-blur-sm rounded-lg border border-border/50">
               <h4 className="text-sm font-medium text-foreground mb-3">
                 Demo Credentials (Click to login):
               </h4>
@@ -259,7 +261,7 @@ export default function LoginPage() {
                     handleDemoLogin("admin@vidhigya.com", "admin123")
                   }
                   disabled={loading || demoLoading !== null}
-                  className="w-full text-left p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full text-left p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/80"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -287,7 +289,7 @@ export default function LoginPage() {
                     handleDemoLogin("sarah@wilsonlaw.com", "individual123")
                   }
                   disabled={loading || demoLoading !== null}
-                  className="w-full text-left p-2 rounded-md hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors border border-transparent hover:border-green-200 dark:hover:border-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full text-left p-2 rounded-md hover:bg-muted/80 transition-colors border border-transparent hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -310,8 +312,8 @@ export default function LoginPage() {
                 </button>
 
                 {/* Firm Practice Accounts */}
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                <div className="border-t border-border pt-3 mt-3">
+                  <h5 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
                     Law Firm Practice
                   </h5>
 
@@ -321,7 +323,7 @@ export default function LoginPage() {
                       handleDemoLogin("johnson@johnsonlaw.com", "firm123")
                     }
                     disabled={loading || demoLoading !== null}
-                    className="w-full text-left p-2 rounded-md hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors border border-transparent hover:border-orange-200 dark:hover:border-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full text-left p-2 rounded-md hover:bg-muted/80 transition-colors border border-transparent hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -349,7 +351,7 @@ export default function LoginPage() {
                       handleDemoLogin("patel@johnsonlaw.com", "partner123")
                     }
                     disabled={loading || demoLoading !== null}
-                    className="w-full text-left p-2 rounded-md hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors border border-transparent hover:border-orange-200 dark:hover:border-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full text-left p-2 rounded-md hover:bg-muted/80 transition-colors border border-transparent hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -361,7 +363,7 @@ export default function LoginPage() {
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
-                        {demoLoading === "patel@johnsonlaw.com" && (
+                        {demoLoading === "johnson@johnsonlaw.com" && (
                           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600"></div>
                         )}
                         <span className="text-xs text-muted-foreground">
@@ -377,7 +379,7 @@ export default function LoginPage() {
                       handleDemoLogin("kumar@johnsonlaw.com", "associate123")
                     }
                     disabled={loading || demoLoading !== null}
-                    className="w-full text-left p-2 rounded-md hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors border border-transparent hover:border-orange-200 dark:hover:border-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full text-left p-2 rounded-md hover:bg-muted/80 transition-colors border border-transparent hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -405,7 +407,7 @@ export default function LoginPage() {
                       handleDemoLogin("sharma@johnsonlaw.com", "paralegal123")
                     }
                     disabled={loading || demoLoading !== null}
-                    className="w-full text-left p-2 rounded-md hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors border border-transparent hover:border-orange-200 dark:hover:border-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full text-left p-2 rounded-md hover:bg-muted/80 transition-colors border border-transparent hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -431,10 +433,11 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
+        {/* End Background Pattern */}
       </div>
       {/* Footer outside the flex centering container */}
       <div className="text-center pb-6">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-muted-foreground">
           Don't have an account?{" "}
           <Link
             href="/register"
@@ -444,6 +447,27 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
+
+      {/* Force light theme for login page */}
+      <style jsx global>{`
+        .login-page {
+          background: linear-gradient(
+            to bottom right,
+            rgb(239 246 255),
+            rgb(238 242 255),
+            rgb(219 234 254)
+          ) !important;
+        }
+
+        .dark .login-page {
+          background: linear-gradient(
+            to bottom right,
+            rgb(15 23 42),
+            rgb(30 41 59),
+            rgb(51 65 85)
+          ) !important;
+        }
+      `}</style>
     </>
   );
 }

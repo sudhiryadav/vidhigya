@@ -6,6 +6,7 @@ import { FontSizeProvider } from "@/contexts/FontSizeContext";
 import { PermissionProvider } from "@/contexts/PermissionContext";
 import { PracticeProvider } from "@/contexts/PracticeContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { SuperAdminProvider } from "@/contexts/SuperAdminContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { VideoCallProvider } from "@/contexts/VideoCallContext";
 import { Inter } from "next/font/google";
@@ -39,11 +40,13 @@ export default function RootLayout({
                 <VideoCallProvider>
                   <PracticeProvider>
                     <PermissionProvider>
-                      <ToastContainer>
-                        <AuthGuard>
-                          <LayoutWrapper>{children}</LayoutWrapper>
-                        </AuthGuard>
-                      </ToastContainer>
+                      <SuperAdminProvider>
+                        <ToastContainer>
+                          <AuthGuard>
+                            <LayoutWrapper>{children}</LayoutWrapper>
+                          </AuthGuard>
+                        </ToastContainer>
+                      </SuperAdminProvider>
                     </PermissionProvider>
                   </PracticeProvider>
                 </VideoCallProvider>

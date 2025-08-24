@@ -35,9 +35,7 @@ export default function Overlay({
         {showSpinner && (
           <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
         )}
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          {title}
-        </h3>
+        <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
         {message && (
           <p className="text-gray-500 dark:text-gray-400 text-center">
             {message}

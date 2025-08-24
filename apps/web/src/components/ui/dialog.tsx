@@ -34,9 +34,7 @@ export function Dialog({ children, isOpen, onClose, title }: DialogProps) {
       <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
         {title && (
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-              {title}
-            </h3>
+            <h3 className="text-lg font-medium text-foreground">{title}</h3>
           </div>
         )}
         <div className="px-6 py-4">{children}</div>
@@ -72,11 +70,7 @@ export function DialogFooter({ children }: { children: ReactNode }) {
 }
 
 export function DialogTitle({ children }: { children: ReactNode }) {
-  return (
-    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-      {children}
-    </h3>
-  );
+  return <h3 className="text-lg font-medium text-foreground">{children}</h3>;
 }
 
 export function DialogDescription({ children }: { children: ReactNode }) {

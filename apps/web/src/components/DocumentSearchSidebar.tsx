@@ -168,9 +168,7 @@ export default function DocumentSearchSidebar({
       >
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-          <span className="ml-2 text-gray-600 dark:text-gray-400">
-            Loading...
-          </span>
+          <span className="ml-2 text-muted-foreground">Loading...</span>
         </div>
       </div>
     );
@@ -181,7 +179,7 @@ export default function DocumentSearchSidebar({
       {/* Draft Sections */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6 hidden">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-foreground">
             Draft Sections
           </h3>
           {onNewDraftClick && (
@@ -208,10 +206,10 @@ export default function DocumentSearchSidebar({
                 className="border border-border rounded-lg p-3 hover:bg-muted transition-colors cursor-pointer"
                 onClick={() => onDraftClick?.(draft)}
               >
-                <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                <h4 className="font-medium text-foreground mb-1">
                   {draft.title}
                 </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <p className="text-sm text-muted-foreground mb-2">
                   {draft.content.substring(0, 100)}...
                 </p>
                 <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
@@ -227,7 +225,7 @@ export default function DocumentSearchSidebar({
       {/* Draft Documents */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6 hidden">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-foreground">
             Draft Documents
           </h3>
           <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -252,7 +250,7 @@ export default function DocumentSearchSidebar({
               >
                 <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {draft.title}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -268,7 +266,7 @@ export default function DocumentSearchSidebar({
 
       {/* Quick Actions */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6 hidden">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
           Quick Actions
         </h3>
         <div className="space-y-3">
@@ -280,10 +278,8 @@ export default function DocumentSearchSidebar({
             >
               <action.icon className="w-5 h-5 text-blue-600 flex-shrink-0" />
               <div className="flex-1">
-                <p className="font-medium text-gray-900 dark:text-white">
-                  {action.title}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="font-medium text-foreground">{action.title}</p>
+                <p className="text-sm text-muted-foreground">
                   {action.description}
                 </p>
               </div>
@@ -294,7 +290,7 @@ export default function DocumentSearchSidebar({
 
       {/* Suggested Questions */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6 hidden">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
           Suggested Questions
         </h3>
         <div className="space-y-2">
@@ -313,7 +309,7 @@ export default function DocumentSearchSidebar({
       {/* Recent Activity */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6 hidden">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-foreground">
             Recent Activity
           </h3>
           <Clock className="w-5 h-5 text-gray-400" />
@@ -323,9 +319,9 @@ export default function DocumentSearchSidebar({
             <div key={activity.id} className="flex items-center space-x-3 p-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-900 dark:text-white">
+                <p className="text-sm text-foreground">
                   <span className="font-medium">{activity.action}</span>{" "}
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-muted-foreground">
                     {activity.documentTitle}
                   </span>
                 </p>

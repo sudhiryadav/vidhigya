@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingOverlay from "@/components/LoadingOverlay";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -26,10 +27,18 @@ export default function HomePage() {
   // Show loading while redirecting
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="flex flex-col items-center space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <p className="text-gray-600 dark:text-gray-400">Redirecting...</p>
-      </div>
+      <LoadingOverlay
+        isVisible={loading}
+        title="Redirecting"
+        message="Please wait while we redirect you to the appropriate page..."
+        absolute={false}
+      />
+
+      {!loading && (
+        <div className="flex flex-col items-center space-y-4">
+          <p className="text-muted-foreground">Redirecting...</p>
+        </div>
+      )}
     </div>
   );
 }

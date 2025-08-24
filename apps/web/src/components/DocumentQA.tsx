@@ -123,9 +123,7 @@ function WordCloudOverlay({
             <Cloud className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Quick Actions
-            </h2>
+            <h2 className="text-xl font-bold text-foreground">Quick Actions</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Click any word or suggestion to get instant answers
             </p>
@@ -148,7 +146,7 @@ function WordCloudOverlay({
 
         {/* Full Suggestions List */}
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold text-foreground mb-4">
             All Quick Actions
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -305,7 +303,7 @@ function DocumentViewer({
     <div className="flex items-center space-x-3">
       <FileText className="w-5 h-5 text-blue-600" />
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-foreground">
           {documentTitle}
         </h3>
         {highlightedText && (
@@ -349,7 +347,7 @@ function DocumentViewer({
       {loading ? (
         <div className="flex items-center justify-center h-full">
           <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-          <span className="ml-2 text-gray-600 dark:text-gray-400">
+          <span className="ml-2 text-muted-foreground">
             Loading document preview...
           </span>
         </div>
@@ -359,7 +357,7 @@ function DocumentViewer({
         </div>
       ) : (
         <div className="prose prose-sm max-w-none dark:prose-invert">
-          <div className="whitespace-pre-wrap text-gray-900 dark:text-white text-sm">
+          <div className="whitespace-pre-wrap text-foreground text-sm">
             {startChar && endChar ? (
               // Show preview around the highlighted source
               <div>
@@ -397,11 +395,11 @@ function DocumentViewer({
                 )}
 
                 <div className="mt-4 p-3 bg-muted rounded-lg">
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <p className="text-xs text-muted-foreground">
                     <strong>Document Info:</strong>{" "}
                     {documentContent.length.toLocaleString()} characters total
                   </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <p className="text-xs text-muted-foreground">
                     <strong>Source Position:</strong> Characters {startChar}-
                     {endChar}
                   </p>
@@ -414,7 +412,7 @@ function DocumentViewer({
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     📄 Document Preview
                   </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <p className="text-xs text-muted-foreground">
                     Showing first 500 characters (no specific source location
                     available)
                   </p>
@@ -430,7 +428,7 @@ function DocumentViewer({
                 </div>
 
                 <div className="mt-4 p-3 bg-muted rounded-lg">
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <p className="text-xs text-muted-foreground">
                     <strong>Document Length:</strong>{" "}
                     {documentContent.length.toLocaleString()} characters
                   </p>
@@ -1087,7 +1085,7 @@ export default function DocumentQA() {
                   <div className="bg-muted rounded-lg p-3">
                     <div className="flex items-center space-x-2">
                       <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                      <span className="text-sm text-muted-foreground">
                         Thinking...
                       </span>
                     </div>
@@ -1164,7 +1162,7 @@ export default function DocumentQA() {
           header={
             <div className="flex items-center space-x-2">
               <FileText className="w-5 h-5 text-green-600" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-lg font-semibold text-foreground">
                 AI Assistant Analytics
               </h3>
             </div>
@@ -1215,7 +1213,7 @@ export default function DocumentQA() {
                 {analytics.queriesByType &&
                   analytics.queriesByType.length > 0 && (
                     <div className="bg-card p-4 rounded-lg border">
-                      <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                      <h4 className="text-lg font-medium text-foreground mb-4">
                         Query Types
                       </h4>
                       <div className="space-y-2">
@@ -1228,7 +1226,7 @@ export default function DocumentQA() {
                               <span className="text-sm text-gray-600 dark:text-gray-300 capitalize">
                                 {type.type.replace(/_/g, " ").toLowerCase()}
                               </span>
-                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              <span className="text-sm font-medium text-foreground">
                                 {type.count}
                               </span>
                             </div>
@@ -1241,7 +1239,7 @@ export default function DocumentQA() {
                 {/* Recent Activity */}
                 {chatHistory && chatHistory.length > 0 && (
                   <div className="bg-card p-4 rounded-lg border">
-                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    <h4 className="text-lg font-medium text-foreground mb-4">
                       Recent Queries
                     </h4>
                     <div className="space-y-3 max-h-60 overflow-y-auto">
@@ -1250,7 +1248,7 @@ export default function DocumentQA() {
                           key={query.id}
                           className="border-l-4 border-blue-500 pl-4"
                         >
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-foreground">
                             {query.question}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1265,9 +1263,7 @@ export default function DocumentQA() {
             ) : (
               <div className="text-center py-8">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">
-                  Loading analytics...
-                </p>
+                <p className="text-muted-foreground">Loading analytics...</p>
               </div>
             )}
           </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingOverlay from "@/components/LoadingOverlay";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import { getSocketService } from "@/services/socket";
@@ -356,23 +357,16 @@ export default function ChatPage() {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">
-            Loading chat...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const otherParticipant = participants.find((p) => p.id !== user?.id);
 
   return (
     <div className="min-h-screen bg-background">
+      <LoadingOverlay
+        isVisible={loading}
+        title="Loading Chat"
+        message="Please wait while we fetch your chat data..."
+        absolute
+      />
       {/* Header */}
       <div className="bg-card border-b border-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

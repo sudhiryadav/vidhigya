@@ -306,11 +306,9 @@ export default function NotificationBell() {
       case "VIDEO_CALL_STARTED":
         return <Video className="w-6 h-6 text-red-600 dark:text-red-400" />;
       case "SYSTEM":
-        return (
-          <AlertCircle className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-        );
+        return <AlertCircle className="w-6 h-6 text-muted-foreground" />;
       default:
-        return <Bell className="w-6 h-6 text-gray-600 dark:text-gray-400" />;
+        return <Bell className="w-6 h-6 text-muted-foreground" />;
     }
   };
 

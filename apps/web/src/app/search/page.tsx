@@ -496,7 +496,7 @@ export default function SearchPage() {
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
                               <FileText className="w-4 h-4 text-blue-600" />
-                              <span className="font-medium text-gray-900 dark:text-white">
+                              <span className="font-medium text-foreground">
                                 {result.document_title || result.filename}
                               </span>
                               {result.page_number && (
@@ -557,7 +557,7 @@ export default function SearchPage() {
             {searchResults.length === 0 && searchTerm && !searching && (
               <div className="bg-card rounded-lg shadow-sm border border-border p-8 text-center">
                 <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                <h3 className="text-lg font-medium text-foreground mb-2">
                   No results found
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400">
@@ -574,7 +574,7 @@ export default function SearchPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-card rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+              <h3 className="text-lg font-medium text-foreground">
                 {currentDraft.id ? "Edit Draft" : "New Draft"}
               </h3>
               <button
@@ -665,7 +665,7 @@ export default function SearchPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-card rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+              <h3 className="text-lg font-medium text-foreground">
                 {selectedDocument.title}
               </h3>
               <button
@@ -677,7 +677,7 @@ export default function SearchPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
+              <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
                 <div>
                   <span className="font-medium">Type:</span>{" "}
                   {selectedDocument.fileType}
@@ -697,7 +697,7 @@ export default function SearchPage() {
               </div>
 
               <div className="border-t pt-4">
-                <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                <h4 className="font-medium text-foreground mb-2">
                   Content Preview
                 </h4>
                 <div className="bg-muted p-4 rounded-lg max-h-96 overflow-y-auto">
@@ -714,9 +714,7 @@ export default function SearchPage() {
       {/* Drafts Sidebar */}
       {canManageDrafts && drafts.length > 0 && (
         <div className="fixed right-4 top-20 w-64 bg-card rounded-lg shadow-lg border border-border p-4">
-          <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-            Drafts
-          </h4>
+          <h4 className="font-medium text-foreground mb-3">Drafts</h4>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {drafts.map((draft) => (
               <div
@@ -724,7 +722,7 @@ export default function SearchPage() {
                 className="p-2 bg-muted rounded cursor-pointer hover:bg-muted/80"
                 onClick={() => openDraft(draft)}
               >
-                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                <div className="text-sm font-medium text-foreground truncate">
                   {draft.title || "Untitled Draft"}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">

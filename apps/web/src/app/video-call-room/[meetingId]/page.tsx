@@ -1,6 +1,7 @@
 "use client";
 
 import ConfirmDialog from "@/components/ConfirmDialog";
+import LoadingOverlay from "@/components/LoadingOverlay";
 import VideoCallControls from "@/components/VideoCallControls";
 import VideoDisplay from "@/components/VideoDisplay";
 import { useAuth } from "@/contexts/AuthContext";
@@ -629,6 +630,12 @@ export default function VideoCallRoom() {
   if (isConnecting) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingOverlay
+          isVisible={isConnecting}
+          title="Connecting to Meeting"
+          message={`Please wait while we connect you to meeting: ${meetingId}`}
+          absolute
+        />
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-foreground mb-2">
@@ -647,6 +654,12 @@ export default function VideoCallRoom() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <LoadingOverlay
+        isVisible={isConnecting}
+        title="Connecting to Meeting"
+        message={`Please wait while we connect you to meeting: ${meetingId}`}
+        absolute
+      />
       {/* Header */}
       <div className="bg-card px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">

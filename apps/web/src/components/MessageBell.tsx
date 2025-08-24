@@ -58,7 +58,7 @@ export default function MessageBell() {
   return (
     <button
       onClick={handleClick}
-      className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+      className="relative p-2 text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors"
       title="Chat"
     >
       <MessageCircle className="w-5 h-5" />

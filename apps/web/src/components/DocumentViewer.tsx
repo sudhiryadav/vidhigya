@@ -98,7 +98,7 @@ export default function DocumentViewer({
       return (
         <div className="flex items-center justify-center h-full">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          <span className="ml-3 text-gray-600 dark:text-gray-400">
+          <span className="ml-3 text-muted-foreground">
             Loading document...
           </span>
         </div>
@@ -110,7 +110,7 @@ export default function DocumentViewer({
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+            <p className="text-muted-foreground mb-4">{error}</p>
             <button
               onClick={handleOpenInNewTab}
               className="btn-primary flex items-center mx-auto"
@@ -128,9 +128,7 @@ export default function DocumentViewer({
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Document not available
-            </p>
+            <p className="text-muted-foreground mb-4">Document not available</p>
           </div>
         </div>
       );
@@ -162,7 +160,7 @@ export default function DocumentViewer({
     if (fileType.includes("text/plain") || fileType.includes("txt")) {
       return (
         <div className="h-full overflow-auto p-4">
-          <pre className="whitespace-pre-wrap text-sm text-gray-900 dark:text-white font-mono">
+          <pre className="whitespace-pre-wrap text-sm text-foreground font-mono">
             {/* We'll need to fetch the text content separately */}
             <div className="text-center text-gray-500 dark:text-gray-400">
               Text file detected. Click "Open in New Tab" to view content.
@@ -195,7 +193,7 @@ export default function DocumentViewer({
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
+          <p className="text-muted-foreground mb-4">
             Preview not available for this file type
           </p>
           <div className="space-x-3">
@@ -227,7 +225,7 @@ export default function DocumentViewer({
           <div className="flex items-center space-x-3">
             <FileText className="w-6 h-6 text-blue-600" />
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-lg font-semibold text-foreground">
                 {documentTitle}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">

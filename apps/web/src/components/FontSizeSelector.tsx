@@ -60,12 +60,10 @@ export default function FontSizeSelector() {
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-2">
-        <Type className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-          Font Size
-        </h3>
+        <Type className="w-5 h-5 text-muted-foreground" />
+        <h3 className="text-lg font-medium text-foreground">Font Size</h3>
       </div>
-      <p className="text-sm text-gray-600 dark:text-gray-400">
+      <p className="text-sm text-muted-foreground">
         Choose the font size that works best for you. Changes will apply
         immediately.
       </p>
@@ -84,14 +82,14 @@ export default function FontSizeSelector() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div
-                  className={`font-bold text-gray-900 dark:text-white ${getPreviewStyle(
+                  className={`font-bold text-foreground ${getPreviewStyle(
                     option.value
                   )}`}
                 >
                   {option.preview}
                 </div>
                 <div className="text-left">
-                  <div className="font-medium text-gray-900 dark:text-white">
+                  <div className="font-medium text-foreground">
                     {option.label}
                   </div>
                   <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -108,7 +106,7 @@ export default function FontSizeSelector() {
       </div>
 
       <div className="mt-4 p-3 bg-muted rounded-lg">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-muted-foreground">
           <strong>Preview:</strong> This is how text will appear with your
           selected font size. The change affects all text throughout the
           application.

@@ -106,12 +106,8 @@ export default function AdminDashboard() {
     <div className="card-hover">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-            {title}
-          </p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            {value}
-          </p>
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-2xl font-bold text-foreground">{value}</p>
           {subtitle && (
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {subtitle}
@@ -150,12 +146,8 @@ export default function AdminDashboard() {
           <Icon className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h3 className="font-semibold text-gray-900 dark:text-white">
-            {title}
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {description}
-          </p>
+          <h3 className="font-semibold text-foreground">{title}</h3>
+          <p className="text-sm text-muted-foreground">{description}</p>
         </div>
       </div>
     </button>
@@ -174,10 +166,10 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-foreground">
             Welcome back, {user?.name}!
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
+          <p className="text-muted-foreground mt-2">
             Here&apos;s an overview of your legal practice management system.
           </p>
         </div>
@@ -218,7 +210,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Quick Actions */}
           <div className="lg:col-span-1">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
               Quick Actions
             </h2>
             <div className="space-y-3">
@@ -255,17 +247,17 @@ export default function AdminDashboard() {
 
           {/* System Health */}
           <div className="lg:col-span-1">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
               System Health
             </h2>
             <div className="space-y-4">
               <div className="card">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white">
+                    <h3 className="font-medium text-foreground">
                       Overall Status
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-muted-foreground">
                       System performance and uptime
                     </p>
                   </div>
@@ -281,10 +273,8 @@ export default function AdminDashboard() {
               <div className="card">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      Database
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <h3 className="font-medium text-foreground">Database</h3>
+                    <p className="text-sm text-muted-foreground">
                       Connection and performance
                     </p>
                   </div>
@@ -300,10 +290,8 @@ export default function AdminDashboard() {
               <div className="card">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      Storage
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <h3 className="font-medium text-foreground">Storage</h3>
+                    <p className="text-sm text-muted-foreground">
                       File storage and documents
                     </p>
                   </div>
@@ -320,7 +308,7 @@ export default function AdminDashboard() {
 
           {/* Recent Activity */}
           <div className="lg:col-span-1">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
               Recent Activity
             </h2>
             <div className="space-y-3">
@@ -329,7 +317,7 @@ export default function AdminDashboard() {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900 dark:text-white">
+                      <p className="text-sm text-foreground">
                         {activity.description}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -347,15 +335,13 @@ export default function AdminDashboard() {
         {/* Additional Stats */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-foreground mb-4">
               User Distribution
             </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Lawyers
-                </span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                <span className="text-sm text-muted-foreground">Lawyers</span>
+                <span className="text-sm font-medium text-foreground">
                   {stats?.totalLawyers} (
                   {(
                     ((stats?.totalLawyers || 0) / (stats?.totalUsers || 1)) *
@@ -365,10 +351,8 @@ export default function AdminDashboard() {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Clients
-                </span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                <span className="text-sm text-muted-foreground">Clients</span>
+                <span className="text-sm font-medium text-foreground">
                   {stats?.totalClients} (
                   {(
                     ((stats?.totalClients || 0) / (stats?.totalUsers || 1)) *
@@ -378,10 +362,10 @@ export default function AdminDashboard() {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="text-sm text-muted-foreground">
                   Other Staff
                 </span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                <span className="text-sm font-medium text-foreground">
                   {(stats?.totalUsers || 0) -
                     (stats?.totalLawyers || 0) -
                     (stats?.totalClients || 0)}{" "}
@@ -400,28 +384,26 @@ export default function AdminDashboard() {
           </div>
 
           <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-foreground mb-4">
               System Metrics
             </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Documents
-                </span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                <span className="text-sm text-muted-foreground">Documents</span>
+                <span className="text-sm font-medium text-foreground">
                   {stats?.totalDocuments}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="text-sm text-muted-foreground">
                   Active Cases
                 </span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                <span className="text-sm font-medium text-foreground">
                   {Math.floor((stats?.totalCases || 0) * 0.8)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="text-sm text-muted-foreground">
                   Pending Approvals
                 </span>
                 <span className="text-sm font-medium text-red-600 dark:text-red-400">

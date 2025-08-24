@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingOverlay from "@/components/LoadingOverlay";
 import ModalDialog from "@/components/ui/ModalDialog";
 import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
@@ -462,14 +463,6 @@ export default function CasesPage() {
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -494,6 +487,12 @@ export default function CasesPage() {
   if (isLawyer) {
     return (
       <div className="min-h-screen bg-background">
+        <LoadingOverlay
+          isVisible={loading}
+          title="Loading Cases"
+          message="Please wait while we fetch your cases data..."
+          absolute
+        />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
@@ -952,6 +951,12 @@ export default function CasesPage() {
   if (isClient) {
     return (
       <div className="min-h-screen bg-background">
+        <LoadingOverlay
+          isVisible={loading}
+          title="Loading Cases"
+          message="Please wait while we fetch your cases data..."
+          absolute
+        />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
           {/* Header */}
           <div className="mb-8">

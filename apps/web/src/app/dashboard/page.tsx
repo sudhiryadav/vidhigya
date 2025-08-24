@@ -10,6 +10,7 @@ import ScheduleEventModal from "@/components/ScheduleEventModal";
 import UploadDocumentModal from "@/components/UploadDocumentModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import LoadingOverlay from "@/components/LoadingOverlay";
 import { useVideoCall } from "@/contexts/VideoCallContext";
 import { apiClient } from "@/services/api";
 import { formatCurrency } from "@/utils/currency";
@@ -613,13 +614,17 @@ export default function Dashboard() {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  return (
+    <div className="min-h-screen bg-background">
+      <LoadingOverlay 
+        isVisible={loading}
+        title="Loading Dashboard"
+        message="Please wait while we fetch your dashboard data..."
+        absolute={false}
+      />
+      
+      {!loading && (
+        <>
 
   if (error) {
     return (
@@ -1271,22 +1276,8 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  // Default fallback
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center">
-        <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-red-500" />
-        <h3 className="text-lg font-medium text-foreground mb-2">
-          Access Denied
-        </h3>
-        <p className="text-muted-foreground mb-4">
-          You don&apos;t have permission to access this dashboard.
-        </p>
-      </div>
+        </>
+      )}
     </div>
   );
 }

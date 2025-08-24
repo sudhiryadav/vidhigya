@@ -10,14 +10,14 @@ export default function TestFontSizePage() {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+        <h1 className="text-3xl font-bold text-foreground mb-8">
           Font Size Test Page
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Font Size Selector */}
           <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-xl font-semibold text-foreground mb-4">
               Font Size Settings
             </h2>
             <FontSizeSelector />
@@ -25,7 +25,7 @@ export default function TestFontSizePage() {
 
           {/* Font Size Preview */}
           <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-xl font-semibold text-foreground mb-4">
               Current Font Size:{" "}
               <span className="text-blue-600 dark:text-blue-400">
                 {fontSize}
@@ -34,33 +34,33 @@ export default function TestFontSizePage() {
 
             <div className="space-y-4">
               <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                <h3 className="text-lg font-medium text-foreground mb-2">
                   Headings
                 </h3>
                 <div className="space-y-2">
-                  <h1 className="text-6xl font-bold text-gray-900 dark:text-white">
+                  <h1 className="text-6xl font-bold text-foreground">
                     H1 Heading
                   </h1>
-                  <h2 className="text-5xl font-bold text-gray-900 dark:text-white">
+                  <h2 className="text-5xl font-bold text-foreground">
                     H2 Heading
                   </h2>
-                  <h3 className="text-4xl font-bold text-gray-900 dark:text-white">
+                  <h3 className="text-4xl font-bold text-foreground">
                     H3 Heading
                   </h3>
-                  <h4 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <h4 className="text-3xl font-bold text-foreground">
                     H4 Heading
                   </h4>
-                  <h5 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <h5 className="text-2xl font-bold text-foreground">
                     H5 Heading
                   </h5>
-                  <h6 className="text-xl font-bold text-gray-900 dark:text-white">
+                  <h6 className="text-xl font-bold text-foreground">
                     H6 Heading
                   </h6>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                <h3 className="text-lg font-medium text-foreground mb-2">
                   Body Text
                 </h3>
                 <div className="space-y-2">
@@ -69,7 +69,7 @@ export default function TestFontSizePage() {
                     consectetur adipiscing elit. Sed do eiusmod tempor
                     incididunt ut labore et dolore magna aliqua.
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-sm text-muted-foreground">
                     This is small text. Ut enim ad minim veniam, quis nostrud
                     exercitation ullamco laboris nisi ut aliquip ex ea commodo
                     consequat.
@@ -83,7 +83,7 @@ export default function TestFontSizePage() {
               </div>
 
               <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                <h3 className="text-lg font-medium text-foreground mb-2">
                   Form Elements
                 </h3>
                 <div className="space-y-3">
@@ -110,7 +110,7 @@ export default function TestFontSizePage() {
               </div>
 
               <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                <h3 className="text-lg font-medium text-foreground mb-2">
                   UI Elements
                 </h3>
                 <div className="space-y-2">
@@ -131,7 +131,7 @@ export default function TestFontSizePage() {
         </div>
 
         <div className="mt-8 bg-card p-6 rounded-lg shadow-sm border border-border">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-xl font-semibold text-foreground mb-4">
             How It Works
           </h2>
           <div className="space-y-3 text-gray-700 dark:text-gray-300">

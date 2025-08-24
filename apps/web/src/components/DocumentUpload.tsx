@@ -2,6 +2,7 @@
 
 import { useToast } from "@/components/ui/ToastContainer";
 import { X } from "lucide-react";
+import LoadingOverlay from "./LoadingOverlay";
 import { useEffect, useState } from "react";
 import DragAndDrop from "./DragAndDrop";
 
@@ -126,7 +127,7 @@ export default function DocumentUpload({
       {/* Selected Files List */}
       {selectedFiles.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+          <h4 className="text-sm font-medium text-foreground">
             Selected Files
           </h4>
           <div className="space-y-2">
@@ -138,7 +139,7 @@ export default function DocumentUpload({
                 <div className="flex items-center space-x-3">
                   <span className="text-lg">{getFileIcon(file)}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {file.name}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -159,14 +160,12 @@ export default function DocumentUpload({
       )}
 
       {/* Uploading Indicator */}
-      {isUploading && (
-        <div className="flex items-center justify-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">
-            Uploading files...
-          </span>
-        </div>
-      )}
+      <LoadingOverlay 
+        isVisible={isUploading}
+        title="Uploading Files"
+        message="Please wait while we upload your documents..."
+        absolute={false}
+      />
     </div>
   );
 }

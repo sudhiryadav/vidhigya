@@ -438,7 +438,7 @@ export default function ClientsPage() {
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-4 mb-4">
                   <div className="text-center">
-                    <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <div className="text-lg font-semibold text-foreground">
                       {(client.cases ?? []).length}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center">
@@ -447,7 +447,7 @@ export default function ClientsPage() {
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <div className="text-lg font-semibold text-foreground">
                       {(client.documents ?? []).length}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center">
@@ -456,7 +456,7 @@ export default function ClientsPage() {
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <div className="text-lg font-semibold text-foreground">
                       {(client.billingRecords ?? []).length}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center">
@@ -469,14 +469,14 @@ export default function ClientsPage() {
                 {/* Recent Cases */}
                 {(client.cases ?? []).length > 0 && (
                   <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    <h4 className="text-sm font-medium text-foreground mb-2">
                       Recent Cases
                     </h4>
                     <div className="space-y-1">
                       {(client.cases ?? []).slice(0, 2).map((caseItem) => (
                         <div
                           key={caseItem.id}
-                          className="text-xs text-gray-600 dark:text-gray-400 flex items-center justify-between"
+                          className="text-xs text-muted-foreground flex items-center justify-between"
                         >
                           <span className="truncate">
                             {caseItem.caseNumber}
@@ -768,15 +768,13 @@ export default function ClientsPage() {
               </span>
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-xl font-semibold text-foreground">
                 {selectedClient?.name}
               </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                {selectedClient?.email}
-              </p>
+              <p className="text-muted-foreground">{selectedClient?.email}</p>
               {selectedClient?.phone && (
                 <div className="flex items-center space-x-2">
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="text-muted-foreground">
                     <a
                       href={`tel:${selectedClient.phone}`}
                       onClick={(e) => {
@@ -811,7 +809,7 @@ export default function ClientsPage() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center p-4 bg-muted rounded-lg">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {(selectedClient?.cases ?? []).length}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -819,7 +817,7 @@ export default function ClientsPage() {
               </div>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {(selectedClient?.documents ?? []).length}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -827,7 +825,7 @@ export default function ClientsPage() {
               </div>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {(selectedClient?.billingRecords ?? []).length}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -839,7 +837,7 @@ export default function ClientsPage() {
           {/* Recent Cases */}
           {(selectedClient?.cases ?? []).length > 0 && (
             <div>
-              <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+              <h4 className="text-lg font-medium text-foreground mb-3">
                 Recent Cases
               </h4>
               <div className="space-y-2">
@@ -849,10 +847,10 @@ export default function ClientsPage() {
                     className="flex items-center justify-between p-3 bg-muted rounded-lg"
                   >
                     <div>
-                      <div className="font-medium text-gray-900 dark:text-white">
+                      <div className="font-medium text-foreground">
                         {caseItem.caseNumber}
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="text-sm text-muted-foreground">
                         {caseItem.title}
                       </div>
                     </div>

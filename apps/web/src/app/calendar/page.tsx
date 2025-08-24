@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingOverlay from "@/components/LoadingOverlay";
 import ModalDialog from "@/components/ui/ModalDialog";
 import CustomSelect, { SelectOption } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
@@ -461,20 +462,15 @@ export default function CalendarPage() {
     return date.toDateString() === selectedDate.toDateString();
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
+      <LoadingOverlay
+        isVisible={loading}
+        title="Loading Calendar"
+        message="Please wait while we fetch your calendar events..."
+        absolute={false}
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
         {/* Header */}
         <div className="mb-8">
@@ -1137,7 +1133,7 @@ export default function CalendarPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Description
                 </label>
-                <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                <p className="mt-1 text-sm text-foreground">
                   {selectedEvent.description || "No description provided"}
                 </p>
               </div>
@@ -1146,7 +1142,7 @@ export default function CalendarPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Start Time
                   </label>
-                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <p className="mt-1 text-sm text-foreground">
                     {formatDate(selectedEvent.startTime)} at{" "}
                     {formatTime(selectedEvent.startTime)}
                   </p>
@@ -1155,7 +1151,7 @@ export default function CalendarPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     End Time
                   </label>
-                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <p className="mt-1 text-sm text-foreground">
                     {formatDate(selectedEvent.endTime)} at{" "}
                     {formatTime(selectedEvent.endTime)}
                   </p>
@@ -1166,7 +1162,7 @@ export default function CalendarPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Location
                   </label>
-                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <p className="mt-1 text-sm text-foreground">
                     {selectedEvent.location}
                   </p>
                 </div>
@@ -1193,7 +1189,7 @@ export default function CalendarPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Related Case
                   </label>
-                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <p className="mt-1 text-sm text-foreground">
                     {selectedEvent.case.caseNumber} - {selectedEvent.case.title}
                   </p>
                 </div>
@@ -1202,7 +1198,7 @@ export default function CalendarPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Created By
                 </label>
-                <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                <p className="mt-1 text-sm text-foreground">
                   {selectedEvent.createdBy.name}
                 </p>
               </div>
@@ -1217,7 +1213,7 @@ export default function CalendarPage() {
                         key={participant.id}
                         className="flex items-center justify-between"
                       >
-                        <span className="text-sm text-gray-900 dark:text-white">
+                        <span className="text-sm text-foreground">
                           {participant.user.name}
                         </span>
                         <span

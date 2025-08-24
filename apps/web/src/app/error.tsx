@@ -24,10 +24,10 @@ export default function Error({
           <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center shadow-lg">
             <AlertTriangle className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Oops! Something went wrong
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">
+          <p className="text-muted-foreground text-lg">
             We encountered an unexpected error
           </p>
         </div>
@@ -57,7 +57,7 @@ export default function Error({
 
         {/* User-friendly message */}
         <div className="bg-card rounded-xl shadow-lg p-6 mb-6 border border-border">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="text-sm text-muted-foreground">
             <p>
               Don&apos;t worry, this is usually a temporary issue. Try
               refreshing the page or going back home.

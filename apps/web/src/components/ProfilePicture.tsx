@@ -74,9 +74,7 @@ export default function ProfilePicture({
         )}
       </div>
       {showName && (
-        <span className="font-medium text-gray-900 dark:text-white">
-          {displayName}
-        </span>
+        <span className="font-medium text-foreground">{displayName}</span>
       )}
     </div>
   );

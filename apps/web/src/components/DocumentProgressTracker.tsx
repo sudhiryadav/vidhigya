@@ -1,5 +1,6 @@
 import { apiClient } from "@/services/api";
 import { useEffect, useRef, useState } from "react";
+import LoadingOverlay from "./LoadingOverlay";
 
 interface ProcessingStatus {
   status: string;
@@ -218,10 +219,12 @@ export default function DocumentProgressTracker({
   if (!status) {
     return (
       <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
-        <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-600 dark:border-t-blue-400"></div>
-        <span className="text-sm text-gray-600 dark:text-gray-300">
-          Checking status...
-        </span>
+        <LoadingOverlay
+          isVisible={true}
+          title="Checking Status"
+          message="Please wait while we check document processing status..."
+          absolute={false}
+        />
       </div>
     );
   }
@@ -266,8 +269,12 @@ export default function DocumentProgressTracker({
 
       {isPolling && status.status === "PROCESSING" && (
         <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-          <div className="animate-spin rounded-full h-3 w-3 border-2 border-gray-300 dark:border-gray-600 border-t-blue-600 dark:border-t-blue-400"></div>
-          <span>Processing...</span>
+          <LoadingOverlay
+            isVisible={true}
+            title="Processing Document"
+            message="Please wait while we process your document..."
+            absolute={false}
+          />
         </div>
       )}
 
