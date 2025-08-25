@@ -1,3 +1,4 @@
+import { AdminRouteGuard } from "@/components/AdminRouteGuard";
 import { AuthGuard } from "@/components/AuthGuard";
 import { LayoutWrapper } from "@/components/LayoutWrapper";
 import { ToastContainer } from "@/components/ui/ToastContainer";
@@ -43,7 +44,9 @@ export default function RootLayout({
                       <SuperAdminProvider>
                         <ToastContainer>
                           <AuthGuard>
-                            <LayoutWrapper>{children}</LayoutWrapper>
+                            <AdminRouteGuard>
+                              <LayoutWrapper>{children}</LayoutWrapper>
+                            </AdminRouteGuard>
                           </AuthGuard>
                         </ToastContainer>
                       </SuperAdminProvider>

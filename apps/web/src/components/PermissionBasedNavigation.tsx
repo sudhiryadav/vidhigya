@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionContext";
 import { usePractice } from "@/contexts/PracticeContext";
 import { apiClient } from "@/services/api";
 import { NavigationModule } from "@/types/modules";
@@ -283,12 +284,19 @@ export function PermissionBasedNavigation() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, hasRole } = useAuth();
+  const { hasPermission } = usePermissions();
   const { currentPractice } = usePractice();
 
   // Load dynamic navigation modules from backend
   useEffect(() => {
     const loadDynamicModules = async () => {
       if (!user || !currentPractice) return;
+
+      // Only load modules if user has permission to read modules
+      if (!hasPermission(PermissionAction.READ, PermissionResource.MODULE)) {
+        setDynamicModules([]);
+        return;
+      }
 
       try {
         setIsLoadingModules(true);
@@ -303,7 +311,7 @@ export function PermissionBasedNavigation() {
     };
 
     loadDynamicModules();
-  }, [user, currentPractice]);
+  }, [user, currentPractice, hasPermission]);
 
   // Load user dashboard stats
   useEffect(() => {
