@@ -57,10 +57,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, isAuthenticated, pathname, router]);
 
+  // Check if current path is a public route
+  const isPublicRoute = publicRoutes.includes(pathname);
+
   return (
     <>
       <LoadingOverlay
-        isVisible={loading}
+        isVisible={loading && !isPublicRoute}
         title="Loading Authentication"
         message="Please wait while we verify your credentials..."
         absolute={false}

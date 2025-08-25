@@ -47,8 +47,11 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, isAuthenticated, pathname, router]);
 
-  // Show loading while checking authentication
-  if (loading) {
+  // Check if current path is an admin route
+  const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
+
+  // Show loading only for admin routes while checking authentication
+  if (loading && isAdminRoute) {
     return (
       <LoadingOverlay
         isVisible={true}
@@ -63,9 +66,6 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return null;
   }
-
-  // Check if current path is an admin route
-  const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
 
   if (isAdminRoute) {
     // Check if user has admin privileges
