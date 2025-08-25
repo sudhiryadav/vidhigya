@@ -47,15 +47,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       window.dispatchEvent(new Event("resize"));
     }, 10);
-
-    console.log(
-      "Theme applied:",
-      themeToApply,
-      "data-theme:",
-      root.getAttribute("data-theme"),
-      "classes:",
-      root.className
-    );
   };
 
   useEffect(() => {
@@ -82,14 +73,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     applyTheme(themeToApply);
     setResolvedTheme(themeToApply);
-    console.log("Initial theme applied:", themeToApply);
   }, []);
 
   useEffect(() => {
     // Save theme to localStorage
     localStorage.setItem("theme", theme);
-    console.log("Theme changed to:", theme);
-
     let themeToApply: "light" | "dark";
 
     if (theme === "system") {
@@ -103,7 +91,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
 
     applyTheme(themeToApply);
-    console.log("Theme applied:", themeToApply);
   }, [theme]);
 
   useEffect(() => {

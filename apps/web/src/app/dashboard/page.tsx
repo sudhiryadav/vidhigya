@@ -160,17 +160,6 @@ export default function Dashboard() {
   // Get user's currency preference
   const userCurrency = getSetting("currency") || "INR";
 
-  // Debug authentication state
-  useEffect(() => {
-    console.log("Dashboard Auth Debug:", {
-      isAuthenticated,
-      user,
-      userRole: user?.role,
-      hasToken:
-        typeof window !== "undefined" ? !!localStorage.getItem("token") : false,
-    });
-  }, [isAuthenticated, user]);
-
   // State for lawyer dashboard
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [upcomingHearings, setUpcomingHearings] = useState<UpcomingHearing[]>(
@@ -232,7 +221,6 @@ export default function Dashboard() {
   useEffect(() => {
     const handleUserStatusChange = (event: CustomEvent) => {
       const { userId, isOnline } = event.detail;
-      console.log(`User ${userId} is now ${isOnline ? "online" : "offline"}`);
       // You can add logic here to update any chat-related data on the dashboard
     };
 
@@ -273,8 +261,6 @@ export default function Dashboard() {
         setLoading(false);
         return;
       }
-
-      console.log("Fetching dashboard data for role:", user.role);
 
       if (isLawyer) {
         // Fetch lawyer dashboard data
@@ -326,8 +312,6 @@ export default function Dashboard() {
           setRecentBills(billsResponse);
       }
     } catch (error: any) {
-      console.error("Error fetching dashboard data:", error);
-
       // Provide more specific error messages
       if (error.message?.includes("403")) {
         setError("Access denied. You don't have permission to view this data.");
@@ -488,8 +472,6 @@ export default function Dashboard() {
           router.push("/settings");
         }
         break;
-      default:
-        console.log(`Action: ${action}`);
     }
   };
 

@@ -97,16 +97,8 @@ export function VideoCallProvider({ children }: { children: React.ReactNode }) {
   const startVideoCall = useCallback(
     async (meetingId: string, title: string) => {
       try {
-        console.log("VideoCallContext: Starting video call", {
-          meetingId,
-          title,
-        });
-
         // Check if we're already in this call - don't restart
         if (videoCallState.isActive && videoCallState.meetingId === meetingId) {
-          console.log(
-            "VideoCallContext: Already in this call, just navigating"
-          );
           // Just navigate to video call room in the same window
           router.push(`/video-call-room/${meetingId}`);
           return;
@@ -127,8 +119,6 @@ export function VideoCallProvider({ children }: { children: React.ReactNode }) {
               : 0,
           isInVideoRoom: true, // Set isInVideoRoom to true when starting a call
         }));
-
-        console.log("VideoCallContext: Video call state updated");
       } catch (error) {
         console.error("Error starting video call:", error);
       }
@@ -142,20 +132,16 @@ export function VideoCallProvider({ children }: { children: React.ReactNode }) {
   );
 
   const endVideoCall = useCallback(() => {
-    console.log("VideoCallContext: Ending video call");
-
     // Stop all media streams to release hardware
     if (videoCallState.localStream) {
       videoCallState.localStream.getTracks().forEach((track) => {
         track.stop();
-        console.log("Stopped local track in context:", track.kind);
       });
     }
 
     if (videoCallState.remoteStream) {
       videoCallState.remoteStream.getTracks().forEach((track) => {
         track.stop();
-        console.log("Stopped remote track in context:", track.kind);
       });
     }
 

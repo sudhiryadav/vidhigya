@@ -80,13 +80,6 @@ class ApiClient {
 
   async uploadAvatar(file: File): Promise<any> {
     try {
-      console.log("ApiClient: Starting avatar upload:", {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        apiUrl: API_BASE_URL,
-      });
-
       const formData = new FormData();
       formData.append("avatar", file);
 
@@ -97,11 +90,6 @@ class ApiClient {
         throw new Error("No authentication token found");
       }
 
-      console.log(
-        "ApiClient: Making request to:",
-        `${API_BASE_URL}/auth/upload-avatar`
-      );
-
       const response = await fetch(`${API_BASE_URL}/auth/upload-avatar`, {
         method: "POST",
         headers: {
@@ -110,29 +98,16 @@ class ApiClient {
         body: formData,
       });
 
-      console.log(
-        "ApiClient: Response status:",
-        response.status,
-        response.statusText
-      );
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("ApiClient: Upload failed:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-        });
         throw new Error(
           `HTTP error! status: ${response.status} - ${errorText}`
         );
       }
 
       const result = await response.json();
-      console.log("ApiClient: Upload successful:", result);
       return result;
     } catch (error) {
-      console.error("ApiClient: Upload error:", error);
       throw error;
     }
   }
@@ -721,21 +696,20 @@ class ApiClient {
 
   // Clients endpoints
   async getClients() {
-    return this.request("/cases/clients/all");
+    return this.request("/clients");
   }
 
   async getClientDetails(clientId: string) {
     return this.request(`/cases/clients/${clientId}`);
   }
 
-  async createClient(data: {
+  async createClient(practiceId: string, data: {
     name: string;
     email: string;
     phone?: string;
-    currency?: string;
-    role: string;
+    address?: string;
   }) {
-    return this.request("/auth/register", {
+    return this.request(`/clients/${practiceId}`, {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -747,18 +721,18 @@ class ApiClient {
       name?: string;
       email?: string;
       phone?: string;
-      currency?: string;
+      address?: string;
       isActive?: boolean;
     }
   ) {
-    return this.request(`/auth/users/${id}`, {
-      method: "PATCH",
+    return this.request(`/clients/${id}`, {
+      method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
   async deleteClient(id: string) {
-    return this.request(`/auth/users/${id}`, {
+    return this.request(`/clients/${id}`, {
       method: "DELETE",
     });
   }
@@ -819,18 +793,11 @@ class ApiClient {
         },
       })
         .then((response) => {
-          console.log("Download response status:", response.status);
-          console.log(
-            "Download response headers:",
-            Object.fromEntries(response.headers.entries())
-          );
-
           if (response.ok) {
             // Get filename from Content-Disposition header
             const contentDisposition = response.headers.get(
               "Content-Disposition"
             );
-            console.log("Content-Disposition header:", contentDisposition);
 
             let filename = "document";
             if (contentDisposition) {
@@ -852,12 +819,7 @@ class ApiClient {
 
               if (filenameMatch) {
                 filename = decodeURIComponent(filenameMatch[1]);
-                console.log("Extracted filename:", filename);
               } else {
-                console.log(
-                  "Could not extract filename from:",
-                  contentDisposition
-                );
                 // Fallback: try to get filename from URL or use a default
                 const urlParts = response.url.split("/");
                 const lastPart = urlParts[urlParts.length - 1];
@@ -866,15 +828,10 @@ class ApiClient {
                 }
               }
             } else {
-              console.log("No Content-Disposition header found");
             }
 
             // Convert response to blob and download
             return response.blob().then((blob) => {
-              console.log("Downloading file with filename:", filename);
-              console.log("Blob size:", blob.size);
-              console.log("Blob type:", blob.type);
-
               const url = window.URL.createObjectURL(blob);
               const link = document.createElement("a");
               link.href = url;
@@ -884,8 +841,6 @@ class ApiClient {
               link.click();
               document.body.removeChild(link);
               window.URL.revokeObjectURL(url);
-
-              console.log("Download initiated for:", filename);
             });
           } else {
             console.error("Download failed with status:", response.status);
@@ -976,28 +931,19 @@ class ApiClient {
             const contentDisposition = response.headers.get(
               "Content-Disposition"
             );
-            console.log("Content-Disposition header:", contentDisposition);
             let filename = "document";
 
             if (contentDisposition) {
               const filenameMatch =
                 contentDisposition.match(/filename="([^"]+)"/);
-              console.log("Filename match:", filenameMatch);
               if (filenameMatch) {
                 filename = decodeURIComponent(filenameMatch[1]);
-                console.log("Extracted filename:", filename);
-              } else {
-                console.log("No filename match found in Content-Disposition");
               }
             } else {
-              console.log("No Content-Disposition header found");
             }
 
             // Convert to blob and download
             return response.blob().then((blob) => {
-              console.log("Blob created, size:", blob.size, "type:", blob.type);
-              console.log("Setting download filename to:", filename);
-
               // Create a blob with the correct filename
               const file = new File([blob], filename, { type: blob.type });
               const url = window.URL.createObjectURL(file);
@@ -1010,8 +956,6 @@ class ApiClient {
               link.click();
               document.body.removeChild(link);
               window.URL.revokeObjectURL(url);
-
-              console.log("Download link clicked with filename:", filename);
             });
           } else {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -1068,7 +1012,6 @@ class ApiClient {
 
       // If the window doesn't open (due to popup blocker), fall back to fetch method
       if (!newWindow) {
-        console.log("Popup blocked, falling back to fetch method");
         this.downloadDocumentReliable(id);
       }
     } else {

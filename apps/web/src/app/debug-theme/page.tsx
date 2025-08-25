@@ -40,7 +40,6 @@ export default function DebugThemePage() {
   }, [resolvedTheme]);
 
   const testThemeChange = (newTheme: "light" | "dark" | "system") => {
-    console.log("Testing theme change to:", newTheme);
     setTheme(newTheme);
   };
 

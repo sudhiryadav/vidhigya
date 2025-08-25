@@ -261,7 +261,6 @@ export default function BillingPage() {
       const response = await apiClient.createBill(billData);
 
       if (response) {
-        console.log("Bill created successfully:", response);
         setShowCreateModal(false);
         resetForm();
 
@@ -273,7 +272,6 @@ export default function BillingPage() {
         toast.success("Bill created successfully!");
       }
     } catch (error) {
-      console.error("Error creating bill:", error);
       toast.error("Failed to create bill. Please try again.");
     }
   };
@@ -319,7 +317,6 @@ export default function BillingPage() {
       // Call API to delete bill
       await apiClient.deleteBill(selectedBill.id);
 
-      console.log("Bill deleted successfully:", selectedBill.id);
       setShowDeleteModal(false);
       setSelectedBill(null);
 
@@ -358,7 +355,6 @@ export default function BillingPage() {
       // Call API to update bill
       await apiClient.updateBill(selectedBill.id, updateData);
 
-      console.log("Bill updated successfully:", selectedBill.id, updateData);
       setShowEditModal(false);
       setSelectedBill(null);
       resetForm();
@@ -370,7 +366,6 @@ export default function BillingPage() {
       // Show success message
       toast.success("Bill updated successfully!");
     } catch (error) {
-      console.error("Error updating bill:", error);
       toast.error("Failed to update bill. Please try again.");
     }
   };

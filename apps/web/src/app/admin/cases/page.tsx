@@ -45,22 +45,10 @@ export default function AdminCases() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("Cases page useEffect triggered, context:", context);
     fetchCases();
   }, []);
 
-  // Debug loading state changes
-  useEffect(() => {
-    console.log("Loading state changed to:", loading);
-  }, [loading]);
-
-  // Debug cases state changes
-  useEffect(() => {
-    console.log("Cases state changed to:", cases.length, "cases");
-  }, [cases]);
-
   const fetchCases = async () => {
-    console.log("fetchCases called, setting loading to true");
     setLoading(true);
     setError(null);
 
@@ -130,12 +118,6 @@ export default function AdminCases() {
     const result = matchesSearch && matchesStatus && matchesPriority;
     return result;
   });
-
-  console.log("Cases state:", cases);
-  console.log("Filtered cases:", filteredCases);
-  console.log("Search term:", searchTerm);
-  console.log("Status filter:", statusFilter);
-  console.log("Priority filter:", priorityFilter);
 
   const getContextIcon = () => {
     if (!context) return <Globe className="h-5 w-5" />;
@@ -207,8 +189,6 @@ export default function AdminCases() {
         {/* Debug button for testing */}
         <button
           onClick={() => {
-            console.log("Current loading state:", loading);
-            console.log("Current cases count:", cases.length);
             setLoading(true);
             setTimeout(() => setLoading(false), 2000);
           }}

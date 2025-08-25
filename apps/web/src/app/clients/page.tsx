@@ -2,6 +2,7 @@
 
 import ModalDialog from "@/components/ui/ModalDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePractice } from "@/contexts/PracticeContext";
 import { apiClient } from "@/services/api";
 import {
   AlertTriangle,
@@ -50,6 +51,7 @@ interface Client {
 
 export default function ClientsPage() {
   const { user } = useAuth();
+  const { currentPractice } = usePractice();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -115,12 +117,15 @@ export default function ClientsPage() {
 
   const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentPractice) {
+      console.error("No practice selected");
+      return;
+    }
     try {
-      await apiClient.createClient({
+      await apiClient.createClient(currentPractice.id, {
         name: createFormData.name,
         email: createFormData.email,
         phone: createFormData.phone || undefined,
-        role: "CLIENT",
       });
       setShowCreateModal(false);
       setCreateFormData({ name: "", email: "", phone: "" });

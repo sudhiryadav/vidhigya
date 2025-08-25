@@ -217,14 +217,7 @@ function DocumentViewer({
     const fetchDocument = async () => {
       try {
         setLoading(true);
-        console.log("Fetching document:", documentId);
         const document = (await apiClient.getDocument(documentId)) as any;
-        console.log("Document received:", {
-          id: document.id,
-          title: document.title,
-          contentLength: document.content?.length || 0,
-          hasContent: !!document.content,
-        });
 
         if (document.content) {
           setDocumentContent(document.content);
@@ -771,10 +764,7 @@ export default function DocumentQA() {
             ? "Thank you for your feedback! 👍"
             : "Thank you for your feedback! We'll work to improve. 👎";
         toast.success(feedbackText);
-
-        console.log("Feedback submitted successfully:", feedbackData);
       } catch (error) {
-        console.error("Failed to submit feedback:", error);
         toast.error("Failed to submit feedback. Please try again.");
       }
     } else {
@@ -827,12 +817,6 @@ export default function DocumentQA() {
 
       // Add AI response to chat
       setMessages((prev) => [...prev, answerMessage]);
-      // Show success message
-      console.log("Answer generated successfully!");
-    } catch (error) {
-      console.error("Error asking question:", error);
-      // Show error message
-      console.error("Failed to get answer. Please try again.");
     } finally {
       setIsLoading(false);
     }

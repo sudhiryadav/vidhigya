@@ -1,6 +1,7 @@
 "use client";
 
 import ModalDialog from "@/components/ui/ModalDialog";
+import { usePractice } from "@/contexts/PracticeContext";
 import { apiClient } from "@/services/api";
 import { useState } from "react";
 import toast from "react-hot-toast";
@@ -16,6 +17,7 @@ export default function AddClientModal({
   onClose,
   onSuccess,
 }: AddClientModalProps) {
+  const { currentPractice } = usePractice();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -34,6 +36,11 @@ export default function AddClientModal({
       return;
     }
 
+    if (!currentPractice) {
+      toast.error("No practice selected");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -42,12 +49,9 @@ export default function AddClientModal({
         email: formData.email,
         phone: formData.phone || undefined,
         address: formData.address || undefined,
-        company: formData.company || undefined,
-        notes: formData.notes || undefined,
-        role: "client", // Add the required role property
       };
 
-      await apiClient.createClient(clientData);
+      await apiClient.createClient(currentPractice.id, clientData);
 
       toast.success("Client added successfully!");
 

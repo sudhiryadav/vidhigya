@@ -97,7 +97,7 @@ export default function TestThemePage() {
               </label>
               <CustomSelect
                 value={{ value: "option1", label: "Option 1" }}
-                onChange={(option) => console.log("Selected:", option)}
+                onChange={(option) => {}}
                 options={[
                   { value: "option1", label: "Option 1" },
                   { value: "option2", label: "Option 2" },

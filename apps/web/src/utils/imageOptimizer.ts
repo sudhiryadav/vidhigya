@@ -78,18 +78,6 @@ export class ImageOptimizer {
                   lastModified: Date.now(),
                 });
 
-                console.log("Image optimization complete:", {
-                  originalSize: file.size,
-                  optimizedSize: optimizedFile.size,
-                  compressionRatio:
-                    (
-                      ((file.size - optimizedFile.size) / file.size) *
-                      100
-                    ).toFixed(1) + "%",
-                  dimensions: `${width}x${height}`,
-                  quality: opts.quality,
-                });
-
                 // If still too large and we're compressing, try recursive compression
                 if (optimizedFile.size > opts.maxFileSize && needsCompression) {
                   // Try even more aggressive compression

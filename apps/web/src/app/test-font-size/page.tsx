@@ -94,7 +94,7 @@ export default function TestFontSizePage() {
                   />
                   <CustomSelect
                     value={{ value: "option1", label: "Select option text" }}
-                    onChange={(option) => console.log("Selected:", option)}
+                    onChange={() => {}}
                     options={[
                       { value: "option1", label: "Select option text" },
                       { value: "option2", label: "Option 1" },

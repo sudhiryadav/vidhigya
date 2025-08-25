@@ -2,10 +2,10 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { ImageOptimizer } from "@/utils/imageOptimizer";
-import LoadingOverlay from "./LoadingOverlay";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import DragAndDrop from "./DragAndDrop";
+import LoadingOverlay from "./LoadingOverlay";
 import ProfilePicture from "./ProfilePicture";
 
 interface ProfilePictureUploadProps {
@@ -45,12 +45,6 @@ export default function ProfilePictureUpload({
     setPreviewUrl(null);
 
     try {
-      console.log("Profile picture upload started:", {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-      });
-
       // Check if file is extremely large (over 10MB) - these might be too large to compress effectively
       const maxReasonableSize = 10 * 1024 * 1024; // 10MB
       if (file.size > maxReasonableSize) {
@@ -79,11 +73,6 @@ export default function ProfilePictureUpload({
         maxFileSize: 1024 * 1024, // Target 1MB, but will compress aggressively if needed
       });
 
-      console.log("Image optimization complete:", {
-        originalSize: file.size,
-        optimizedSize: optimizedFile.size,
-      });
-
       // Dismiss loading toast
       toast.dismiss("image-optimization");
 
@@ -110,16 +99,13 @@ export default function ProfilePictureUpload({
         setPreviewUrl(base64data);
         // Update auth context immediately with the new avatar
         updateAvatar(base64data);
-        console.log("Avatar preview updated in auth context");
       };
       reader.readAsDataURL(optimizedFile);
 
       // Upload optimized file
-      console.log("Starting file upload to backend...");
       await handleUpload(optimizedFile);
     } catch (error) {
       toast.dismiss("image-optimization");
-      console.error("Image optimization error:", error);
 
       let errorMessage = "Failed to process image";
       if (error instanceof Error) {
@@ -140,15 +126,9 @@ export default function ProfilePictureUpload({
     setIsUploading(true);
     setUploadError(null);
     try {
-      console.log("Calling onUpload with file:", {
-        fileName: file.name,
-        fileSize: file.size,
-      });
       await onUpload(file);
-      console.log("Upload successful");
       toast.success("Profile picture updated successfully");
     } catch (error) {
-      console.error("Upload failed:", error);
       const errorMessage = "Failed to update profile picture";
       setUploadError(errorMessage);
       toast.error(errorMessage);
@@ -172,7 +152,6 @@ export default function ProfilePictureUpload({
       // Remove avatar from auth context
       updateAvatar("");
     } catch (error) {
-      console.error("Error removing avatar:", error);
       toast.error("Failed to remove profile picture");
     }
   };
@@ -354,8 +333,7 @@ export default function ProfilePictureUpload({
               </div>
             )}
 
-            {/* Uploading Indicator */}
-            <LoadingOverlay 
+            <LoadingOverlay
               isVisible={isUploading}
               title="Uploading Profile Picture"
               message="Please wait while we upload your profile picture..."

@@ -63,7 +63,6 @@ export default function AdminAnalyticsPage() {
     try {
       setLoading(true);
       setError(null);
-      console.log("Loading analytics data...");
 
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) =>
@@ -73,7 +72,6 @@ export default function AdminAnalyticsPage() {
       const analyticsPromise = apiClient.getAdminAnalytics();
       const response = await Promise.race([analyticsPromise, timeoutPromise]);
 
-      console.log("Analytics response:", response);
       setAnalyticsData(response as AnalyticsData);
     } catch (error) {
       console.error("Failed to load analytics:", error);

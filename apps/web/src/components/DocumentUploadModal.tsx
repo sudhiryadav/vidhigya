@@ -143,13 +143,6 @@ export default function DocumentUploadModal({
       });
 
       setSelectedFiles([testFile]);
-      console.log(
-        "Test file set:",
-        testFile.name,
-        "Size:",
-        testFile.size,
-        "bytes"
-      );
     } catch (error) {
       console.error("Error setting test file:", error);
     }

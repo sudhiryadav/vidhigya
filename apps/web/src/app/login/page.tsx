@@ -37,14 +37,10 @@ export default function LoginPage() {
     setFormError("root", { message: "" });
 
     try {
-      console.log("Login form submitted for:", data.email);
       const success = await login(data.email, data.password);
-      console.log("Login result:", success);
       if (success) {
-        console.log("Login successful, AuthGuard will handle redirect");
         // Login successful, AuthGuard will handle redirect
       } else {
-        console.log("Login failed, showing error");
         setFormError("root", { message: "Invalid email or password" });
       }
     } catch (err) {

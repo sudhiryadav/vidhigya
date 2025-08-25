@@ -107,12 +107,8 @@ export const PermissionProvider = ({
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      console.log("Loading permissions for user:", user.id, user.role);
-
       // Call backend API to get user permissions
       const response = await apiClient.getCurrentUserPermissions();
-      console.log("Permissions response:", response);
-
       const permissions = response as UserPermissions;
 
       setState({
@@ -121,8 +117,6 @@ export const PermissionProvider = ({
         error: null,
       });
     } catch (error) {
-      console.error("Failed to load permissions, using fallback:", error);
-
       // Use fallback permissions instead of failing
       const fallbackPermissions = createFallbackPermissions(user.role);
 
@@ -135,12 +129,6 @@ export const PermissionProvider = ({
   }, [isAuthenticated, user, authLoading]);
 
   useEffect(() => {
-    console.log("PermissionProvider: useEffect triggered", {
-      authLoading,
-      isAuthenticated,
-      userId: user?.id,
-      userRole: user?.role,
-    });
     loadPermissions();
   }, [loadPermissions]);
 

@@ -141,7 +141,6 @@ export default function ProfilePage({
         bio: mockProfile.bio || "",
       });
     } catch (error) {
-      console.error("Error fetching profile:", error);
       toast.error("Failed to fetch profile");
     } finally {
       setLoading(false);
@@ -150,18 +149,9 @@ export default function ProfilePage({
 
   const handleAvatarUpload = async (file: File) => {
     try {
-      console.log("ProfilePage: Starting avatar upload:", {
-        fileName: file.name,
-        fileSize: file.size,
-      });
-
-      const response = await apiClient.uploadAvatar(file);
-      console.log("ProfilePage: Upload response:", response);
-
+      await apiClient.uploadAvatar(file);
       toast.success("Profile picture updated successfully");
     } catch (error) {
-      console.error("ProfilePage: Avatar upload error:", error);
-
       // Provide more specific error messages
       if (error instanceof Error) {
         if (error.message.includes("Failed to fetch")) {
@@ -568,9 +558,7 @@ export default function ProfilePage({
                       <button
                         onClick={async () => {
                           try {
-                            console.log("Testing API connection...");
                             const token = localStorage.getItem("token");
-                            console.log("Token exists:", !!token);
 
                             if (!token) {
                               toast.error("No authentication token found");
@@ -587,12 +575,6 @@ export default function ProfilePage({
                               }
                             );
 
-                            console.log(
-                              "API test response:",
-                              response.status,
-                              response.statusText
-                            );
-
                             if (response.ok) {
                               toast.success("API connection working!");
                             } else {
@@ -601,7 +583,6 @@ export default function ProfilePage({
                               );
                             }
                           } catch (error) {
-                            console.error("API test error:", error);
                             toast.error("API connection failed");
                           }
                         }}

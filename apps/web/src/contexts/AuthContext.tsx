@@ -41,7 +41,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize socket service when AuthProvider is created
   useEffect(() => {
-    console.log("AuthProvider: Initializing socket service");
     getSocketService();
   }, []);
 
@@ -67,28 +66,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      console.log("Login attempt started for:", email);
       const response = (await apiClient.login(email, password)) as {
         token: string;
         user: User;
       };
-
-      console.log("Login response received:", {
-        hasToken: !!response.token,
-        userRole: response.user?.role,
-      });
 
       // Store token and user info
       localStorage.setItem("token", response.token);
       localStorage.setItem("user", JSON.stringify(response.user));
       setUser(response.user);
 
-      console.log("User state updated, user role:", response.user?.role);
-
       // Initialize socket connection after successful login
       getSocketService().connect(response.token);
 
-      console.log("Login successful, returning true");
       return true;
     } catch (error) {
       console.error("Login error:", error);
@@ -126,7 +116,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       reader.readAsDataURL(blob);
     } catch (error) {
-      console.log("No avatar found for user:", userId);
       // Don't show error for 404 - it's expected when no avatar exists
       // Just log it and continue without setting avatarBase64
     }

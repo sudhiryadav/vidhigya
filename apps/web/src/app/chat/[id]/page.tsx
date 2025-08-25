@@ -98,9 +98,7 @@ export default function ChatPage() {
   const loadChat = async () => {
     try {
       setLoading(true);
-      console.log("Loading chat with ID:", chatId);
       const response = await apiClient.getChat(chatId);
-      console.log("API response:", response);
 
       if (
         response &&
@@ -108,8 +106,6 @@ export default function ChatPage() {
         "messages" in response &&
         "participants" in response
       ) {
-        console.log("Setting messages:", response.messages);
-        console.log("Setting participants:", response.participants);
         setMessages(response.messages as any[]);
         setParticipants(response.participants as any[]);
       } else {
@@ -128,14 +124,8 @@ export default function ChatPage() {
 
   // Listen for real-time message updates
   useEffect(() => {
-    // Check socket connection status
-    console.log("Socket service available:", !!getSocketService());
-    console.log("Socket connected:", getSocketService().isSocketConnected());
-    console.log("Socket state:", getSocketService().getSocketState());
-
     // Try to reconnect if not connected
     if (!getSocketService().isSocketConnected()) {
-      console.log("Socket not connected, attempting to reconnect...");
       const token = localStorage.getItem("token");
       if (token) {
         getSocketService().forceReconnect(token);
@@ -221,11 +211,6 @@ export default function ChatPage() {
           );
 
           if (existingTempIndex !== -1) {
-            // Replace the temporary message
-            console.log(
-              "Replacing temporary message with real message:",
-              message.id
-            );
             const newMessages = [...prev];
             newMessages[existingTempIndex] = {
               ...newMessages[existingTempIndex],
@@ -297,11 +282,6 @@ export default function ChatPage() {
         toast.error("No participant found");
         return;
       }
-
-      console.log("Other participant found:", otherParticipant);
-      console.log("Socket service available:", !!getSocketService());
-      console.log("Socket connected:", getSocketService().isSocketConnected());
-      console.log("Socket state:", getSocketService().getSocketState());
 
       // Construct the chat ID in the format expected by the backend: "senderId-receiverId"
       const constructedChatId = `${user?.id}-${otherParticipant.id}`;
@@ -464,33 +444,6 @@ export default function ChatPage() {
               >
                 <Send className="w-4 h-4" />
                 <span>{sending ? "Sending..." : "Send"}</span>
-              </button>
-
-              {/* Debug button for testing */}
-              <button
-                onClick={() => {
-                  console.log("=== DEBUG: Test button clicked ===");
-                  console.log("Current user:", user);
-                  console.log("Participants:", participants);
-                  console.log("Chat ID from URL:", chatId);
-                  console.log("Socket service:", getSocketService());
-                  console.log(
-                    "Socket connected:",
-                    getSocketService().isSocketConnected()
-                  );
-                  console.log(
-                    "Socket state:",
-                    getSocketService().getSocketState()
-                  );
-                  console.log(
-                    "Window processedMessageIds:",
-                    window.processedMessageIds
-                  );
-                }}
-                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm"
-                title="Debug info"
-              >
-                Debug
               </button>
             </div>
           </div>

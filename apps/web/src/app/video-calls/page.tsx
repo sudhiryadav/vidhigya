@@ -603,11 +603,7 @@ export default function VideoCallsPage() {
       if (videoCallToJoin.participants.length > 0) {
         try {
           await apiClient.sendVideoCallStartedNotification(videoCallToJoin.id);
-          console.log("Call started notifications sent to participants");
-        } catch (error) {
-          console.error("Failed to send call started notifications:", error);
-          // Don't block the call start if notification fails
-        }
+        } catch (error) {}
       }
 
       // Start video call using context (same window)
@@ -756,11 +752,6 @@ export default function VideoCallsPage() {
 
     // Meeting is in progress only if status is in_progress AND we're within the time range
     const result = isStatusInProgress && isWithinTimeRange;
-
-    // Debug time comparison
-    console.log(
-      `Time check: now=${now.toISOString()}, start=${start.toISOString()}, end=${end.toISOString()}, status=${status}, isStatusInProgress=${isStatusInProgress}, isWithinTimeRange=${isWithinTimeRange}, result=${result}`
-    );
 
     return result;
   };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { usePractice } from "@/contexts/PracticeContext";
 import { apiClient } from "@/services/api";
 import {
   Building2,
@@ -12,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ClientModal } from "@/components/ClientModal";
 
 interface Client {
   id: string;
@@ -27,11 +29,14 @@ interface Client {
 
 export default function AdminClients() {
   const { user } = useAuth();
+  const { currentPractice } = usePractice();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   useEffect(() => {
     fetchClients();
@@ -69,20 +74,31 @@ export default function AdminClients() {
   };
 
   const handleAddClient = () => {
-    // TODO: Implement add client functionality
-    console.log("Add client clicked");
+    setSelectedClient(null);
+    setShowModal(true);
   };
 
   const handleEditClient = (clientId: string) => {
-    // TODO: Implement edit client functionality
-    console.log("Edit client clicked:", clientId);
+    const client = clients.find(c => c.id === clientId);
+    setSelectedClient(client || null);
+    setShowModal(true);
   };
 
-  const handleDeleteClient = (clientId: string) => {
-    // TODO: Implement delete client functionality
-    if (confirm("Are you sure you want to delete this client?")) {
-      console.log("Delete client clicked:", clientId);
+  const handleDeleteClient = async (clientId: string) => {
+    if (confirm("Are you sure you want to delete this client? This action cannot be undone.")) {
+      try {
+        await apiClient.deleteClient(clientId);
+        // Refresh the clients list
+        fetchClients();
+      } catch (error) {
+        console.error("Error deleting client:", error);
+        alert("Failed to delete client. Please try again.");
+      }
     }
+  };
+
+  const handleModalSuccess = () => {
+    fetchClients();
   };
 
   if (loading) {
@@ -328,6 +344,17 @@ export default function AdminClients() {
           </div>
         </div>
       </div>
+
+      {/* Client Modal */}
+      {currentPractice && (
+        <ClientModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          client={selectedClient}
+          practiceId={currentPractice.id}
+          onSuccess={handleModalSuccess}
+        />
+      )}
     </div>
   );
 }

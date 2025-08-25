@@ -66,7 +66,6 @@ export default function VideoCallRoom() {
 
     // Check if we're already in an active call - don't restart if so
     if (videoCallState.isActive && videoCallState.meetingId === meetingId) {
-      console.log("Already in active call, continuing...");
       // Don't reinitialize media if call is already active
       return;
     }
@@ -164,19 +163,11 @@ export default function VideoCallRoom() {
   // Apply pre-call settings when media is initialized
   useEffect(() => {
     if (localStreamRef.current) {
-      console.log("Applying pre-call settings...");
-
       // Read pre-call settings from localStorage
       const preCallAudioEnabled =
         localStorage.getItem("preCallAudioEnabled") !== "false";
       const preCallVideoEnabled =
         localStorage.getItem("preCallVideoEnabled") !== "false";
-
-      console.log("Pre-call settings:", {
-        preCallAudioEnabled,
-        preCallVideoEnabled,
-      });
-
       // Apply audio setting
       const audioTracks = localStreamRef.current.getAudioTracks();
       if (audioTracks.length > 0) {
@@ -185,7 +176,6 @@ export default function VideoCallRoom() {
         if (localVideoRef.current) {
           localVideoRef.current.muted = !preCallAudioEnabled;
         }
-        console.log("Audio track enabled:", preCallAudioEnabled);
       }
 
       // Apply video setting
@@ -193,7 +183,6 @@ export default function VideoCallRoom() {
       if (videoTracks.length > 0) {
         videoTracks[0].enabled = preCallVideoEnabled;
         setIsVideoEnabled(preCallVideoEnabled);
-        console.log("Video track enabled:", preCallVideoEnabled);
       }
 
       // Clean up localStorage
@@ -494,7 +483,6 @@ export default function VideoCallRoom() {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
         track.stop();
-        console.log("Stopped local track:", track.kind);
       });
       localStreamRef.current = null;
     }
@@ -502,7 +490,6 @@ export default function VideoCallRoom() {
     if (localStream) {
       localStream.getTracks().forEach((track) => {
         track.stop();
-        console.log("Stopped local stream track:", track.kind);
       });
       setLocalStream(null);
     }
@@ -510,7 +497,6 @@ export default function VideoCallRoom() {
     if (remoteStream) {
       remoteStream.getTracks().forEach((track) => {
         track.stop();
-        console.log("Stopped remote stream track:", track.kind);
       });
       setRemoteStream(null);
     }
@@ -533,7 +519,6 @@ export default function VideoCallRoom() {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
         track.stop();
-        console.log("Stopped local track on leave:", track.kind);
       });
       localStreamRef.current = null;
     }
@@ -541,7 +526,6 @@ export default function VideoCallRoom() {
     if (localStream) {
       localStream.getTracks().forEach((track) => {
         track.stop();
-        console.log("Stopped local stream track on leave:", track.kind);
       });
       setLocalStream(null);
     }
@@ -549,7 +533,6 @@ export default function VideoCallRoom() {
     if (remoteStream) {
       remoteStream.getTracks().forEach((track) => {
         track.stop();
-        console.log("Stopped remote stream track on leave:", track.kind);
       });
       setRemoteStream(null);
     }
@@ -565,13 +548,10 @@ export default function VideoCallRoom() {
 
   const testCamera = async () => {
     try {
-      console.log("Testing camera...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: false,
       });
-
-      console.log("Camera test successful:", stream.getVideoTracks());
 
       // Stop the test stream
       stream.getTracks().forEach((track) => track.stop());
