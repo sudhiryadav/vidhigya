@@ -27,14 +27,19 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && isAuthenticated) {
       // Check if current path is an admin route
-      const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
-      
+      const isAdminRoute = adminRoutes.some((route) =>
+        pathname.startsWith(route)
+      );
+
       if (isAdminRoute) {
         // Check if user has admin privileges
-        const hasAdminAccess = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
-        
+        const hasAdminAccess =
+          user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
+
         if (!hasAdminAccess) {
-          console.warn(`Unauthorized access attempt to admin route: ${pathname} by user with role: ${user?.role}`);
+          console.warn(
+            `Unauthorized access attempt to admin route: ${pathname} by user with role: ${user?.role}`
+          );
           router.push("/dashboard");
           return;
         }
@@ -60,17 +65,20 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   }
 
   // Check if current path is an admin route
-  const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
-  
+  const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
+
   if (isAdminRoute) {
     // Check if user has admin privileges
-    const hasAdminAccess = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
-    
+    const hasAdminAccess =
+      user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
+
     if (!hasAdminAccess) {
       return (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+            <h1 className="text-2xl font-bold text-red-600 mb-4">
+              Access Denied
+            </h1>
             <p className="text-muted-foreground mb-4">
               You don't have permission to access this area.
             </p>
