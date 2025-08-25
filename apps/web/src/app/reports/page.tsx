@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingOverlay from "@/components/LoadingOverlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +14,6 @@ import CustomSelect, { SelectOption } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
-import LoadingOverlay from "@/components/LoadingOverlay";
 import {
   AlertTriangle,
   Brain,
@@ -129,7 +129,7 @@ export default function ReportsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
           <div className="text-center">
             <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-foreground mb-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Access Denied
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
@@ -140,18 +140,6 @@ export default function ReportsPage() {
       </div>
     );
   }
-
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      <LoadingOverlay 
-        isVisible={loading}
-        title="Loading Reports"
-        message="Please wait while we fetch your report data..."
-        absolute={false}
-      />
-      
-      {!loading && (
-        <>
 
   if (!report) {
     return (
@@ -165,6 +153,12 @@ export default function ReportsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      <LoadingOverlay
+        isVisible={loading}
+        title="Loading Reports"
+        message="Please wait while we fetch your report data..."
+        absolute
+      />
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -495,8 +489,6 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        </>
-      )}
       </Tabs>
     </div>
   );

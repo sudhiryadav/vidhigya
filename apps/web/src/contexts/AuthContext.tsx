@@ -3,7 +3,7 @@
 import { apiClient } from "@/services/api";
 import { getSocketService } from "@/services/socket";
 import { useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface User {
   id: string;

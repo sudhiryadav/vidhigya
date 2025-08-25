@@ -1,7 +1,6 @@
 "use client";
 
 import LoadingOverlay from "@/components/LoadingOverlay";
-import CustomSelect from "@/components/ui/select";
 
 import { apiClient } from "@/services/api";
 import { Bell, Globe, Save, Settings, Shield } from "lucide-react";
@@ -383,38 +382,22 @@ export default function AdminSettings() {
                               <label className="block text-sm font-medium text-foreground mb-2">
                                 Data Retention (days)
                               </label>
-                              <CustomSelect
-                                value={{
-                                  value: settings.system.dataRetention,
-                                  label:
-                                    settings.system.dataRetention === "30"
-                                      ? "30 days"
-                                      : settings.system.dataRetention === "90"
-                                        ? "90 days"
-                                        : settings.system.dataRetention ===
-                                            "180"
-                                          ? "180 days"
-                                          : settings.system.dataRetention ===
-                                              "365"
-                                            ? "1 year"
-                                            : "2 years",
-                                }}
-                                onChange={(option) =>
+                              <select
+                                value={settings.system.dataRetention}
+                                onChange={(e) =>
                                   updateSystemSetting(
                                     "dataRetention",
-                                    option?.value || "90"
+                                    e.target.value
                                   )
                                 }
-                                options={[
-                                  { value: "30", label: "30 days" },
-                                  { value: "90", label: "90 days" },
-                                  { value: "180", label: "180 days" },
-                                  { value: "365", label: "1 year" },
-                                  { value: "730", label: "2 years" },
-                                ]}
-                                placeholder="Select retention period..."
-                                className="w-full"
-                              />
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                              >
+                                <option value="30">30 days</option>
+                                <option value="90">90 days</option>
+                                <option value="180">180 days</option>
+                                <option value="365">1 year</option>
+                                <option value="730">2 years</option>
+                              </select>
                             </div>
                           </div>
                         </div>
@@ -438,80 +421,47 @@ export default function AdminSettings() {
                               <label className="block text-sm font-medium text-foreground mb-2">
                                 Session Timeout (minutes)
                               </label>
-                              <CustomSelect
-                                value={{
-                                  value: settings.security.sessionTimeout,
-                                  label:
-                                    settings.security.sessionTimeout === "15"
-                                      ? "15 minutes"
-                                      : settings.security.sessionTimeout ===
-                                          "30"
-                                        ? "30 minutes"
-                                        : settings.security.sessionTimeout ===
-                                            "60"
-                                          ? "1 hour"
-                                          : settings.security.sessionTimeout ===
-                                              "120"
-                                            ? "2 hours"
-                                            : "8 hours",
-                                }}
-                                onChange={(option) =>
+                              <select
+                                value={settings.security.sessionTimeout}
+                                onChange={(e) =>
                                   updateSecuritySetting(
                                     "sessionTimeout",
-                                    option?.value || "30"
+                                    e.target.value
                                   )
                                 }
-                                options={[
-                                  { value: "15", label: "15 minutes" },
-                                  { value: "30", label: "30 minutes" },
-                                  { value: "60", label: "1 hour" },
-                                  { value: "120", label: "2 hours" },
-                                  { value: "480", label: "8 hours" },
-                                ]}
-                                placeholder="Select session timeout..."
-                                className="w-full"
-                              />
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                              >
+                                <option value="15">15 minutes</option>
+                                <option value="30">30 minutes</option>
+                                <option value="60">1 hour</option>
+                                <option value="120">2 hours</option>
+                                <option value="480">8 hours</option>
+                              </select>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-foreground mb-2">
                                 Password Policy
                               </label>
-                              <CustomSelect
-                                value={{
-                                  value: settings.security.passwordPolicy,
-                                  label:
-                                    settings.security.passwordPolicy === "basic"
-                                      ? "Basic (8 characters)"
-                                      : settings.security.passwordPolicy ===
-                                          "strong"
-                                        ? "Strong (12 characters, special chars)"
-                                        : "Very Strong (16 characters, complex)",
-                                }}
-                                onChange={(option) =>
+                              <select
+                                value={settings.security.passwordPolicy}
+                                onChange={(e) =>
                                   updateSecuritySetting(
                                     "passwordPolicy",
-                                    option?.value || "strong"
+                                    e.target.value
                                   )
                                 }
-                                options={[
-                                  {
-                                    value: "basic",
-                                    label: "Basic (8 characters)",
-                                  },
-                                  {
-                                    value: "strong",
-                                    label:
-                                      "Strong (12 characters, special chars)",
-                                  },
-                                  {
-                                    value: "very-strong",
-                                    label:
-                                      "Very Strong (16 characters, complex)",
-                                  },
-                                ]}
-                                placeholder="Select password policy..."
-                                className="w-full"
-                              />
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                              >
+                                <option value="basic">
+                                  Basic (8 characters)
+                                </option>
+                                <option value="strong">
+                                  Strong (12 characters, special chars)
+                                </option>
+                                <option value="very-strong">
+                                  Very Strong (16 characters, complex)
+                                </option>
+                              </select>
                             </div>
                           </div>
                         </div>
@@ -702,67 +652,40 @@ export default function AdminSettings() {
                               <label className="block text-sm font-medium text-foreground mb-2">
                                 Email Provider
                               </label>
-                              <CustomSelect
-                                value={{
-                                  value: settings.integrations.emailProvider,
-                                  label:
-                                    settings.integrations.emailProvider ===
-                                    "smtp"
-                                      ? "SMTP"
-                                      : settings.integrations.emailProvider ===
-                                          "sendgrid"
-                                        ? "SendGrid"
-                                        : settings.integrations
-                                              .emailProvider === "mailgun"
-                                          ? "Mailgun"
-                                          : "AWS SES",
-                                }}
-                                onChange={(option) =>
+                              <select
+                                value={settings.integrations.emailProvider}
+                                onChange={(e) =>
                                   updateIntegrationSetting(
                                     "emailProvider",
-                                    option?.value || "smtp"
+                                    e.target.value
                                   )
                                 }
-                                options={[
-                                  { value: "smtp", label: "SMTP" },
-                                  { value: "sendgrid", label: "SendGrid" },
-                                  { value: "mailgun", label: "Mailgun" },
-                                  { value: "aws-ses", label: "AWS SES" },
-                                ]}
-                                placeholder="Select email provider..."
-                                className="w-full"
-                              />
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                              >
+                                <option value="smtp">SMTP</option>
+                                <option value="sendgrid">SendGrid</option>
+                                <option value="mailgun">Mailgun</option>
+                                <option value="aws-ses">AWS SES</option>
+                              </select>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-foreground mb-2">
                                 SMS Provider
                               </label>
-                              <CustomSelect
-                                value={{
-                                  value: settings.integrations.smsProvider,
-                                  label:
-                                    settings.integrations.smsProvider ===
-                                    "twilio"
-                                      ? "Twilio"
-                                      : settings.integrations.smsProvider ===
-                                          "aws-sns"
-                                        ? "AWS SNS"
-                                        : "Nexmo",
-                                }}
-                                onChange={(option) =>
+                              <select
+                                value={settings.integrations.smsProvider}
+                                onChange={(e) =>
                                   updateIntegrationSetting(
                                     "smsProvider",
-                                    option?.value || "twilio"
+                                    e.target.value
                                   )
                                 }
-                                options={[
-                                  { value: "twilio", label: "Twilio" },
-                                  { value: "aws-sns", label: "AWS SNS" },
-                                  { value: "nexmo", label: "Nexmo" },
-                                ]}
-                                placeholder="Select SMS provider..."
-                                className="w-full"
-                              />
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                              >
+                                <option value="twilio">Twilio</option>
+                                <option value="aws-sns">AWS SNS</option>
+                                <option value="nexmo">Nexmo</option>
+                              </select>
                             </div>
                           </div>
                         </div>
@@ -776,43 +699,25 @@ export default function AdminSettings() {
                               <label className="block text-sm font-medium text-foreground mb-2">
                                 Storage Provider
                               </label>
-                              <CustomSelect
-                                value={{
-                                  value: settings.integrations.storageProvider,
-                                  label:
-                                    settings.integrations.storageProvider ===
-                                    "local"
-                                      ? "Local Storage"
-                                      : settings.integrations
-                                            .storageProvider === "aws-s3"
-                                        ? "AWS S3"
-                                        : settings.integrations
-                                              .storageProvider ===
-                                            "google-cloud"
-                                          ? "Google Cloud Storage"
-                                          : "Azure Blob Storage",
-                                }}
-                                onChange={(option) =>
+                              <select
+                                value={settings.integrations.storageProvider}
+                                onChange={(e) =>
                                   updateIntegrationSetting(
                                     "storageProvider",
-                                    option?.value || "local"
+                                    e.target.value
                                   )
                                 }
-                                options={[
-                                  { value: "local", label: "Local Storage" },
-                                  { value: "aws-s3", label: "AWS S3" },
-                                  {
-                                    value: "google-cloud",
-                                    label: "Google Cloud Storage",
-                                  },
-                                  {
-                                    value: "azure",
-                                    label: "Azure Blob Storage",
-                                  },
-                                ]}
-                                placeholder="Select storage provider..."
-                                className="w-full"
-                              />
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                              >
+                                <option value="local">Local Storage</option>
+                                <option value="aws-s3">AWS S3</option>
+                                <option value="google-cloud">
+                                  Google Cloud Storage
+                                </option>
+                                <option value="azure">
+                                  Azure Blob Storage
+                                </option>
+                              </select>
                             </div>
                             <div className="flex items-center justify-between">
                               <div>

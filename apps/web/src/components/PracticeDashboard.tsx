@@ -18,7 +18,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PracticeMember, usePractice } from "../contexts/PracticeContext";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -98,9 +98,7 @@ const ROLE_PERMISSIONS: RolePermission[] = [
   },
 ];
 
-export const PracticeDashboard: React.FC<PracticeDashboardProps> = ({
-  practiceId,
-}) => {
+export const PracticeDashboard = ({ practiceId }: PracticeDashboardProps) => {
   const {
     currentPractice,
     practiceStats,
@@ -136,34 +134,14 @@ export const PracticeDashboard: React.FC<PracticeDashboardProps> = ({
   );
 
   const fetchMemberActivities = useCallback(async () => {
-    // Mock data for member activities
-    const mockActivities: MemberActivity[] = [
-      {
-        id: "1",
-        type: "LOGIN",
-        description: "Logged into the system",
-        timestamp: new Date().toISOString(),
-        memberId: "member-1",
-        memberName: "Sarah Wilson",
-      },
-      {
-        id: "2",
-        type: "CASE_UPDATE",
-        description: "Updated case: Smith vs. Johnson",
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        memberId: "member-2",
-        memberName: "Michael Johnson",
-      },
-      {
-        id: "3",
-        type: "DOCUMENT_UPLOAD",
-        description: "Uploaded contract document",
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        memberId: "member-1",
-        memberName: "Sarah Wilson",
-      },
-    ];
-    setMemberActivities(mockActivities);
+    try {
+      // Fetch real member activities from the API
+      // For now, we'll set empty array until the API endpoint is available
+      setMemberActivities([]);
+    } catch (error) {
+      console.error("Error fetching member activities:", error);
+      setMemberActivities([]);
+    }
   }, []);
 
   useEffect(() => {

@@ -2,7 +2,6 @@
 
 import LoadingOverlay from "@/components/LoadingOverlay";
 import ModalDialog from "@/components/ui/ModalDialog";
-import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
@@ -109,18 +108,9 @@ export default function CasesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<{
-    value: string;
-    label: string;
-  }>({ value: "all", label: "All Statuses" });
-  const [priorityFilter, setPriorityFilter] = useState<{
-    value: string;
-    label: string;
-  }>({ value: "all", label: "All Priorities" });
-  const [categoryFilter, setCategoryFilter] = useState<{
-    value: string;
-    label: string;
-  }>({ value: "all", label: "All Categories" });
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createFormData, setCreateFormData] = useState({
@@ -444,10 +434,9 @@ export default function CasesPage() {
       caseItem.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       caseItem.client.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
-      statusFilter.value === "all" || caseItem.status === statusFilter.value;
+      statusFilter === "all" || caseItem.status === statusFilter;
     const matchesPriority =
-      priorityFilter.value === "all" ||
-      caseItem.priority === priorityFilter.value;
+      priorityFilter === "all" || caseItem.priority === priorityFilter;
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
@@ -456,10 +445,9 @@ export default function CasesPage() {
       caseItem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       caseItem.caseNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
-      statusFilter.value === "all" || caseItem.status === statusFilter.value;
+      statusFilter === "all" || caseItem.status === statusFilter;
     const matchesCategory =
-      categoryFilter.value === "all" ||
-      caseItem.category === categoryFilter.value;
+      categoryFilter === "all" || caseItem.category === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
@@ -539,39 +527,34 @@ export default function CasesPage() {
 
             {showFilters && (
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <CustomSelect
-                  label="Status"
-                  value={statusFilter}
-                  onChange={(value) =>
-                    setStatusFilter(
-                      value || { value: "all", label: "All Statuses" }
-                    )
-                  }
-                  options={[
-                    { value: "all", label: "All Statuses" },
-                    { value: "OPEN", label: "Open" },
-                    { value: "IN_PROGRESS", label: "In Progress" },
-                    { value: "PENDING", label: "Pending" },
-                    { value: "COMPLETED", label: "Completed" },
-                    { value: "CLOSED", label: "Closed" },
-                    { value: "ON_HOLD", label: "On Hold" },
-                  ]}
-                />
-                <CustomSelect
-                  label="Priority"
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="OPEN">Open</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CLOSED">Closed</option>
+                    <option value="ON_HOLD">On Hold</option>
+                  </select>
+                </div>
+                <select
                   value={priorityFilter}
-                  onChange={(value) =>
-                    setPriorityFilter(
-                      value || { value: "all", label: "All Priorities" }
-                    )
-                  }
-                  options={[
-                    { value: "all", label: "All Priorities" },
-                    { value: "HIGH", label: "High" },
-                    { value: "MEDIUM", label: "Medium" },
-                    { value: "LOW", label: "Low" },
-                  ]}
-                />
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="all">All Priorities</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
+                </select>
               </div>
             )}
           </div>
@@ -659,8 +642,8 @@ export default function CasesPage() {
               </h3>
               <p className="text-muted-foreground">
                 {searchTerm ||
-                statusFilter.value !== "all" ||
-                priorityFilter.value !== "all"
+                statusFilter !== "all" ||
+                priorityFilter !== "all"
                   ? "Try adjusting your search or filters"
                   : "Get started by creating your first case"}
               </p>
@@ -713,76 +696,65 @@ export default function CasesPage() {
               <label className="block text-sm font-medium text-foreground mb-1">
                 Client
               </label>
-              <CustomSelect
-                value={{
-                  value: createFormData.clientId,
-                  label: createFormData.clientId
-                    ? clients.find((c) => c.id === createFormData.clientId)
-                        ?.name || "Select a client"
-                    : "Select a client",
-                }}
-                onChange={(option) =>
+              <select
+                value={createFormData.clientId}
+                onChange={(e) =>
                   setCreateFormData({
                     ...createFormData,
-                    clientId: option?.value || "",
+                    clientId: e.target.value,
                   })
                 }
-                options={[
-                  { value: "", label: "Select a client" },
-                  ...clients.map((client) => ({
-                    value: client.id,
-                    label: client.name,
-                  })),
-                ]}
-              />
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+              >
+                <option value="">Select a client</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Category
                 </label>
-                <CustomSelect
-                  value={{
-                    value: createFormData.category,
-                    label: createFormData.category || "Select category",
-                  }}
-                  onChange={(option) =>
+                <select
+                  value={createFormData.category}
+                  onChange={(e) =>
                     setCreateFormData({
                       ...createFormData,
-                      category: option?.value || "",
+                      category: e.target.value,
                     })
                   }
-                  options={[
-                    { value: "CIVIL", label: "Civil" },
-                    { value: "CRIMINAL", label: "Criminal" },
-                    { value: "FAMILY", label: "Family" },
-                    { value: "CORPORATE", label: "Corporate" },
-                    { value: "PROPERTY", label: "Property" },
-                    { value: "OTHER", label: "Other" },
-                  ]}
-                />
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="CIVIL">Civil</option>
+                  <option value="CRIMINAL">Criminal</option>
+                  <option value="FAMILY">Family</option>
+                  <option value="CORPORATE">Corporate</option>
+                  <option value="PROPERTY">Property</option>
+                  <option value="OTHER">Other</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Priority
                 </label>
-                <CustomSelect
-                  value={{
-                    value: createFormData.priority,
-                    label: createFormData.priority || "Select priority",
-                  }}
-                  onChange={(option) =>
+                <select
+                  value={createFormData.priority}
+                  onChange={(e) =>
                     setCreateFormData({
                       ...createFormData,
-                      priority: option?.value || "",
+                      priority: e.target.value,
                     })
                   }
-                  options={[
-                    { value: "HIGH", label: "High" },
-                    { value: "MEDIUM", label: "Medium" },
-                    { value: "LOW", label: "Low" },
-                  ]}
-                />
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
+                </select>
               </div>
             </div>
             <div className="flex justify-end space-x-3">
@@ -846,56 +818,42 @@ export default function CasesPage() {
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Category
                 </label>
-                <CustomSelect
-                  value={
-                    editFormData.category
-                      ? {
-                          value: editFormData.category,
-                          label: editFormData.category,
-                        }
-                      : null
-                  }
-                  onChange={(option) =>
+                <select
+                  value={editFormData.category ? editFormData.category : ""}
+                  onChange={(e) =>
                     setEditFormData({
                       ...editFormData,
-                      category: option?.value || "",
+                      category: e.target.value,
                     })
                   }
-                  options={[
-                    { value: "CIVIL", label: "Civil" },
-                    { value: "CRIMINAL", label: "Criminal" },
-                    { value: "FAMILY", label: "Family" },
-                    { value: "CORPORATE", label: "Corporate" },
-                    { value: "PROPERTY", label: "Property" },
-                    { value: "OTHER", label: "Other" },
-                  ]}
-                />
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="CIVIL">Civil</option>
+                  <option value="CRIMINAL">Criminal</option>
+                  <option value="FAMILY">Family</option>
+                  <option value="CORPORATE">Corporate</option>
+                  <option value="PROPERTY">Property</option>
+                  <option value="OTHER">Other</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Priority
                 </label>
-                <CustomSelect
-                  value={
-                    editFormData.priority
-                      ? {
-                          value: editFormData.priority,
-                          label: editFormData.priority,
-                        }
-                      : null
-                  }
-                  onChange={(option) =>
+                <select
+                  value={editFormData.priority ? editFormData.priority : ""}
+                  onChange={(e) =>
                     setEditFormData({
                       ...editFormData,
-                      priority: option?.value || "",
+                      priority: e.target.value,
                     })
                   }
-                  options={[
-                    { value: "HIGH", label: "High" },
-                    { value: "MEDIUM", label: "Medium" },
-                    { value: "LOW", label: "Low" },
-                  ]}
-                />
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
+                </select>
               </div>
             </div>
             <div className="flex justify-end space-x-3">
@@ -992,42 +950,32 @@ export default function CasesPage() {
 
             {showFilters && (
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <CustomSelect
-                  label="Status"
+                <select
                   value={statusFilter}
-                  onChange={(option) =>
-                    setStatusFilter(
-                      option || { value: "all", label: "All Statuses" }
-                    )
-                  }
-                  options={[
-                    { value: "all", label: "All Statuses" },
-                    { value: "OPEN", label: "Open" },
-                    { value: "IN_PROGRESS", label: "In Progress" },
-                    { value: "PENDING", label: "Pending" },
-                    { value: "COMPLETED", label: "Completed" },
-                    { value: "CLOSED", label: "Closed" },
-                    { value: "ON_HOLD", label: "On Hold" },
-                  ]}
-                />
-                <CustomSelect
-                  label="Category"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="OPEN">Open</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="CLOSED">Closed</option>
+                  <option value="ON_HOLD">On Hold</option>
+                </select>
+                <select
                   value={categoryFilter}
-                  onChange={(option) =>
-                    setCategoryFilter(
-                      option || { value: "all", label: "All Categories" }
-                    )
-                  }
-                  options={[
-                    { value: "all", label: "All Categories" },
-                    { value: "CIVIL", label: "Civil" },
-                    { value: "CRIMINAL", label: "Criminal" },
-                    { value: "FAMILY", label: "Family" },
-                    { value: "CORPORATE", label: "Corporate" },
-                    { value: "PROPERTY", label: "Property" },
-                    { value: "OTHER", label: "Other" },
-                  ]}
-                />
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="all">All Categories</option>
+                  <option value="CIVIL">Civil</option>
+                  <option value="CRIMINAL">Criminal</option>
+                  <option value="FAMILY">Family</option>
+                  <option value="CORPORATE">Corporate</option>
+                  <option value="PROPERTY">Property</option>
+                  <option value="OTHER">Other</option>
+                </select>
               </div>
             )}
           </div>
@@ -1126,8 +1074,8 @@ export default function CasesPage() {
               </h3>
               <p className="text-muted-foreground">
                 {searchTerm ||
-                statusFilter.value !== "all" ||
-                categoryFilter.value !== "all"
+                statusFilter !== "all" ||
+                categoryFilter !== "all"
                   ? "Try adjusting your search or filters"
                   : "You don't have any cases yet"}
               </p>

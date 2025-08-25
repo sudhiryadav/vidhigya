@@ -1,7 +1,8 @@
 "use client";
 
 import { Building2, Plus } from "lucide-react";
-import React, { useState } from "react";
+import { useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import { usePermissions } from "../contexts/PermissionContext";
 import { usePractice } from "../contexts/PracticeContext";
 import { PermissionAction, PermissionResource } from "../types/permissions";
@@ -14,19 +15,21 @@ import CustomSelect from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "./ui/ToastContainer";
 
-export const PracticeSelector: React.FC = () => {
+export default function PracticeSelector() {
+  const { user } = useAuth();
   const {
     currentPractice,
-    userPractices,
     setCurrentPractice,
-    createPractice,
+    userPractices,
     isLoading,
+    createPractice,
   } = usePractice();
+  const { hasPermission } = usePermissions();
+  const { showSuccess, showError } = useToast();
 
   // Safe permission check with fallback
   const canCreatePractice = (() => {
     try {
-      const { hasPermission } = usePermissions();
       return hasPermission(
         PermissionAction.CREATE,
         PermissionResource.PRACTICE
@@ -39,8 +42,6 @@ export const PracticeSelector: React.FC = () => {
       return true; // Fallback: allow creation
     }
   })();
-
-  const { showSuccess, showError } = useToast();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newPracticeData, setNewPracticeData] = useState({
@@ -391,4 +392,4 @@ export const PracticeSelector: React.FC = () => {
       )}
     </div>
   );
-};
+}

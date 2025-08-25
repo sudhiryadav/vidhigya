@@ -4,9 +4,8 @@ import VideoCallControls from "@/components/VideoCallControls";
 import VideoDisplay from "@/components/VideoDisplay";
 import { Maximize, Minimize, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
-import {
+import React, {
   createContext,
-  ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -47,7 +46,7 @@ const VideoCallContext = createContext<VideoCallContextType | undefined>(
   undefined
 );
 
-export function VideoCallProvider({ children }: { children: ReactNode }) {
+export function VideoCallProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [videoCallState, setVideoCallState] = useState<VideoCallState>({
     isActive: false,

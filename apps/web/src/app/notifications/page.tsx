@@ -5,7 +5,6 @@ import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { apiClient } from "@/services/api";
-import { formatCurrency } from "@/utils/currency";
 import {
   Bell,
   Calendar,
@@ -65,66 +64,8 @@ export default function NotificationsPage() {
       setNotifications(data as Notification[]);
     } catch (error) {
       console.error("Error fetching notifications:", error);
-      // Fallback to mock data if API fails
-      const mockNotifications: Notification[] = [
-        {
-          id: "1",
-          title: "New Task Assigned",
-          message:
-            "John Lawyer assigned you a task: Review Smith case documents",
-          type: "TASK_ASSIGNED",
-          isRead: false,
-          createdAt: "2024-02-15T10:00:00.000Z",
-          actionUrl: "/tasks/1",
-        },
-        {
-          id: "2",
-          title: "Event Reminder",
-          message: "Reminder: Client Meeting starts in 1 hour",
-          type: "EVENT_REMINDER",
-          isRead: false,
-          createdAt: "2024-02-15T09:30:00.000Z",
-          actionUrl: "/calendar/1",
-        },
-        {
-          id: "3",
-          title: "Document Uploaded",
-          message: "Sarah uploaded 'Contract Review' to case CASE-2024-001",
-          type: "DOCUMENT_UPLOADED",
-          isRead: true,
-          createdAt: "2024-02-15T08:00:00.000Z",
-          actionUrl: "/documents/1",
-        },
-        {
-          id: "4",
-          title: "Payment Overdue",
-          message: `Your payment of ${formatCurrency(5000, userCurrency as any)} for case CASE-2024-002 is overdue`,
-          type: "BILL_OVERDUE",
-          isRead: false,
-          createdAt: "2024-02-15T07:00:00.000Z",
-          actionUrl: "/billing/1",
-        },
-        {
-          id: "5",
-          title: "Video Call Started",
-          message: "John Lawyer has started a video call. Click to join.",
-          type: "VIDEO_CALL_STARTED",
-          isRead: false,
-          createdAt: "2024-02-15T06:00:00.000Z",
-          actionUrl: "/video-calls/1",
-        },
-        {
-          id: "6",
-          title: "Instant Video Call Created",
-          message:
-            "John Lawyer created an instant video call: Case Review\n\nMeeting ID: ABC-123-XYZ\nMeeting URL: https://meet.example.com/abc-123-xyz\n\nClick the link above to join immediately!",
-          type: "SYSTEM",
-          isRead: false,
-          createdAt: "2024-02-15T05:00:00.000Z",
-          actionUrl: "/video-calls/1",
-        },
-      ];
-      setNotifications(mockNotifications);
+      // On error, set empty array instead of mock data
+      setNotifications([]);
     } finally {
       setLoading(false);
     }

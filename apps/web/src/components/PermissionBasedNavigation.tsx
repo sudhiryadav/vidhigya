@@ -2,6 +2,8 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { usePractice } from "@/contexts/PracticeContext";
+import { apiClient } from "@/services/api";
+import { NavigationModule } from "@/types/modules";
 import {
   BarChart3,
   Bell,
@@ -32,7 +34,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { PermissionGate } from "./permissions/PermissionGate";
 
 // Enhanced navigation items with permission requirements
-const navigationItems = [
+const baseNavigationItems = [
   // Admin/Super Admin specific
   {
     name: "Admin Dashboard",
@@ -212,7 +214,7 @@ interface NavigationItemProps {
   onClick: () => void;
 }
 
-const NavigationItem: React.FC<NavigationItemProps> = ({
+const NavigationItem = ({
   name,
   href,
   icon: Icon,
@@ -222,7 +224,7 @@ const NavigationItem: React.FC<NavigationItemProps> = ({
   resource,
   isActive,
   onClick,
-}) => {
+}: NavigationItemProps) => {
   const { user } = useAuth();
 
   // Check if user role should be excluded
@@ -273,10 +275,55 @@ const NavigationItem: React.FC<NavigationItemProps> = ({
 export function PermissionBasedNavigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [dynamicModules, setDynamicModules] = useState<NavigationModule[]>([]);
+  const [isLoadingModules, setIsLoadingModules] = useState(false);
+  const [userStats, setUserStats] = useState<any>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, hasRole } = useAuth();
   const { currentPractice } = usePractice();
+
+  // Load dynamic navigation modules from backend
+  useEffect(() => {
+    const loadDynamicModules = async () => {
+      if (!user || !currentPractice) return;
+
+      try {
+        setIsLoadingModules(true);
+        const modules = await apiClient.getModules(currentPractice.id);
+        setDynamicModules(modules || []);
+      } catch (error) {
+        console.error("Failed to load dynamic modules:", error);
+        setDynamicModules([]);
+      } finally {
+        setIsLoadingModules(false);
+      }
+    };
+
+    loadDynamicModules();
+  }, [user, currentPractice]);
+
+  // Load user dashboard stats
+  useEffect(() => {
+    const loadUserStats = async () => {
+      if (!user) return;
+
+      try {
+        setIsLoadingStats(true);
+        const stats = await apiClient.getDashboardStats();
+        setUserStats(stats);
+      } catch (error) {
+        console.error("Failed to load user stats:", error);
+        setUserStats(null);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    loadUserStats();
+  }, [user]);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -321,6 +368,42 @@ export function PermissionBasedNavigation() {
     }
   };
 
+  // Combine base navigation items with dynamic modules
+  const allNavigationItems = [
+    ...baseNavigationItems,
+    ...dynamicModules
+      .filter((module) => module.isActive && module.isVisible)
+      .map((module) => ({
+        name: module.name,
+        href: module.path,
+        icon: getIconFromString(module.icon),
+        action: PermissionAction.READ,
+        resource: PermissionResource.MODULE,
+        roles: module.permissions.length > 0 ? undefined : undefined,
+        permissions: module.permissions,
+      })),
+  ];
+
+  // Helper function to convert icon string to component
+  function getIconFromString(iconName: string) {
+    const iconMap: { [key: string]: any } = {
+      Home,
+      Settings,
+      Building2,
+      Briefcase,
+      Users,
+      FileText,
+      Calendar,
+      CheckSquare,
+      CreditCard,
+      Search,
+      BarChart3,
+      Bell,
+      User,
+    };
+    return iconMap[iconName] || Home;
+  }
+
   return (
     <>
       {/* Mobile menu button */}
@@ -362,6 +445,17 @@ export function PermissionBasedNavigation() {
                   {currentPractice.name}
                 </p>
               )}
+              {/* Practice Stats Display */}
+              {userStats && (
+                <div className="text-xs text-muted-foreground ml-2 space-y-1">
+                  {userStats.activeCases > 0 && (
+                    <p>Active Cases: {userStats.activeCases}</p>
+                  )}
+                  {userStats.pendingTasks > 0 && (
+                    <p>Pending Tasks: {userStats.pendingTasks}</p>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center space-x-2">
               {hasRole(["SUPER_ADMIN", "ADMIN"]) && (
@@ -380,17 +474,23 @@ export function PermissionBasedNavigation() {
 
           {/* Navigation Links */}
           <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            {navigationItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <NavigationItem
-                  key={`${item.name}-${item.href}`}
-                  {...item}
-                  isActive={isActive}
-                  onClick={() => setMobileMenuOpen(false)}
-                />
-              );
-            })}
+            {isLoadingModules ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              </div>
+            ) : (
+              allNavigationItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <NavigationItem
+                    key={`${item.name}-${item.href}`}
+                    {...item}
+                    isActive={isActive}
+                    onClick={() => setMobileMenuOpen(false)}
+                  />
+                );
+              })
+            )}
           </nav>
 
           {/* Bottom Section - User Info and Actions */}
@@ -418,6 +518,10 @@ export function PermissionBasedNavigation() {
                     className={`text-xs font-medium truncate ${getRoleBadge()}`}
                   >
                     {user.role.replace("_", " ")}
+                  </p>
+                  {/* User Status */}
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    {user.isActive ? "Active" : "Inactive"}
                   </p>
                 </div>
                 <ChevronDown
@@ -490,6 +594,17 @@ export function PermissionBasedNavigation() {
               <p className="text-xs text-muted-foreground font-medium ml-3">
                 {currentPractice.name}
               </p>
+            )}
+            {/* Practice Stats Display for Mobile */}
+            {userStats && (
+              <div className="text-xs text-muted-foreground ml-3 space-y-1">
+                {userStats.activeCases > 0 && (
+                  <p>Active Cases: {userStats.activeCases}</p>
+                )}
+                {userStats.pendingTasks > 0 && (
+                  <p>Pending Tasks: {userStats.pendingTasks}</p>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-center space-x-2">

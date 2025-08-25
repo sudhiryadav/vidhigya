@@ -2,7 +2,6 @@
 
 import React, {
   createContext,
-  ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -110,12 +109,10 @@ export const usePractice = () => {
 };
 
 interface PracticeProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
-export const PracticeProvider: React.FC<PracticeProviderProps> = ({
-  children,
-}) => {
+export const PracticeProvider = ({ children }: PracticeProviderProps) => {
   const { user, isAuthenticated } = useAuth();
   const [currentPractice, setCurrentPractice] = useState<Practice | null>(null);
   const [userPractices, setUserPractices] = useState<Practice[]>([]);

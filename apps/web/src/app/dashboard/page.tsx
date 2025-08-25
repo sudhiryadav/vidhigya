@@ -5,12 +5,12 @@ import CreateBillModal from "@/components/CreateBillModal";
 import CreateCaseModal from "@/components/CreateCaseModal";
 import CreateTaskModal from "@/components/CreateTaskModal";
 import InstantCallModal from "@/components/InstantCallModal";
+import LoadingOverlay from "@/components/LoadingOverlay";
 
 import ScheduleEventModal from "@/components/ScheduleEventModal";
 import UploadDocumentModal from "@/components/UploadDocumentModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
-import LoadingOverlay from "@/components/LoadingOverlay";
 import { useVideoCall } from "@/contexts/VideoCallContext";
 import { apiClient } from "@/services/api";
 import { formatCurrency } from "@/utils/currency";
@@ -614,18 +614,6 @@ export default function Dashboard() {
     });
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <LoadingOverlay 
-        isVisible={loading}
-        title="Loading Dashboard"
-        message="Please wait while we fetch your dashboard data..."
-        absolute={false}
-      />
-      
-      {!loading && (
-        <>
-
   if (error) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -647,6 +635,12 @@ export default function Dashboard() {
   if (isLawyer) {
     return (
       <div className="min-h-screen bg-background">
+        <LoadingOverlay
+          isVisible={loading}
+          title="Loading Dashboard"
+          message="Please wait while we fetch your dashboard data..."
+          absolute={true}
+        />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
           {/* Welcome Section */}
           <div className="mb-8">
@@ -1012,6 +1006,12 @@ export default function Dashboard() {
   if (isClient) {
     return (
       <div className="min-h-screen bg-background">
+        <LoadingOverlay
+          isVisible={loading}
+          title="Loading Dashboard"
+          message="Please wait while we fetch your dashboard data..."
+          absolute={true}
+        />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
           {/* Welcome Section */}
           <div className="mb-8">
@@ -1276,8 +1276,22 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        </>
-      )}
+      </div>
+    );
+  }
+
+  // Default fallback
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center">
+        <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-red-500" />
+        <h3 className="text-lg font-medium text-foreground mb-2">
+          Access Denied
+        </h3>
+        <p className="text-muted-foreground mb-4">
+          You don&apos;t have permission to access this dashboard.
+        </p>
+      </div>
     </div>
   );
 }

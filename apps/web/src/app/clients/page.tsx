@@ -1,7 +1,6 @@
 "use client";
 
 import ModalDialog from "@/components/ui/ModalDialog";
-import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
@@ -310,27 +309,18 @@ export default function ClientsPage() {
             <div className="mt-4 pt-4 border-t border-border">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <CustomSelect
-                    label="Status"
-                    options={[
-                      { value: "all", label: "All Status" },
-                      { value: "active", label: "Active" },
-                      { value: "inactive", label: "Inactive" },
-                    ]}
-                    value={{
-                      value: statusFilter,
-                      label:
-                        statusFilter === "all"
-                          ? "All Status"
-                          : statusFilter === "active"
-                            ? "Active"
-                            : "Inactive",
-                    }}
-                    onChange={(selectedOption) =>
-                      setStatusFilter(selectedOption?.value || "all")
-                    }
-                    placeholder="Select status"
-                  />
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
                 </div>
               </div>
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/services/api";
 import {
   Building2,
   Mail,
@@ -16,9 +17,9 @@ interface Client {
   id: string;
   name: string;
   email: string;
-  phone: string;
-  address: string;
-  practiceId: string;
+  phone?: string;
+  address?: string;
+  practiceId?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -30,6 +31,7 @@ export default function AdminClients() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchClients();
@@ -38,45 +40,19 @@ export default function AdminClients() {
   const fetchClients = async () => {
     try {
       setLoading(true);
-      // For now, we'll use mock data since the backend might not have this endpoint yet
-      const mockClients: Client[] = [
-        {
-          id: "1",
-          name: "John Smith",
-          email: "john.smith@email.com",
-          phone: "+1-555-0123",
-          address: "123 Main St, New York, NY 10001",
-          practiceId: "practice-1",
-          isActive: true,
-          createdAt: "2024-01-15T10:00:00.000Z",
-          updatedAt: "2024-01-15T10:00:00.000Z",
-        },
-        {
-          id: "2",
-          name: "Sarah Johnson",
-          email: "sarah.johnson@email.com",
-          phone: "+1-555-0124",
-          address: "456 Oak Ave, Los Angeles, CA 90210",
-          practiceId: "practice-1",
-          isActive: true,
-          createdAt: "2024-01-20T14:30:00.000Z",
-          updatedAt: "2024-01-20T14:30:00.000Z",
-        },
-        {
-          id: "3",
-          name: "Michael Brown",
-          email: "michael.brown@email.com",
-          phone: "+1-555-0125",
-          address: "789 Pine Rd, Chicago, IL 60601",
-          practiceId: "practice-2",
-          isActive: true,
-          createdAt: "2024-02-01T09:15:00.000Z",
-          updatedAt: "2024-02-01T09:15:00.000Z",
-        },
-      ];
-      setClients(mockClients);
+      setError(null);
+
+      // Fetch real clients from the backend API
+      const response = await apiClient.getClients();
+      if (response && Array.isArray(response)) {
+        setClients(response);
+      } else {
+        setClients([]);
+      }
     } catch (error) {
       console.error("Error fetching clients:", error);
+      setError("Failed to load clients. Please try again later.");
+      setClients([]);
     } finally {
       setLoading(false);
     }

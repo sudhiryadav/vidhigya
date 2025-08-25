@@ -1,5 +1,5 @@
 import { PracticeDashboard } from "@/components/PracticeDashboard";
-import { PracticeSelector } from "@/components/PracticeSelector";
+import PracticeSelector from "@/components/PracticeSelector";
 
 export default function PracticePage() {
   return (

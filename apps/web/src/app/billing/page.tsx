@@ -2,7 +2,6 @@
 
 import LoadingOverlay from "@/components/LoadingOverlay";
 import ModalDialog from "@/components/ui/ModalDialog";
-import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { apiClient } from "@/services/api";
@@ -577,47 +576,39 @@ export default function BillingPage() {
             <div className="mt-4 pt-4 border-t border-border">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <CustomSelect
-                    label="Status"
-                    options={[
-                      { value: "all", label: "All Status" },
-                      { value: "PENDING", label: "Pending" },
-                      { value: "PAID", label: "Paid" },
-                      { value: "OVERDUE", label: "Overdue" },
-                      { value: "CANCELLED", label: "Cancelled" },
-                    ]}
-                    value={{
-                      value: filterStatus,
-                      label:
-                        filterStatus === "all" ? "All Status" : filterStatus,
-                    }}
-                    onChange={(option) =>
-                      setFilterStatus(option?.value || "all")
-                    }
-                    placeholder="Select status"
-                  />
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="PAID">Paid</option>
+                    <option value="OVERDUE">Overdue</option>
+                    <option value="CANCELLED">Cancelled</option>
+                  </select>
                 </div>
                 <div>
-                  <CustomSelect
-                    label="Bill Type"
-                    options={[
-                      { value: "all", label: "All Types" },
-                      { value: "CONSULTATION", label: "Consultation" },
-                      { value: "COURT_FILING", label: "Court Filing" },
-                      {
-                        value: "DOCUMENT_PREPARATION",
-                        label: "Document Preparation",
-                      },
-                      { value: "REPRESENTATION", label: "Representation" },
-                      { value: "OTHER", label: "Other" },
-                    ]}
-                    value={{
-                      value: filterCase,
-                      label: filterCase === "all" ? "All Types" : filterCase,
-                    }}
-                    onChange={(option) => setFilterCase(option?.value || "all")}
-                    placeholder="Select bill type"
-                  />
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Bill Type
+                  </label>
+                  <select
+                    value={filterCase}
+                    onChange={(e) => setFilterCase(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="CONSULTATION">Consultation</option>
+                    <option value="COURT_FILING">Court Filing</option>
+                    <option value="DOCUMENT_PREPARATION">
+                      Document Preparation
+                    </option>
+                    <option value="REPRESENTATION">Representation</option>
+                    <option value="OTHER">Other</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -919,31 +910,24 @@ export default function BillingPage() {
                 </div>
               </div>
               <div>
-                <CustomSelect
-                  label="Bill Type"
-                  required
-                  options={[
-                    { value: "CONSULTATION", label: "Consultation" },
-                    { value: "COURT_FILING", label: "Court Filing" },
-                    {
-                      value: "DOCUMENT_PREPARATION",
-                      label: "Document Preparation",
-                    },
-                    { value: "REPRESENTATION", label: "Representation" },
-                    { value: "OTHER", label: "Other" },
-                  ]}
-                  value={{
-                    value: formData.billType,
-                    label: formData.billType,
-                  }}
-                  onChange={(option) =>
+                <select
+                  value={formData.billType}
+                  onChange={(e) =>
                     setFormData({
                       ...formData,
-                      billType: option?.value || "CONSULTATION",
+                      billType: e.target.value,
                     })
                   }
-                  placeholder="Select bill type"
-                />
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="CONSULTATION">Consultation</option>
+                  <option value="COURT_FILING">Court Filing</option>
+                  <option value="DOCUMENT_PREPARATION">
+                    Document Preparation
+                  </option>
+                  <option value="REPRESENTATION">Representation</option>
+                  <option value="OTHER">Other</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
@@ -963,65 +947,42 @@ export default function BillingPage() {
                 />
               </div>
               <div>
-                <CustomSelect
-                  label="Client"
-                  required
-                  options={[
-                    { value: "", label: "Select a client" },
-                    ...cases.map((caseItem) => ({
-                      value: caseItem.client.id,
-                      label: `${caseItem.client.name} (${caseItem.client.email})`,
-                    })),
-                  ]}
-                  value={
-                    formData.clientId
-                      ? {
-                          value: formData.clientId,
-                          label: cases.find(
-                            (c) => c.client.id === formData.clientId
-                          )
-                            ? `${cases.find((c) => c.client.id === formData.clientId)?.client.name} (${cases.find((c) => c.client.id === formData.clientId)?.client.email})`
-                            : "Select a client",
-                        }
-                      : { value: "", label: "Select a client" }
-                  }
-                  onChange={(option) =>
+                <select
+                  value={formData.clientId}
+                  onChange={(e) =>
                     setFormData({
                       ...formData,
-                      clientId: option?.value || "",
+                      clientId: e.target.value,
                     })
                   }
-                  placeholder="Select a client"
-                />
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="">Select a client</option>
+                  {cases.map((caseItem) => (
+                    <option key={caseItem.client.id} value={caseItem.client.id}>
+                      {caseItem.client.name} ({caseItem.client.email})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
-                <CustomSelect
-                  label="Related Case"
-                  options={[
-                    { value: "", label: "Select case (optional)" },
-                    ...cases.map((caseItem) => ({
-                      value: caseItem.id,
-                      label: `${caseItem.caseNumber} - ${caseItem.title}`,
-                    })),
-                  ]}
-                  value={
-                    formData.caseId
-                      ? {
-                          value: formData.caseId,
-                          label: cases.find((c) => c.id === formData.caseId)
-                            ? `${cases.find((c) => c.id === formData.caseId)?.caseNumber} - ${cases.find((c) => c.id === formData.caseId)?.title}`
-                            : "Select case (optional)",
-                        }
-                      : { value: "", label: "Select case (optional)" }
-                  }
-                  onChange={(option) =>
+                <select
+                  value={formData.caseId}
+                  onChange={(e) =>
                     setFormData({
                       ...formData,
-                      caseId: option?.value || "",
+                      caseId: e.target.value,
                     })
                   }
-                  placeholder="Select case (optional)"
-                />
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="">Select case (optional)</option>
+                  {cases.map((caseItem) => (
+                    <option key={caseItem.id} value={caseItem.id}>
+                      {caseItem.caseNumber} - {caseItem.title}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <div>
@@ -1234,31 +1195,24 @@ export default function BillingPage() {
                 </div>
               </div>
               <div>
-                <CustomSelect
-                  label="Bill Type"
-                  required
-                  options={[
-                    { value: "CONSULTATION", label: "Consultation" },
-                    { value: "COURT_FILING", label: "Court Filing" },
-                    {
-                      value: "DOCUMENT_PREPARATION",
-                      label: "Document Preparation",
-                    },
-                    { value: "REPRESENTATION", label: "Representation" },
-                    { value: "OTHER", label: "Other" },
-                  ]}
-                  value={{
-                    value: formData.billType,
-                    label: formData.billType,
-                  }}
-                  onChange={(option) =>
+                <select
+                  value={formData.billType}
+                  onChange={(e) =>
                     setFormData({
                       ...formData,
-                      billType: option?.value || "CONSULTATION",
+                      billType: e.target.value,
                     })
                   }
-                  placeholder="Select bill type"
-                />
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="CONSULTATION">Consultation</option>
+                  <option value="COURT_FILING">Court Filing</option>
+                  <option value="DOCUMENT_PREPARATION">
+                    Document Preparation
+                  </option>
+                  <option value="REPRESENTATION">Representation</option>
+                  <option value="OTHER">Other</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
@@ -1278,33 +1232,23 @@ export default function BillingPage() {
                 />
               </div>
               <div>
-                <CustomSelect
-                  label="Related Case"
-                  options={[
-                    { value: "", label: "Select case (optional)" },
-                    ...cases.map((caseItem) => ({
-                      value: caseItem.id,
-                      label: `${caseItem.caseNumber} - ${caseItem.title}`,
-                    })),
-                  ]}
-                  value={
-                    formData.caseId
-                      ? {
-                          value: formData.caseId,
-                          label: cases.find((c) => c.id === formData.caseId)
-                            ? `${cases.find((c) => c.id === formData.caseId)?.caseNumber} - ${cases.find((c) => c.id === formData.caseId)?.title}`
-                            : "Select case (optional)",
-                        }
-                      : { value: "", label: "Select case (optional)" }
-                  }
-                  onChange={(option) =>
+                <select
+                  value={formData.caseId}
+                  onChange={(e) =>
                     setFormData({
                       ...formData,
-                      caseId: option?.value || "",
+                      caseId: e.target.value,
                     })
                   }
-                  placeholder="Select case (optional)"
-                />
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="">Select case (optional)</option>
+                  {cases.map((caseItem) => (
+                    <option key={caseItem.id} value={caseItem.id}>
+                      {caseItem.caseNumber} - {caseItem.title}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <div>

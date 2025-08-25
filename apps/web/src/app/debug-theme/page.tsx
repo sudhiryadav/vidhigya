@@ -6,22 +6,55 @@ import { useEffect, useState } from "react";
 export default function DebugThemePage() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [htmlClasses, setHtmlClasses] = useState<string>("");
+  const [systemPreference, setSystemPreference] = useState<string>("Unknown");
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+
     const updateDebugInfo = () => {
       const root = document.documentElement;
       setHtmlClasses(root.className);
     };
 
+    const updateSystemPreference = () => {
+      if (typeof window !== "undefined") {
+        const isDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+        setSystemPreference(isDark ? "Dark" : "Light");
+      }
+    };
+
     updateDebugInfo();
+    updateSystemPreference();
+
     const interval = setInterval(updateDebugInfo, 100);
-    return () => clearInterval(interval);
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    mediaQuery.addEventListener("change", updateSystemPreference);
+
+    return () => {
+      clearInterval(interval);
+      mediaQuery.removeEventListener("change", updateSystemPreference);
+    };
   }, [resolvedTheme]);
 
   const testThemeChange = (newTheme: "light" | "dark" | "system") => {
     console.log("Testing theme change to:", newTheme);
     setTheme(newTheme);
   };
+
+  // Don't render until client-side
+  if (!isClient) {
+    return (
+      <div className="min-h-screen p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading debug page...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="theme-test-bg min-h-screen p-8">
@@ -53,11 +86,7 @@ export default function DebugThemePage() {
 
               <div>
                 <strong className="theme-test-text">System Preference:</strong>
-                <p className="text-muted-foreground">
-                  {window.matchMedia("(prefers-color-scheme: dark)").matches
-                    ? "Dark"
-                    : "Light"}
-                </p>
+                <p className="text-muted-foreground">{systemPreference}</p>
               </div>
             </div>
           </div>

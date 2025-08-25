@@ -63,118 +63,20 @@ export default function NotificationBell() {
 
     try {
       setLoading(true);
-      // Replace with actual API call
       const response = await apiClient.getNotifications();
       if (response && Array.isArray(response)) {
         setNotifications(response);
         setUnreadCount(response.filter((n: Notification) => !n.isRead).length);
       } else {
-        // Fallback to mock data
-        const mockNotifications: Notification[] = [
-          {
-            id: "1",
-            title: "New Task Assigned",
-            message:
-              "John Lawyer assigned you a task: Review Smith case documents",
-            type: "TASK_ASSIGNED",
-            isRead: false,
-            createdAt: "2024-02-15T10:00:00.000Z",
-            actionUrl: "/tasks/1",
-          },
-          {
-            id: "2",
-            title: "Hearing Reminder",
-            message: "Reminder: Client Meeting starts in 1 hour",
-            type: "HEARING_REMINDER",
-            isRead: false,
-            createdAt: "2024-02-15T09:30:00.000Z",
-            actionUrl: "/calendar/1",
-          },
-          {
-            id: "3",
-            title: "Document Uploaded",
-            message: "Sarah uploaded 'Contract Review' to case CASE-2024-001",
-            type: "DOCUMENT_UPLOAD",
-            isRead: true,
-            createdAt: "2024-02-15T08:00:00.000Z",
-            actionUrl: "/documents/1",
-          },
-          {
-            id: "4",
-            title: "Case Update",
-            message: "Case Smith vs. Johnson status updated to 'In Progress'",
-            type: "CASE_UPDATE",
-            isRead: false,
-            createdAt: "2024-02-15T07:00:00.000Z",
-            actionUrl: "/cases/1",
-          },
-          {
-            id: "5",
-            title: "Billing Notification",
-            message:
-              "Invoice #INV-2024-001 has been generated for Case ABC-123",
-            type: "BILLING",
-            isRead: true,
-            createdAt: "2024-02-15T06:00:00.000Z",
-            actionUrl: "/billing/1",
-          },
-        ];
-        setNotifications(mockNotifications);
-        setUnreadCount(mockNotifications.filter((n) => !n.isRead).length);
+        // If no notifications or invalid response, set empty arrays
+        setNotifications([]);
+        setUnreadCount(0);
       }
     } catch (error) {
       console.error("Error fetching notifications:", error);
-      // Fallback to mock data
-      const mockNotifications: Notification[] = [
-        {
-          id: "1",
-          title: "New Task Assigned",
-          message:
-            "John Lawyer assigned you a task: Review Smith case documents",
-          type: "TASK_ASSIGNED",
-          isRead: false,
-          createdAt: "2024-02-15T10:00:00.000Z",
-          actionUrl: "/tasks/1",
-        },
-        {
-          id: "2",
-          title: "Hearing Reminder",
-          message: "Reminder: Client Meeting starts in 1 hour",
-          type: "HEARING_REMINDER",
-          isRead: false,
-          createdAt: "2024-02-15T09:30:00.000Z",
-          actionUrl: "/calendar/1",
-        },
-        {
-          id: "3",
-          title: "Document Uploaded",
-          message: "Sarah uploaded 'Contract Review' to case CASE-2024-001",
-          type: "DOCUMENT_UPLOAD",
-          isRead: true,
-          createdAt: "2024-02-15T08:00:00.000Z",
-          actionUrl: "/documents/1",
-        },
-        {
-          id: "4",
-          title: "Case Update",
-          message: "Case Smith vs. Johnson status updated to 'In Progress'",
-          type: "CASE_UPDATE",
-          isRead: false,
-          createdAt: "2024-02-15T07:00:00.000Z",
-          actionUrl: "/cases/1",
-        },
-        {
-          id: "5",
-          title: "Billing Notification",
-          message: "Invoice #INV-2024-001 has been generated for Case ABC-123",
-          type: "BILLING",
-          isRead: true,
-          createdAt: "2024-02-15T06:00:00.000Z",
-          actionUrl: "/billing/1",
-        },
-      ];
-      setNotifications(mockNotifications);
-      setUnreadCount(mockNotifications.filter((n) => !n.isRead).length);
+      // On error, set empty arrays instead of mock data
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }

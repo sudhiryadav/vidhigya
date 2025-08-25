@@ -9,13 +9,13 @@ interface FormFieldProps {
   className?: string;
 }
 
-export const FormField: React.FC<FormFieldProps> = ({
+export const FormField = ({
   label,
   required = false,
   error,
   children,
   className = "",
-}) => {
+}: FormFieldProps) => {
   return (
     <div className={className}>
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -39,7 +39,7 @@ interface InputFieldProps {
   rows?: number;
 }
 
-export const InputField: React.FC<InputFieldProps> = ({
+export const InputField = ({
   label,
   required = false,
   error,
@@ -49,7 +49,7 @@ export const InputField: React.FC<InputFieldProps> = ({
   placeholder,
   className = "",
   rows,
-}) => {
+}: InputFieldProps) => {
   const inputClassName = `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
     error ? "border-red-500" : "border-border"
   } ${className}`;
@@ -86,7 +86,7 @@ interface SelectFieldProps {
   className?: string;
 }
 
-export const SelectField: React.FC<SelectFieldProps> = ({
+export const SelectField = ({
   label,
   required = false,
   error,
@@ -95,7 +95,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   options,
   placeholder,
   className = "",
-}) => {
+}: SelectFieldProps) => {
   return (
     <FormField label={label} required={required} error={error}>
       <div className={`${error ? "border-red-500" : ""} ${className}`}>

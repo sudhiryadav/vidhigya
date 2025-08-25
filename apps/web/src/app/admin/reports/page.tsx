@@ -4,9 +4,7 @@ import LoadingOverlay from "@/components/LoadingOverlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import CustomSelect from "@/components/ui/select";
 import { useToast } from "@/components/ui/ToastContainer";
 import { apiClient } from "@/services/api";
 import {
@@ -226,27 +224,19 @@ export default function AdminReportsPage() {
                 {/* Template Selection */}
                 <div>
                   <Label htmlFor="template">Report Template</Label>
-                  <CustomSelect
-                    value={
-                      selectedTemplate
-                        ? {
-                            value: selectedTemplate,
-                            label:
-                              reportsData.templates.find(
-                                (t) => t.id === selectedTemplate
-                              )?.name || "",
-                          }
-                        : null
-                    }
-                    onChange={(option) =>
-                      option && handleTemplateSelect(option.value)
-                    }
-                    options={reportsData.templates.map((template) => ({
-                      value: template.id,
-                      label: template.name,
-                    }))}
-                    placeholder="Select a report template"
-                  />
+                  <select
+                    id="template"
+                    value={selectedTemplate || ""}
+                    onChange={(e) => handleTemplateSelect(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  >
+                    <option value="">Select a report template</option>
+                    {reportsData.templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
                   {selectedTemplate && (
                     <p className="text-sm text-muted-foreground mt-2">
                       {
@@ -273,7 +263,7 @@ export default function AdminReportsPage() {
                             >
                               {param.replace(/([A-Z])/g, " $1").toLowerCase()}
                             </Label>
-                            <Input
+                            <input
                               id={param}
                               type={
                                 param.toLowerCase().includes("date")
@@ -285,6 +275,7 @@ export default function AdminReportsPage() {
                                 handleParameterChange(param, e.target.value)
                               }
                               placeholder={`Enter ${param.toLowerCase().replace(/([A-Z])/g, " $1")}`}
+                              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
                             />
                           </div>
                         ))}

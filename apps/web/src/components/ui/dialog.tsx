@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, ReactNode, useContext } from "react";
+import React, { createContext, useContext } from "react";
 
 interface DialogContextType {
   isOpen: boolean;
@@ -19,7 +19,7 @@ export function useDialog() {
 }
 
 interface DialogProps {
-  children: ReactNode;
+  children: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
   title?: string;
@@ -47,7 +47,7 @@ export function DialogTrigger({
   children,
   onClick,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
   onClick: () => void;
 }) {
   return (
@@ -57,22 +57,22 @@ export function DialogTrigger({
   );
 }
 
-export function DialogContent({ children }: { children: ReactNode }) {
+export function DialogContent({ children }: { children: React.ReactNode }) {
   return <div>{children}</div>;
 }
 
-export function DialogHeader({ children }: { children: ReactNode }) {
+export function DialogHeader({ children }: { children: React.ReactNode }) {
   return <div className="mb-4">{children}</div>;
 }
 
-export function DialogFooter({ children }: { children: ReactNode }) {
+export function DialogFooter({ children }: { children: React.ReactNode }) {
   return <div className="flex justify-end space-x-2 mt-4">{children}</div>;
 }
 
-export function DialogTitle({ children }: { children: ReactNode }) {
+export function DialogTitle({ children }: { children: React.ReactNode }) {
   return <h3 className="text-lg font-medium text-foreground">{children}</h3>;
 }
 
-export function DialogDescription({ children }: { children: ReactNode }) {
+export function DialogDescription({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-gray-500 dark:text-gray-400">{children}</p>;
 }

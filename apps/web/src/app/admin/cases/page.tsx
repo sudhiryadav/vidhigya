@@ -4,6 +4,7 @@ import SuperAdminContextSelector from "@/components/admin/SuperAdminContextSelec
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSuperAdminContext } from "@/contexts/SuperAdminContext";
+import { apiClient } from "@/services/api";
 import {
   Briefcase,
   Building2,
@@ -16,7 +17,7 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Case {
   id: string;
@@ -41,7 +42,7 @@ export default function AdminCases() {
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     console.log("Cases page useEffect triggered, context:", context);
@@ -58,102 +59,26 @@ export default function AdminCases() {
     console.log("Cases state changed to:", cases.length, "cases");
   }, [cases]);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  const fetchCases = () => {
+  const fetchCases = async () => {
     console.log("fetchCases called, setting loading to true");
     setLoading(true);
+    setError(null);
 
-    // Clear any existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    // Use ref to store timeout ID
-    timeoutRef.current = setTimeout(() => {
-      console.log("Timeout completed, setting cases and loading to false");
-      const mockCases: Case[] = [
-        {
-          id: "1",
-          title: "Smith vs. Johnson - Contract Dispute",
-          caseNumber: "CIV-2024-001",
-          status: "ACTIVE",
-          clientName: "John Smith",
-          lawyerName: "Sarah Johnson",
-          practiceId: "practice-1",
-          priority: "HIGH",
-          nextHearingDate: "2024-03-15T10:00:00.000Z",
-          createdAt: "2024-01-15T10:00:00.000Z",
-          updatedAt: "2024-01-15T10:00:00.000Z",
-        },
-        {
-          id: "2",
-          title: "Brown Estate Planning",
-          caseNumber: "EST-2024-002",
-          status: "PENDING",
-          clientName: "Michael Brown",
-          lawyerName: "David Wilson",
-          practiceId: "practice-1",
-          priority: "MEDIUM",
-          createdAt: "2024-01-20T14:30:00.000Z",
-          updatedAt: "2024-01-20T14:30:00.000Z",
-        },
-        {
-          id: "3",
-          title: "Corporate Merger - Tech Solutions Inc.",
-          caseNumber: "CORP-2024-003",
-          status: "ACTIVE",
-          clientName: "Tech Solutions Inc.",
-          lawyerName: "Emily Davis",
-          practiceId: "practice-2",
-          priority: "URGENT",
-          nextHearingDate: "2024-03-10T14:00:00.000Z",
-          createdAt: "2024-02-01T09:15:00.000Z",
-          updatedAt: "2024-02-01T09:15:00.000Z",
-        },
-        {
-          id: "4",
-          title: "Real Estate Transaction - Downtown Property",
-          caseNumber: "RE-2024-004",
-          status: "CLOSED",
-          clientName: "Downtown Properties LLC",
-          lawyerName: "Robert Chen",
-          practiceId: "practice-1",
-          priority: "LOW",
-          createdAt: "2024-01-10T11:00:00.000Z",
-          updatedAt: "2024-02-15T16:30:00.000Z",
-        },
-        {
-          id: "5",
-          title: "Employment Discrimination Case",
-          caseNumber: "EMP-2024-005",
-          status: "ACTIVE",
-          clientName: "Jennifer Martinez",
-          lawyerName: "Lisa Thompson",
-          practiceId: "practice-2",
-          priority: "HIGH",
-          nextHearingDate: "2024-03-20T09:00:00.000Z",
-          createdAt: "2024-02-05T13:45:00.000Z",
-          updatedAt: "2024-02-05T13:45:00.000Z",
-        },
-      ];
-
-      setCases(mockCases);
+    try {
+      // Fetch real cases from the backend API
+      const response = await apiClient.getCases();
+      if (response && Array.isArray(response)) {
+        setCases(response);
+      } else {
+        setCases([]);
+      }
+    } catch (error) {
+      console.error("Error fetching cases:", error);
+      setError("Failed to load cases. Please try again later.");
+      setCases([]);
+    } finally {
       setLoading(false);
-      console.log(
-        "State updated - cases:",
-        mockCases.length,
-        "loading:",
-        false
-      );
-    }, 1000); // Increased delay to 1 second for testing
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -474,6 +399,19 @@ export default function AdminCases() {
             </div>
           )}
         </>
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <div className="mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-red-800 dark:text-red-200">{error}</p>
+          <button
+            onClick={fetchCases}
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
       )}
 
       {/* Summary Stats */}

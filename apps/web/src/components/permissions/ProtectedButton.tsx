@@ -20,7 +20,7 @@ interface ProtectedButtonProps
   children: React.ReactNode;
 }
 
-export const ProtectedButton: React.FC<ProtectedButtonProps> = ({
+export const ProtectedButton = ({
   action,
   resource,
   permissions,
@@ -32,7 +32,7 @@ export const ProtectedButton: React.FC<ProtectedButtonProps> = ({
   disabled: externalDisabled,
   title: externalTitle,
   ...buttonProps
-}) => {
+}: ProtectedButtonProps) => {
   const { hasPermission, canAccess, getUserPermissions } = usePermissions();
 
   const checkPermissions = (): boolean => {
@@ -93,20 +93,18 @@ export const ProtectedButton: React.FC<ProtectedButtonProps> = ({
 };
 
 // Convenience components for common actions
-export const CreateButton: React.FC<
-  {
-    resource: PermissionResource;
-    children: React.ReactNode;
-    fallbackText?: string;
-    disabledTooltip?: string;
-  } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">
-> = ({
+export const CreateButton = ({
   resource,
   children,
   fallbackText,
   disabledTooltip = `You don't have permission to create ${resource.toLowerCase()}s`,
   ...props
-}) => (
+}: {
+  resource: PermissionResource;
+  children: React.ReactNode;
+  fallbackText?: string;
+  disabledTooltip?: string;
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">) => (
   <ProtectedButton
     action={PermissionAction.CREATE}
     resource={resource}
@@ -118,20 +116,18 @@ export const CreateButton: React.FC<
   </ProtectedButton>
 );
 
-export const UpdateButton: React.FC<
-  {
-    resource: PermissionResource;
-    children: React.ReactNode;
-    fallbackText?: string;
-    disabledTooltip?: string;
-  } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">
-> = ({
+export const UpdateButton = ({
   resource,
   children,
   fallbackText,
   disabledTooltip = `You don't have permission to update ${resource.toLowerCase()}s`,
   ...props
-}) => (
+}: {
+  resource: PermissionResource;
+  children: React.ReactNode;
+  fallbackText?: string;
+  disabledTooltip?: string;
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">) => (
   <ProtectedButton
     action={PermissionAction.UPDATE}
     resource={resource}
@@ -143,20 +139,18 @@ export const UpdateButton: React.FC<
   </ProtectedButton>
 );
 
-export const DeleteButton: React.FC<
-  {
-    resource: PermissionResource;
-    children: React.ReactNode;
-    fallbackText?: string;
-    disabledTooltip?: string;
-  } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">
-> = ({
+export const DeleteButton = ({
   resource,
   children,
   fallbackText,
   disabledTooltip = `You don't have permission to delete ${resource.toLowerCase()}s`,
   ...props
-}) => (
+}: {
+  resource: PermissionResource;
+  children: React.ReactNode;
+  fallbackText?: string;
+  disabledTooltip?: string;
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">) => (
   <ProtectedButton
     action={PermissionAction.DELETE}
     resource={resource}

@@ -22,7 +22,7 @@ interface ProtectedRouteProps {
   requireAuth?: boolean;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+export const ProtectedRoute = ({
   children,
   action,
   resource,
@@ -31,7 +31,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAll = true,
   fallbackPath = "/unauthorized",
   requireAuth = true,
-}) => {
+}: ProtectedRouteProps) => {
   const { isAuthenticated } = useAuth();
   const { hasPermission, canAccess, getUserPermissions, isLoading } =
     usePermissions();
@@ -106,28 +106,37 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 };
 
 // Convenience components for common route protections
-export const AdminRoute: React.FC<{
+export const AdminRoute = ({
+  children,
+  fallbackPath = "/unauthorized",
+}: {
   children: React.ReactNode;
   fallbackPath?: string;
-}> = ({ children, fallbackPath = "/unauthorized" }) => (
+}) => (
   <ProtectedRoute roles={["SUPER_ADMIN", "ADMIN"]} fallbackPath={fallbackPath}>
     {children}
   </ProtectedRoute>
 );
 
-export const SuperAdminRoute: React.FC<{
+export const SuperAdminRoute = ({
+  children,
+  fallbackPath = "/unauthorized",
+}: {
   children: React.ReactNode;
   fallbackPath?: string;
-}> = ({ children, fallbackPath = "/unauthorized" }) => (
+}) => (
   <ProtectedRoute roles={["SUPER_ADMIN"]} fallbackPath={fallbackPath}>
     {children}
   </ProtectedRoute>
 );
 
-export const LawyerRoute: React.FC<{
+export const LawyerRoute = ({
+  children,
+  fallbackPath = "/unauthorized",
+}: {
   children: React.ReactNode;
   fallbackPath?: string;
-}> = ({ children, fallbackPath = "/unauthorized" }) => (
+}) => (
   <ProtectedRoute
     roles={["SUPER_ADMIN", "ADMIN", "LAWYER"]}
     fallbackPath={fallbackPath}
@@ -137,10 +146,13 @@ export const LawyerRoute: React.FC<{
   </ProtectedRoute>
 );
 
-export const CaseAccessRoute: React.FC<{
+export const CaseAccessRoute = ({
+  children,
+  fallbackPath = "/unauthorized",
+}: {
   children: React.ReactNode;
   fallbackPath?: string;
-}> = ({ children, fallbackPath = "/unauthorized" }) => (
+}) => (
   <ProtectedRoute
     action={PermissionAction.READ}
     resource={PermissionResource.CASE}
@@ -150,10 +162,13 @@ export const CaseAccessRoute: React.FC<{
   </ProtectedRoute>
 );
 
-export const DocumentAccessRoute: React.FC<{
+export const DocumentAccessRoute = ({
+  children,
+  fallbackPath = "/unauthorized",
+}: {
   children: React.ReactNode;
   fallbackPath?: string;
-}> = ({ children, fallbackPath = "/unauthorized" }) => (
+}) => (
   <ProtectedRoute
     action={PermissionAction.READ}
     resource={PermissionResource.DOCUMENT}

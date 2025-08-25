@@ -35,14 +35,11 @@ export default function SuperAdminContextSelector({
     "all" | "practice" | "firm" | "individual"
   >("all");
 
-  // Only show for super admins
-  if (!isSuperAdmin) {
-    return null;
-  }
-
   useEffect(() => {
-    loadPractices();
-  }, []);
+    if (isSuperAdmin) {
+      loadPractices();
+    }
+  }, [isSuperAdmin]);
 
   const loadPractices = async () => {
     try {
@@ -55,6 +52,11 @@ export default function SuperAdminContextSelector({
       setLoading(false);
     }
   };
+
+  // Only show for super admins
+  if (!isSuperAdmin) {
+    return null;
+  }
 
   const handleContextSelect = (context: {
     type: "all" | "practice" | "firm" | "individual";

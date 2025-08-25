@@ -80,8 +80,10 @@ const createFallbackPermissions = (userRole: string): UserPermissions => ({
   inheritedPermissions: [],
 });
 
-export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({
+export const PermissionProvider = ({
   children,
+}: {
+  children: React.ReactNode;
 }) => {
   const [state, setState] = useState<PermissionState>({
     permissions: null,

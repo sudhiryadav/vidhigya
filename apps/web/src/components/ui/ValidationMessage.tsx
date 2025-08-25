@@ -8,11 +8,11 @@ interface ValidationMessageProps {
   showIcon?: boolean;
 }
 
-export const ValidationMessage: React.FC<ValidationMessageProps> = ({
+export const ValidationMessage = ({
   error,
   className = "",
   showIcon = true,
-}) => {
+}: ValidationMessageProps) => {
   if (!error) return null;
 
   return (
@@ -43,14 +43,14 @@ interface FormFieldWrapperProps {
   labelClassName?: string;
 }
 
-export const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
+export const FormFieldWrapper = ({
   label,
   required = false,
   error,
   children,
   className = "",
   labelClassName = "",
-}) => {
+}: FormFieldWrapperProps) => {
   return (
     <div className={`relative mb-2 ${className}`}>
       <label
@@ -80,7 +80,7 @@ interface ValidatedInputProps {
   rows?: number;
 }
 
-export const ValidatedInput: React.FC<ValidatedInputProps> = ({
+export const ValidatedInput = ({
   label,
   required = false,
   error,
@@ -90,7 +90,7 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
   placeholder,
   className = "",
   rows,
-}) => {
+}: ValidatedInputProps) => {
   const inputClassName = `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent bg-background text-foreground transition-colors duration-200 ${
     error ? "border-red-500 ring-red-500" : "border-border"
   } ${className}`;
@@ -128,7 +128,7 @@ interface ValidatedSelectProps {
   className?: string;
 }
 
-export const ValidatedSelect: React.FC<ValidatedSelectProps> = ({
+export const ValidatedSelect = ({
   label,
   required = false,
   error,
@@ -137,7 +137,7 @@ export const ValidatedSelect: React.FC<ValidatedSelectProps> = ({
   options,
   placeholder,
   className = "",
-}) => {
+}: ValidatedSelectProps) => {
   return (
     <FormFieldWrapper label={label} required={required} error={error}>
       <div className={`${error ? "border-red-500" : ""} ${className}`}>

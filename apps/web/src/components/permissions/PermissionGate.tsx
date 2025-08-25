@@ -18,7 +18,7 @@ interface PermissionGateProps {
   requireAll?: boolean; // If true, user must have ALL permissions. If false, user needs ANY permission
 }
 
-export const PermissionGate: React.FC<PermissionGateProps> = ({
+export const PermissionGate = ({
   children,
   action,
   resource,
@@ -26,7 +26,7 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
   fallback = null,
   roles,
   requireAll = true,
-}) => {
+}: PermissionGateProps) => {
   const { hasPermission, canAccess, getUserPermissions } = usePermissions();
 
   // Check role-based access
@@ -71,11 +71,15 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
 };
 
 // Convenience components for common use cases
-export const CanCreate: React.FC<{
+export const CanCreate = ({
+  resource,
+  children,
+  fallback,
+}: {
   resource: PermissionResource;
   children: React.ReactNode;
   fallback?: React.ReactNode;
-}> = ({ resource, children, fallback }) => (
+}) => (
   <PermissionGate
     action={PermissionAction.CREATE}
     resource={resource}
@@ -85,11 +89,15 @@ export const CanCreate: React.FC<{
   </PermissionGate>
 );
 
-export const CanRead: React.FC<{
+export const CanRead = ({
+  resource,
+  children,
+  fallback,
+}: {
   resource: PermissionResource;
   children: React.ReactNode;
   fallback?: React.ReactNode;
-}> = ({ resource, children, fallback }) => (
+}) => (
   <PermissionGate
     action={PermissionAction.READ}
     resource={resource}
@@ -99,11 +107,15 @@ export const CanRead: React.FC<{
   </PermissionGate>
 );
 
-export const CanUpdate: React.FC<{
+export const CanUpdate = ({
+  resource,
+  children,
+  fallback,
+}: {
   resource: PermissionResource;
   children: React.ReactNode;
   fallback?: React.ReactNode;
-}> = ({ resource, children, fallback }) => (
+}) => (
   <PermissionGate
     action={PermissionAction.UPDATE}
     resource={resource}
@@ -113,11 +125,15 @@ export const CanUpdate: React.FC<{
   </PermissionGate>
 );
 
-export const CanDelete: React.FC<{
+export const CanDelete = ({
+  resource,
+  children,
+  fallback,
+}: {
   resource: PermissionResource;
   children: React.ReactNode;
   fallback?: React.ReactNode;
-}> = ({ resource, children, fallback }) => (
+}) => (
   <PermissionGate
     action={PermissionAction.DELETE}
     resource={resource}
@@ -127,11 +143,15 @@ export const CanDelete: React.FC<{
   </PermissionGate>
 );
 
-export const CanManage: React.FC<{
+export const CanManage = ({
+  resource,
+  children,
+  fallback,
+}: {
   resource: PermissionResource;
   children: React.ReactNode;
   fallback?: React.ReactNode;
-}> = ({ resource, children, fallback }) => (
+}) => (
   <PermissionGate
     action={PermissionAction.MANAGE}
     resource={resource}
@@ -142,32 +162,43 @@ export const CanManage: React.FC<{
 );
 
 // Role-based gates
-export const RequireRole: React.FC<{
+export const RequireRole = ({
+  roles,
+  children,
+  fallback,
+  requireAll = false,
+}: {
   roles: string[];
   children: React.ReactNode;
   fallback?: React.ReactNode;
   requireAll?: boolean;
-}> = ({ roles, children, fallback, requireAll = false }) => (
+}) => (
   <PermissionGate roles={roles} fallback={fallback} requireAll={requireAll}>
     {children}
   </PermissionGate>
 );
 
 // Admin only gate
-export const AdminOnly: React.FC<{
+export const AdminOnly = ({
+  children,
+  fallback,
+}: {
   children: React.ReactNode;
   fallback?: React.ReactNode;
-}> = ({ children, fallback }) => (
+}) => (
   <RequireRole roles={["SUPER_ADMIN", "ADMIN"]} fallback={fallback}>
     {children}
   </RequireRole>
 );
 
 // Super admin only gate
-export const SuperAdminOnly: React.FC<{
+export const SuperAdminOnly = ({
+  children,
+  fallback,
+}: {
   children: React.ReactNode;
   fallback?: React.ReactNode;
-}> = ({ children, fallback }) => (
+}) => (
   <RequireRole roles={["SUPER_ADMIN"]} fallback={fallback}>
     {children}
   </RequireRole>

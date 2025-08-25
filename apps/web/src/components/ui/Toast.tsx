@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, CheckCircle, Info, X, XCircle } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "../../styles/toast.css";
 
 export interface ToastProps {
@@ -13,14 +13,14 @@ export interface ToastProps {
   onClose: (id: string) => void;
 }
 
-const Toast: React.FC<ToastProps> = ({
+const Toast = ({
   id,
   type,
   title,
   message,
   duration = 4000,
   onClose,
-}) => {
+}: ToastProps) => {
   const [isVisible, setIsVisible] = useState(false);
   const [progress, setProgress] = useState(100);
 

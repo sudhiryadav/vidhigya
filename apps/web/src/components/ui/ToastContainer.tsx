@@ -26,7 +26,7 @@ interface ToastContainerProps {
   children: React.ReactNode;
 }
 
-export const ToastContainer: React.FC<ToastContainerProps> = ({ children }) => {
+export const ToastContainer = ({ children }: ToastContainerProps) => {
   const [toasts, setToasts] = useState<ToastProps[]>([]);
 
   const removeToast = useCallback((id: string) => {

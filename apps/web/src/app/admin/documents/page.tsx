@@ -4,9 +4,7 @@ import LoadingOverlay from "@/components/LoadingOverlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import CustomSelect from "@/components/ui/select";
 import { useToast } from "@/components/ui/ToastContainer";
 import { apiClient } from "@/services/api";
 import {
@@ -192,74 +190,69 @@ export default function AdminDocumentsPage() {
               <Label htmlFor="search">Search</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
+                <input
                   id="search"
+                  type="text"
                   placeholder="Search documents..."
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
                 />
               </div>
             </div>
 
             <div>
               <Label htmlFor="status">Status</Label>
-              <CustomSelect
-                value={{
-                  value: statusFilter,
-                  label: statusFilter === "all" ? "All Statuses" : statusFilter,
-                }}
-                onChange={(option) =>
-                  option && handleStatusFilter(option.value)
-                }
-                options={[
-                  { value: "all", label: "All Statuses" },
-                  { value: "PROCESSED", label: "Processed" },
-                  { value: "PROCESSING", label: "Processing" },
-                  { value: "ERROR", label: "Error" },
-                  { value: "DRAFT", label: "Draft" },
-                ]}
-                placeholder="Select status"
-              />
+              <select
+                id="status"
+                value={statusFilter}
+                onChange={(e) => handleStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+              >
+                <option value="all">All Statuses</option>
+                <option value="PROCESSED">Processed</option>
+                <option value="PROCESSING">Processing</option>
+                <option value="ERROR">Error</option>
+                <option value="DRAFT">Draft</option>
+              </select>
             </div>
 
             <div>
               <Label htmlFor="type">Type</Label>
-              <CustomSelect
-                value={{
-                  value: typeFilter,
-                  label: typeFilter === "all" ? "All Types" : typeFilter,
-                }}
-                onChange={(option) => option && handleTypeFilter(option.value)}
-                options={[
-                  { value: "all", label: "All Types" },
-                  { value: "pdf", label: "PDF" },
-                  { value: "doc", label: "DOC" },
-                  { value: "docx", label: "DOCX" },
-                  { value: "txt", label: "Text" },
-                ]}
-                placeholder="Select type"
-              />
+              <select
+                id="type"
+                value={typeFilter}
+                onChange={(e) => handleTypeFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+              >
+                <option value="all">All Types</option>
+                <option value="pdf">PDF</option>
+                <option value="doc">DOC</option>
+                <option value="docx">DOCX</option>
+                <option value="txt">Text</option>
+              </select>
             </div>
 
             <div>
               <Label htmlFor="startDate">Start Date</Label>
-              <Input
+              <input
                 id="startDate"
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => handleDateRangeChange("start", e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
               />
             </div>
           </div>
 
           <div className="mt-4">
             <Label htmlFor="endDate">End Date</Label>
-            <Input
+            <input
               id="endDate"
               type="date"
               value={dateRange.end}
               onChange={(e) => handleDateRangeChange("end", e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
             />
           </div>
         </CardContent>

@@ -1,5 +1,3 @@
-import React from "react";
-
 interface LogoProps {
   size?: "sm" | "md" | "lg" | "xl";
   showText?: boolean;
@@ -20,11 +18,11 @@ const textSizes = {
   xl: "text-3xl",
 };
 
-export const Logo: React.FC<LogoProps> = ({
+export const Logo = ({
   size = "md",
   showText = true,
   className = "",
-}) => {
+}: LogoProps) => {
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
       <div className={`${sizeClasses[size]} flex-shrink-0`}>

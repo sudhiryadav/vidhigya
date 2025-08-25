@@ -33,7 +33,7 @@ interface CustomSelectProps
   className?: string;
 }
 
-const CustomSelect: React.FC<CustomSelectProps> = ({
+const CustomSelect = ({
   options,
   placeholder = "Select an option...",
   isSearchable = true,
@@ -45,7 +45,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   required = false,
   className = "",
   ...props
-}) => {
+}: CustomSelectProps) => {
   // Custom components for consistent styling
   const DropdownIndicator = (
     props: DropdownIndicatorProps<SelectOption, false, GroupBase<SelectOption>>
@@ -192,7 +192,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   );
 };
 
-export { CustomSelect as default };
+export default CustomSelect;
 
 // Additional exports for compatibility with new usage patterns
 export { CustomSelect as Select };

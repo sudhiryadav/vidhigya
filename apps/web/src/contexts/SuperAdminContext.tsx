@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import React, { createContext, ReactNode, useContext, useState } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 export interface SuperAdminContextType {
   type: "all" | "practice" | "firm" | "individual";
@@ -31,12 +31,10 @@ export const useSuperAdminContext = () => {
 };
 
 interface SuperAdminProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
-export const SuperAdminProvider: React.FC<SuperAdminProviderProps> = ({
-  children,
-}) => {
+export const SuperAdminProvider = ({ children }: SuperAdminProviderProps) => {
   const { user } = useAuth();
   const [context, setContext] = useState<SuperAdminContextType | null>(null);
   const isSuperAdmin = user?.role === "SUPER_ADMIN";

@@ -158,28 +158,18 @@ export default function DocumentUploadModal({
   const fetchCases = async () => {
     try {
       const data = await apiClient.getCases();
-      // Add a test case if no cases exist or for testing purposes
-      const testCase: Case = {
-        id: "test-case-001",
-        caseNumber: "CASE-2024-001",
-        title: "Test Contract Dispute Case",
-      };
-
-      const casesWithTest = data ? [...data, testCase] : [testCase];
-      setCases(casesWithTest);
-
-      // Set the test case as default
-      setValue("caseId", testCase.id);
+      if (data && Array.isArray(data)) {
+        setCases(data);
+        // Set the first case as default if available
+        if (data.length > 0) {
+          setValue("caseId", data[0].id);
+        }
+      } else {
+        setCases([]);
+      }
     } catch (error) {
       console.error("Error fetching cases:", error);
-      // If API fails, still add test case
-      const testCase: Case = {
-        id: "test-case-001",
-        caseNumber: "CASE-2024-001",
-        title: "Test Contract Dispute Case",
-      };
-      setCases([testCase]);
-      setValue("caseId", testCase.id);
+      setCases([]);
     }
   };
 
@@ -200,8 +190,8 @@ export default function DocumentUploadModal({
         uploadFormData.append("description", formData.description);
         uploadFormData.append("category", formData.category);
         uploadFormData.append("status", formData.status);
-        // Only send caseId if it's not a test case
-        if (formData.caseId && formData.caseId !== "test-case-001") {
+        // Send caseId if available
+        if (formData.caseId) {
           uploadFormData.append("caseId", formData.caseId);
         }
 

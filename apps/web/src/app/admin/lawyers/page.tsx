@@ -1,12 +1,7 @@
 "use client";
 
 import ConfirmDialog from "@/components/ConfirmDialog";
-import CustomSelect from "@/components/ui/select";
 import LoadingOverlay from "@/components/LoadingOverlay";
-import {
-  FormFieldWrapper,
-  ValidatedInput,
-} from "@/components/ui/ValidationMessage";
 import { userProfileSchema } from "@/lib/validation";
 import { apiClient } from "@/services/api";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -156,13 +151,21 @@ export default function LawyersManagement() {
       lawyer.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-        <div className="max-w-7xl mx-auto">
+  return (
+    <div className="min-h-screen bg-background p-6">
+      <LoadingOverlay
+        isVisible={loading}
+        title="Loading Lawyers"
+        message="Please wait while we fetch your lawyers data..."
+        absolute={true}
+      />
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Lawyers Management
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-gray-600 dark:text-gray-400">
             Manage lawyer accounts and permissions
           </p>
         </div>
@@ -222,7 +225,7 @@ export default function LawyersManagement() {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-foreground">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
                             {lawyer.name}
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -232,7 +235,7 @@ export default function LawyersManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-foreground">
+                      <div className="text-sm text-gray-900 dark:text-white">
                         <div className="flex items-center space-x-2">
                           <Mail className="w-4 h-4 text-gray-400" />
                           <span>{lawyer.email}</span>
@@ -285,62 +288,87 @@ export default function LawyersManagement() {
         {showCreateModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-card rounded-lg p-6 w-full max-w-md mx-4">
-              <h3 className="text-lg font-medium text-foreground mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Add New Lawyer
               </h3>
               <form
                 onSubmit={handleSubmit(handleCreateLawyer)}
                 className="space-y-3"
               >
-                <ValidatedInput
-                  label="Name"
-                  required
-                  error={errors.name}
-                  register={register}
-                  name="name"
-                  placeholder="Enter lawyer name"
-                />
-                <ValidatedInput
-                  label="Email"
-                  required
-                  error={errors.email}
-                  register={register}
-                  name="email"
-                  type="email"
-                  placeholder="Enter email address"
-                />
-                <ValidatedInput
-                  label="Phone"
-                  required
-                  error={errors.phone}
-                  register={register}
-                  name="phone"
-                  type="tel"
-                  placeholder="Enter phone number"
-                />
-                <FormFieldWrapper label="Role" required error={errors.role}>
-                  <CustomSelect
-                    value={{
-                      value: watch("role"),
-                      label:
-                        watch("role") === "LAWYER"
-                          ? "Lawyer"
-                          : watch("role") === "ASSOCIATE"
-                            ? "Associate"
-                            : "Paralegal",
-                    }}
-                    onChange={(option) =>
-                      setValue("role", option?.value || "LAWYER")
-                    }
-                    options={[
-                      { value: "LAWYER", label: "Lawyer" },
-                      { value: "ASSOCIATE", label: "Associate" },
-                      { value: "PARALEGAL", label: "Paralegal" },
-                    ]}
-                    placeholder="Select role..."
-                    className={errors.role ? "border-red-500" : ""}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    {...register("name")}
+                    className={`w-full px-3 py-2 border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.name ? "border-red-500" : "border-border"
+                    }`}
+                    placeholder="Enter lawyer name"
                   />
-                </FormFieldWrapper>
+                  {errors.name && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                      {errors.name.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    {...register("email")}
+                    className={`w-full px-3 py-2 border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.email ? "border-red-500" : "border-border"
+                    }`}
+                    placeholder="Enter email address"
+                  />
+                  {errors.email && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                      {errors.email.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Phone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    {...register("phone")}
+                    className={`w-full px-3 py-2 border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.phone ? "border-red-500" : "border-border"
+                    }`}
+                    placeholder="Enter phone number"
+                  />
+                  {errors.phone && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                      {errors.phone.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Role <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    {...register("role")}
+                    className={`w-full px-3 py-2 border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.role ? "border-red-500" : "border-border"
+                    }`}
+                  >
+                    <option value="LAWYER">Lawyer</option>
+                    <option value="ASSOCIATE">Associate</option>
+                    <option value="PARALEGAL">Paralegal</option>
+                  </select>
+                  {errors.role && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                      {errors.role.message}
+                    </p>
+                  )}
+                </div>
                 <div className="flex justify-end space-x-3 mt-6">
                   <button
                     type="button"
@@ -348,7 +376,7 @@ export default function LawyersManagement() {
                       setShowCreateModal(false);
                       reset();
                     }}
-                    className="px-4 py-2 text-muted-foreground hover:text-gray-800 dark:hover:text-gray-200"
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                   >
                     Cancel
                   </button>
@@ -369,7 +397,7 @@ export default function LawyersManagement() {
         {showEditModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-card rounded-lg p-6 w-full max-w-md mx-4">
-              <h3 className="text-lg font-medium text-foreground mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Edit Lawyer
               </h3>
               <form
@@ -389,7 +417,7 @@ export default function LawyersManagement() {
                     placeholder="Enter lawyer name"
                   />
                   {errors.name && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                       {errors.name.message}
                     </p>
                   )}
@@ -407,7 +435,7 @@ export default function LawyersManagement() {
                     placeholder="Enter email address"
                   />
                   {errors.email && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                       {errors.email.message}
                     </p>
                   )}
@@ -425,7 +453,7 @@ export default function LawyersManagement() {
                     placeholder="Enter phone number"
                   />
                   {errors.phone && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                       {errors.phone.message}
                     </p>
                   )}
@@ -434,29 +462,18 @@ export default function LawyersManagement() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Role <span className="text-red-500">*</span>
                   </label>
-                  <CustomSelect
-                    value={{
-                      value: watch("role"),
-                      label:
-                        watch("role") === "LAWYER"
-                          ? "Lawyer"
-                          : watch("role") === "ASSOCIATE"
-                            ? "Associate"
-                            : "Paralegal",
-                    }}
-                    onChange={(option) =>
-                      setValue("role", option?.value || "LAWYER")
-                    }
-                    options={[
-                      { value: "LAWYER", label: "Lawyer" },
-                      { value: "ASSOCIATE", label: "Associate" },
-                      { value: "PARALEGAL", label: "Paralegal" },
-                    ]}
-                    placeholder="Select role..."
-                    className={errors.role ? "border-red-500" : ""}
-                  />
+                  <select
+                    {...register("role")}
+                    className={`w-full px-3 py-2 border rounded-md bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.role ? "border-red-500" : "border-border"
+                    }`}
+                  >
+                    <option value="LAWYER">Lawyer</option>
+                    <option value="ASSOCIATE">Associate</option>
+                    <option value="PARALEGAL">Paralegal</option>
+                  </select>
                   {errors.role && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                       {errors.role.message}
                     </p>
                   )}
@@ -469,7 +486,7 @@ export default function LawyersManagement() {
                       setSelectedLawyer(null);
                       reset();
                     }}
-                    className="px-4 py-2 text-muted-foreground hover:text-gray-800 dark:hover:text-gray-200"
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                   >
                     Cancel
                   </button>

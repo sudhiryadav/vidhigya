@@ -2,7 +2,6 @@
 
 import LoadingOverlay from "@/components/LoadingOverlay";
 import ModalDialog from "@/components/ui/ModalDialog";
-import CustomSelect, { SelectOption } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
@@ -98,7 +97,7 @@ export default function CalendarPage() {
   const canManageEvents = isLawyer || isAdmin;
 
   // Select options
-  const eventTypeOptions: SelectOption[] = [
+  const eventTypeOptions: { value: string; label: string }[] = [
     { value: "HEARING", label: "Court Hearing" },
     { value: "CLIENT_MEETING", label: "Client Meeting" },
     { value: "COURT_APPEARANCE", label: "Court Appearance" },
@@ -857,50 +856,46 @@ export default function CalendarPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Event Type
                 </label>
-                <CustomSelect
-                  options={eventTypeOptions}
-                  value={eventTypeOptions.find(
-                    (opt) => opt.value === createFormData.eventType
-                  )}
-                  onChange={(value) =>
+                <select
+                  value={createFormData.eventType}
+                  onChange={(e) =>
                     setCreateFormData({
                       ...createFormData,
-                      eventType: value?.value || "",
+                      eventType: e.target.value,
                     })
                   }
-                  placeholder="Select event type"
-                />
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="">Select event type</option>
+                  {eventTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               {cases.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Related Case (Optional)
                   </label>
-                  <CustomSelect
-                    options={cases.map((case_) => ({
-                      value: case_.id,
-                      label: `${case_.caseNumber} - ${case_.title}`,
-                    }))}
-                    value={
-                      cases.find((c) => c.id === createFormData.caseId)
-                        ? {
-                            value: createFormData.caseId,
-                            label: cases.find(
-                              (c) => c.id === createFormData.caseId
-                            )
-                              ? `${cases.find((c) => c.id === createFormData.caseId)?.caseNumber} - ${cases.find((c) => c.id === createFormData.caseId)?.title}`
-                              : "",
-                          }
-                        : undefined
-                    }
-                    onChange={(value) =>
+                  <select
+                    value={createFormData.caseId}
+                    onChange={(e) =>
                       setCreateFormData({
                         ...createFormData,
-                        caseId: value?.value || "",
+                        caseId: e.target.value,
                       })
                     }
-                    placeholder="Select a case"
-                  />
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  >
+                    <option value="">Select a case</option>
+                    {cases.map((case_) => (
+                      <option key={case_.id} value={case_.id}>
+                        {case_.caseNumber} - {case_.title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
               <div className="flex items-center">
@@ -1036,50 +1031,46 @@ export default function CalendarPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Event Type
                 </label>
-                <CustomSelect
-                  options={eventTypeOptions}
-                  value={eventTypeOptions.find(
-                    (opt) => opt.value === editFormData.eventType
-                  )}
-                  onChange={(value) =>
+                <select
+                  value={editFormData.eventType}
+                  onChange={(e) =>
                     setEditFormData({
                       ...editFormData,
-                      eventType: value?.value || "",
+                      eventType: e.target.value,
                     })
                   }
-                  placeholder="Select event type"
-                />
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                >
+                  <option value="">Select event type</option>
+                  {eventTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               {cases.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Related Case (Optional)
                   </label>
-                  <CustomSelect
-                    options={cases.map((case_) => ({
-                      value: case_.id,
-                      label: `${case_.caseNumber} - ${case_.title}`,
-                    }))}
-                    value={
-                      cases.find((c) => c.id === editFormData.caseId)
-                        ? {
-                            value: editFormData.caseId,
-                            label: cases.find(
-                              (c) => c.id === editFormData.caseId
-                            )
-                              ? `${cases.find((c) => c.id === editFormData.caseId)?.caseNumber} - ${cases.find((c) => c.id === editFormData.caseId)?.title}`
-                              : "",
-                          }
-                        : undefined
-                    }
-                    onChange={(value) =>
+                  <select
+                    value={editFormData.caseId}
+                    onChange={(e) =>
                       setEditFormData({
                         ...editFormData,
-                        caseId: value?.value || "",
+                        caseId: e.target.value,
                       })
                     }
-                    placeholder="Select a case"
-                  />
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  >
+                    <option value="">Select a case</option>
+                    {cases.map((case_) => (
+                      <option key={case_.id} value={case_.id}>
+                        {case_.caseNumber} - {case_.title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
               <div className="flex items-center">
