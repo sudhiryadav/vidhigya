@@ -513,7 +513,7 @@ export function PermissionBasedNavigation() {
                 <span>Logout</span>
               </button>
             </div>
-            
+
             {/* User Info with Dropdown */}
             <div className="relative user-menu-container">
               <button

@@ -46,19 +46,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check for existing token and user data on mount
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
+    // Only run on client side
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      const userData = localStorage.getItem("user");
 
-    if (token && userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        // Initialize socket connection
-        getSocketService().connect(token);
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+      if (token && userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+          // Initialize socket connection
+          getSocketService().connect(token);
+        } catch (error) {
+          console.error("Error parsing user data:", error);
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
       }
     }
     setLoading(false);
@@ -71,9 +74,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user: User;
       };
 
-      // Store token and user info
-      localStorage.setItem("token", response.token);
-      localStorage.setItem("user", JSON.stringify(response.user));
+      // Store token and user info (only on client side)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("user", JSON.stringify(response.user));
+      }
       setUser(response.user);
 
       // Initialize socket connection after successful login
@@ -90,8 +95,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Disconnect socket before logout
     getSocketService().disconnect();
 
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    // Remove from localStorage (only on client side)
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
     setUser(null);
     // Use replace to prevent back button issues and add a small delay
     setTimeout(() => {
@@ -123,6 +131,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateAvatar = (avatarBase64: string) => {
     setUser((prev) => (prev ? { ...prev, avatarBase64 } : null));
+    // Update localStorage if on client side
+    if (typeof window !== "undefined" && user) {
+      const userData = localStorage.getItem("user");
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        parsedUser.avatarBase64 = avatarBase64;
+        localStorage.setItem("user", JSON.stringify(parsedUser));
+      }
+    }
   };
 
   const removeAvatar = async () => {
@@ -130,6 +147,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await apiClient.removeAvatar();
       // Remove avatar from auth context
       setUser((prev) => (prev ? { ...prev, avatarBase64: null } : null));
+      // Update localStorage if on client side
+      if (typeof window !== "undefined" && user) {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          parsedUser.avatarBase64 = null;
+          localStorage.setItem("user", JSON.stringify(parsedUser));
+        }
+      }
     } catch (error) {
       console.error("Error removing avatar:", error);
       throw error;
