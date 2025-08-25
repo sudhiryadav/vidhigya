@@ -1,5 +1,6 @@
 "use client";
 
+import { ClientModal } from "@/components/ClientModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePractice } from "@/contexts/PracticeContext";
 import { apiClient } from "@/services/api";
@@ -13,7 +14,6 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ClientModal } from "@/components/ClientModal";
 
 interface Client {
   id: string;
@@ -79,13 +79,17 @@ export default function AdminClients() {
   };
 
   const handleEditClient = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
+    const client = clients.find((c) => c.id === clientId);
     setSelectedClient(client || null);
     setShowModal(true);
   };
 
   const handleDeleteClient = async (clientId: string) => {
-    if (confirm("Are you sure you want to delete this client? This action cannot be undone.")) {
+    if (
+      confirm(
+        "Are you sure you want to delete this client? This action cannot be undone."
+      )
+    ) {
       try {
         await apiClient.deleteClient(clientId);
         // Refresh the clients list

@@ -503,6 +503,17 @@ export function PermissionBasedNavigation() {
 
           {/* Bottom Section - User Info and Actions */}
           <div className="p-4 border-t border-border">
+            {/* Mobile Logout Button */}
+            <div className="md:hidden mb-4">
+              <button
+                onClick={() => router.push("/logout")}
+                className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200 border border-red-200 dark:border-red-800"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+            
             {/* User Info with Dropdown */}
             <div className="relative user-menu-container">
               <button
@@ -557,7 +568,7 @@ export function PermissionBasedNavigation() {
                     </button>
                     <div className="border-t border-border my-1"></div>
                     <button
-                      onClick={logout}
+                      onClick={() => router.push("/logout")}
                       className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
                     >
                       <LogOut className="w-4 h-4" />

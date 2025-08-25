@@ -703,12 +703,15 @@ class ApiClient {
     return this.request(`/cases/clients/${clientId}`);
   }
 
-  async createClient(practiceId: string, data: {
-    name: string;
-    email: string;
-    phone?: string;
-    address?: string;
-  }) {
+  async createClient(
+    practiceId: string,
+    data: {
+      name: string;
+      email: string;
+      phone?: string;
+      address?: string;
+    }
+  ) {
     return this.request(`/clients/${practiceId}`, {
       method: "POST",
       body: JSON.stringify(data),
