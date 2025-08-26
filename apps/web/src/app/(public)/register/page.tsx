@@ -113,7 +113,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen p-4 relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-700 register-page">
+    <div className="min-h-screen p-4 relative overflow-hidden bg-gradient-to-br from-background via-muted to-accent/20">
       <div className="max-w-md w-full mx-auto space-y-8 pt-8">
         {/* Header */}
         <div className="text-center">

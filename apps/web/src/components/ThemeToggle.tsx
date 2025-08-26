@@ -42,22 +42,10 @@ export function ThemeToggle() {
   const currentTheme = themes.find((t) => t.value === theme);
   const Icon = currentTheme?.icon || Sun;
 
-  console.log("ThemeToggle: Rendering with theme:", {
-    theme,
-    currentTheme,
-    isOpen,
-  });
-
-  // Temporarily force dropdown to be open for testing
-  const forceOpen = true;
-
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => {
-          console.log("ThemeToggle: Button clicked, current isOpen:", isOpen);
-          setIsOpen(!isOpen);
-        }}
+        onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors duration-200 border border-border bg-card"
       >
         <Icon className="w-4 h-4" />
@@ -67,18 +55,14 @@ export function ThemeToggle() {
         />
       </button>
 
-      {(isOpen || forceOpen) && (
-        <div className="absolute right-0 bottom-full mb-2 w-48 bg-card rounded-lg shadow-lg border border-border py-1 z-50 backdrop-blur-sm">
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-2 w-48 bg-card rounded-lg shadow-lg border border-border py-1 z-[9999] backdrop-blur-sm">
           {themes.map((themeOption) => {
             const ThemeIcon = themeOption.icon;
             return (
               <button
                 key={themeOption.value}
                 onClick={() => {
-                  console.log(
-                    "ThemeToggle: Theme option clicked:",
-                    themeOption.value
-                  );
                   setTheme(themeOption.value);
                   setIsOpen(false);
                 }}

@@ -115,7 +115,7 @@ export default function LoginPage() {
 
   return (
     <>
-      <div className="min-h-screen p-4 relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-700 login-page">
+      <div className="min-h-screen p-4 relative overflow-hidden bg-gradient-to-br from-background via-muted to-accent/20">
         <div className="max-w-md w-full mx-auto space-y-8 pt-8">
           {/* Header */}
           <div className="text-center">
@@ -249,7 +249,7 @@ export default function LoginPage() {
                       handleDemoLogin("admin@vidhigya.com", "admin123")
                     }
                     disabled={demoLoading === "admin@vidhigya.com"}
-                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-foreground bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {demoLoading === "admin@vidhigya.com" ? (
                       <div className="flex items-center space-x-2">
@@ -271,7 +271,7 @@ export default function LoginPage() {
                       handleDemoLogin("johnson@johnsonlaw.com", "firm123")
                     }
                     disabled={demoLoading === "johnson@johnsonlaw.com"}
-                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-foreground bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {demoLoading === "johnson@johnsonlaw.com" ? (
                       <div className="flex items-center space-x-2">
@@ -293,7 +293,7 @@ export default function LoginPage() {
                       handleDemoLogin("patel@johnsonlaw.com", "partner123")
                     }
                     disabled={demoLoading === "patel@johnsonlaw.com"}
-                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-foreground bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {demoLoading === "patel@johnsonlaw.com" ? (
                       <div className="flex items-center space-x-2">
@@ -315,7 +315,7 @@ export default function LoginPage() {
                       handleDemoLogin("kumar@johnsonlaw.com", "associate123")
                     }
                     disabled={demoLoading === "kumar@johnsonlaw.com"}
-                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-foreground bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {demoLoading === "kumar@johnsonlaw.com" ? (
                       <div className="flex items-center space-x-2">
@@ -337,7 +337,7 @@ export default function LoginPage() {
                       handleDemoLogin("sharma@johnsonlaw.com", "paralegal123")
                     }
                     disabled={demoLoading === "sharma@johnsonlaw.com"}
-                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-foreground bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 dark:bg-pink-500 dark:hover:bg-pink-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {demoLoading === "sharma@johnsonlaw.com" ? (
                       <div className="flex items-center space-x-2">
@@ -359,7 +359,7 @@ export default function LoginPage() {
                       handleDemoLogin("sarah@wilsonlaw.com", "individual123")
                     }
                     disabled={demoLoading === "sarah@wilsonlaw.com"}
-                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-foreground bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {demoLoading === "sarah@wilsonlaw.com" ? (
                       <div className="flex items-center space-x-2">
