@@ -1,11 +1,11 @@
 "use client";
 
+import { AccessDenied } from "@/components/AccessDenied";
 import ModalDialog from "@/components/ui/ModalDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePractice } from "@/contexts/PracticeContext";
 import { apiClient } from "@/services/api";
 import {
-  AlertTriangle,
   Briefcase,
   Calendar,
   DollarSign,
@@ -238,19 +238,10 @@ export default function ClientsPage() {
   // Access denied for unauthorized users
   if (!canViewClients) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
-          <div className="text-center">
-            <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-foreground mb-2">
-              Access Denied
-            </h1>
-            <p className="text-muted-foreground">
-              You don&apos;t have permission to access the clients page.
-            </p>
-          </div>
-        </div>
-      </div>
+      <AccessDenied
+        title="Access Denied"
+        message="You don't have permission to access the clients page."
+      />
     );
   }
 

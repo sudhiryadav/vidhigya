@@ -1,5 +1,6 @@
 "use client";
 
+import { AccessDenied } from "@/components/AccessDenied";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -189,24 +190,10 @@ export default function AdminAnalyticsPage() {
   // Final permission check before rendering
   if (!isAdmin) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Access Denied
-          </h2>
-          <p className="text-muted-foreground mb-4">
-            You don't have permission to access the analytics page. This page is
-            only available to administrators.
-          </p>
-          <button
-            onClick={() => window.history.back()}
-            className="btn-secondary"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
+      <AccessDenied
+        title="Access Denied"
+        message="You don't have permission to access the analytics page. This page is only available to administrators."
+      />
     );
   }
 

@@ -326,12 +326,6 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
         resource: PermissionResource.ANALYTICS,
         scope: 'PRACTICE',
       },
-      // Basic module access for navigation
-      {
-        action: PermissionAction.READ,
-        resource: PermissionResource.MODULE,
-        scope: 'PRACTICE',
-      },
     ],
     description:
       'Full case and client management within practice, can create new practices, basic module access for navigation',

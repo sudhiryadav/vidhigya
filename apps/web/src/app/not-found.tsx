@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -17,15 +16,12 @@ import { usePathname } from "next/navigation";
 
 export default function NotFound() {
   const pathname = usePathname();
-  const { user } = useAuth();
 
   // Determine if this is an admin page
   const isAdminPage = pathname?.startsWith("/admin");
 
-  // Get suggested navigation based on user role and current path
+  // Get suggested navigation based on current path
   const getSuggestedNavigation = () => {
-    if (!user) return [];
-
     const suggestions = [];
 
     if (isAdminPage) {
@@ -168,8 +164,6 @@ export default function NotFound() {
             <span>Error Code: 404</span>
             <span>•</span>
             <span>Page: {pathname}</span>
-            <span>•</span>
-            <span>User: {user?.role || "Guest"}</span>
           </div>
         </div>
       </div>

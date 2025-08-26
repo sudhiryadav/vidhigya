@@ -173,6 +173,7 @@ model User {
   createdTasks         Task[]              @relation("TaskCreator")
   timeEntries          TimeEntry[]
   userSettings         UserSettings?
+  systemSettingsUpdated SystemSettings[]   @relation("SystemSettingsUpdatedBy")
   client               Client?             @relation("ClientUser", fields: [clientId], references: [id])
   primaryPractice      Practice?           @relation("UserPrimaryPractice", fields: [primaryPracticeId], references: [id])
   videoCalls           VideoCall[]         @relation("CallHost")
@@ -527,6 +528,21 @@ model FileShare {
   sharedWith   User?          @relation("FileSharedWith", fields: [sharedWithId], references: [id])
 
   @@map("file_shares")
+}
+
+model SystemSettings {
+  id                  String   @id @default(cuid())
+  key                 String   @unique
+  value               String
+  description         String?
+  category            String   @default("general")
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  updatedBy           String?
+  user                User?    @relation("SystemSettingsUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("system_settings")
 }
 
 model UserSettings {

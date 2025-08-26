@@ -72,45 +72,17 @@ export default function AdminSettings() {
   const loadAdminSettings = async () => {
     try {
       setIsLoading(true);
-      // Load admin settings from database
-      const dbSettings = (await apiClient.getUserSettings()) as Record<
-        string,
-        unknown
-      >;
-      if (dbSettings) {
-        // Map database settings to admin settings structure
-        // For now, we'll store admin settings as JSON in a custom field
-        // This can be enhanced later with a dedicated admin settings table
-        setSettings({
-          system: {
-            maintenanceMode: (dbSettings.maintenanceMode as boolean) ?? false,
-            debugMode: (dbSettings.debugMode as boolean) ?? false,
-            autoBackup: (dbSettings.autoBackup as boolean) ?? true,
-            dataRetention: (dbSettings.dataRetention as string) ?? "90",
-          },
-          security: {
-            sessionTimeout: (dbSettings.sessionTimeout as string) ?? "30",
-            passwordPolicy: (dbSettings.passwordPolicy as string) ?? "strong",
-            ipWhitelist: (dbSettings.ipWhitelist as string) ?? "",
-            auditLogging: (dbSettings.auditLogging as boolean) ?? true,
-          },
-          notifications: {
-            systemAlerts: (dbSettings.systemAlerts as boolean) ?? true,
-            userActivity: (dbSettings.userActivity as boolean) ?? false,
-            securityEvents: (dbSettings.securityEvents as boolean) ?? true,
-            backupNotifications:
-              (dbSettings.backupNotifications as boolean) ?? true,
-          },
-          integrations: {
-            emailProvider: (dbSettings.emailProvider as string) ?? "smtp",
-            smsProvider: (dbSettings.smsProvider as string) ?? "twilio",
-            storageProvider: (dbSettings.storageProvider as string) ?? "local",
-            analyticsEnabled: (dbSettings.analyticsEnabled as boolean) ?? true,
-          },
-        });
+      // Load admin settings from the system settings API
+      const dbSettings = await apiClient.getSystemSettings();
+      if (dbSettings && typeof dbSettings === "object") {
+        // Cast the response to AdminSettings type
+        setSettings(dbSettings as AdminSettings);
+      } else {
+        console.warn("No system settings returned from API, using defaults");
       }
     } catch (error) {
       console.error("Error loading admin settings:", error);
+      toast.error("Failed to load system settings");
     } finally {
       setIsLoading(false);
     }
@@ -120,37 +92,64 @@ export default function AdminSettings() {
     try {
       setIsSaving(true);
 
-      // Save admin settings to database
-      await apiClient.updateUserSettings({
+      // Prepare updates for system settings
+      const updates = [
         // System settings
-        maintenanceMode: settings.system.maintenanceMode,
-        debugMode: settings.system.debugMode,
-        autoBackup: settings.system.autoBackup,
-        dataRetention: settings.system.dataRetention,
+        {
+          key: "maintenanceMode",
+          value: settings.system.maintenanceMode.toString(),
+        },
+        { key: "debugMode", value: settings.system.debugMode.toString() },
+        { key: "autoBackup", value: settings.system.autoBackup.toString() },
+        { key: "dataRetention", value: settings.system.dataRetention },
 
         // Security settings
-        sessionTimeout: settings.security.sessionTimeout,
-        passwordPolicy: settings.security.passwordPolicy,
-        ipWhitelist: settings.security.ipWhitelist,
-        auditLogging: settings.security.auditLogging,
+        { key: "sessionTimeout", value: settings.security.sessionTimeout },
+        { key: "passwordPolicy", value: settings.security.passwordPolicy },
+        { key: "ipWhitelist", value: settings.security.ipWhitelist },
+        {
+          key: "auditLogging",
+          value: settings.security.auditLogging.toString(),
+        },
 
         // Notification settings
-        systemAlerts: settings.notifications.systemAlerts,
-        userActivity: settings.notifications.userActivity,
-        securityEvents: settings.notifications.securityEvents,
-        backupNotifications: settings.notifications.backupNotifications,
+        {
+          key: "systemAlerts",
+          value: settings.notifications.systemAlerts.toString(),
+        },
+        {
+          key: "userActivity",
+          value: settings.notifications.userActivity.toString(),
+        },
+        {
+          key: "securityEvents",
+          value: settings.notifications.securityEvents.toString(),
+        },
+        {
+          key: "backupNotifications",
+          value: settings.notifications.backupNotifications.toString(),
+        },
 
         // Integration settings
-        emailProvider: settings.integrations.emailProvider,
-        smsProvider: settings.integrations.smsProvider,
-        storageProvider: settings.integrations.storageProvider,
-        analyticsEnabled: settings.integrations.analyticsEnabled,
-      });
+        { key: "emailProvider", value: settings.integrations.emailProvider },
+        { key: "smsProvider", value: settings.integrations.smsProvider },
+        {
+          key: "storageProvider",
+          value: settings.integrations.storageProvider,
+        },
+        {
+          key: "analyticsEnabled",
+          value: settings.integrations.analyticsEnabled.toString(),
+        },
+      ];
 
-      toast.success("Admin settings saved successfully!");
+      // Save admin settings to the system settings API
+      await apiClient.updateMultipleSystemSettings(updates);
+
+      toast.success("System settings saved successfully!");
     } catch (error) {
       console.error("Error saving admin settings:", error);
-      toast.error("Failed to save admin settings");
+      toast.error("Failed to save system settings");
     } finally {
       setIsSaving(false);
     }

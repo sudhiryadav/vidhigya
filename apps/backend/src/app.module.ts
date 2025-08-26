@@ -25,6 +25,7 @@ import { LogsModule } from './logs/logs.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ReportsModule } from './reports/reports.module';
+import { SystemSettingsModule } from './system-settings/system-settings.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
 
 @Module({
@@ -44,6 +45,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     PracticesModule,
     ClientsModule,
     UserSettingsModule,
+    SystemSettingsModule,
     BillingModule,
     CalendarModule,
     CasesModule,

@@ -1,5 +1,6 @@
 "use client";
 
+import { AccessDenied } from "@/components/AccessDenied";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,14 +15,7 @@ import CustomSelect, { SelectOption } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
-import {
-  AlertTriangle,
-  Brain,
-  Clock,
-  ThumbsDown,
-  ThumbsUp,
-  Zap,
-} from "lucide-react";
+import { Brain, Clock, ThumbsDown, ThumbsUp, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 
@@ -125,19 +119,10 @@ export default function ReportsPage() {
   // If user doesn't have access to reports, show access denied
   if (!canAccessReports) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
-          <div className="text-center">
-            <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Access Denied
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              You don't have permission to access the reports page.
-            </p>
-          </div>
-        </div>
-      </div>
+      <AccessDenied
+        title="Access Denied"
+        message="You don't have permission to access the reports page."
+      />
     );
   }
 

@@ -3,6 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { AccessDenied } from "./AccessDenied";
 import LoadingOverlay from "./LoadingOverlay";
 
 const adminRoutes = [
@@ -73,22 +74,11 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
 
     if (!hasAdminAccess) {
       return (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">
-              Access Denied
-            </h1>
-            <p className="text-muted-foreground mb-4">
-              You don't have permission to access this area.
-            </p>
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Go to Dashboard
-            </button>
-          </div>
-        </div>
+        <AccessDenied
+          title="Access Denied"
+          message="You don't have permission to access this area."
+          showGoBack={false}
+        />
       );
     }
   }

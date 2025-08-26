@@ -1,5 +1,6 @@
 "use client";
 
+import { AccessDenied } from "@/components/AccessDenied";
 import AddClientModal from "@/components/AddClientModal";
 import CreateBillModal from "@/components/CreateBillModal";
 import CreateCaseModal from "@/components/CreateCaseModal";
@@ -1264,16 +1265,9 @@ export default function Dashboard() {
 
   // Default fallback
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center">
-        <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-red-500" />
-        <h3 className="text-lg font-medium text-foreground mb-2">
-          Access Denied
-        </h3>
-        <p className="text-muted-foreground mb-4">
-          You don&apos;t have permission to access this dashboard.
-        </p>
-      </div>
-    </div>
+    <AccessDenied
+      title="Access Denied"
+      message="You don't have permission to access this dashboard."
+    />
   );
 }

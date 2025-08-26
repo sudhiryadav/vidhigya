@@ -1,5 +1,6 @@
 "use client";
 
+import { AccessDenied } from "@/components/AccessDenied";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
@@ -186,19 +187,10 @@ export default function CaseDetailPage() {
   // Access denied for unauthorized users
   if (!canViewCase) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8">
-          <div className="text-center">
-            <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Access Denied
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              You don't have permission to access this case.
-            </p>
-          </div>
-        </div>
-      </div>
+      <AccessDenied
+        title="Access Denied"
+        message="You don't have permission to access this case."
+      />
     );
   }
 

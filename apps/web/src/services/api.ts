@@ -160,6 +160,45 @@ class ApiClient {
     return response.blob();
   }
 
+  // System Settings endpoints
+  async getSystemSettings() {
+    try {
+      const response = await this.request("/system-settings/structured");
+      return response || null;
+    } catch (error) {
+      console.error("Error fetching system settings:", error);
+      return null;
+    }
+  }
+
+  async updateSystemSetting(key: string, value: string) {
+    return this.request(`/system-settings/${key}`, {
+      method: "PUT",
+      body: JSON.stringify({ key, value }),
+    });
+  }
+
+  async updateMultipleSystemSettings(
+    updates: Array<{ key: string; value: string }>
+  ) {
+    return this.request("/system-settings/bulk-update", {
+      method: "POST",
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async getMaintenanceStatus() {
+    return this.request("/system-settings/maintenance/status");
+  }
+
+  async getSessionTimeout() {
+    return this.request("/system-settings/security/session-timeout");
+  }
+
+  async getPasswordPolicy() {
+    return this.request("/system-settings/security/password-policy");
+  }
+
   // Admin endpoints
   async getSystemStats() {
     return this.request("/admin/stats");
