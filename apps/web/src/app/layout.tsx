@@ -1,15 +1,3 @@
-import { AdminRouteGuard } from "@/components/AdminRouteGuard";
-import { AuthGuard } from "@/components/AuthGuard";
-import { LayoutWrapper } from "@/components/LayoutWrapper";
-import { ToastContainer } from "@/components/ui/ToastContainer";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { FontSizeProvider } from "@/contexts/FontSizeContext";
-import { PermissionProvider } from "@/contexts/PermissionContext";
-import { PracticeProvider } from "@/contexts/PracticeContext";
-import { SettingsProvider } from "@/contexts/SettingsContext";
-import { SuperAdminProvider } from "@/contexts/SuperAdminContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import { VideoCallProvider } from "@/contexts/VideoCallContext";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -33,31 +21,7 @@ export default function RootLayout({
         <link rel="shortcut icon" href="/logo.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/logo.svg" />
       </head>
-      <body className={inter.className}>
-        <ThemeProvider>
-          <AuthProvider>
-            <SettingsProvider>
-              <FontSizeProvider>
-                <VideoCallProvider>
-                  <PracticeProvider>
-                    <PermissionProvider>
-                      <SuperAdminProvider>
-                        <ToastContainer>
-                          <AuthGuard>
-                            <AdminRouteGuard>
-                              <LayoutWrapper>{children}</LayoutWrapper>
-                            </AdminRouteGuard>
-                          </AuthGuard>
-                        </ToastContainer>
-                      </SuperAdminProvider>
-                    </PermissionProvider>
-                  </PracticeProvider>
-                </VideoCallProvider>
-              </FontSizeProvider>
-            </SettingsProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
