@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -23,6 +25,7 @@ import {
   RequireOwnResource,
   RequireRead,
 } from '../common/permissions';
+import { PrismaService } from '../prisma/prisma.service';
 import { CasesService, CreateCaseDto, UpdateCaseDto } from './cases.service';
 
 // Define proper types for request objects
@@ -36,15 +39,45 @@ interface AuthenticatedRequest extends ExpressRequest {
 @Controller('cases')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionGuard)
 export class CasesController {
-  constructor(private readonly casesService: CasesService) {}
+  constructor(
+    private readonly casesService: CasesService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Post()
   @RequireCreate(PermissionResource.CASE)
-  create(
+  async create(
     @Body() createCaseDto: CreateCaseDto,
     @Request() req: AuthenticatedRequest,
   ) {
+    // Get user's practice information
+    const user = await this.prisma.user.findUnique({
+      where: { id: req.user.sub },
+      select: {
+        primaryPracticeId: true,
+        practices: {
+          where: { isActive: true },
+          select: { practiceId: true },
+          take: 1,
+        },
+      },
+    });
+
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+
+    // Set the practiceId - use primary practice or first active practice
+    const practiceId = user.primaryPracticeId || user.practices[0]?.practiceId;
+    if (!practiceId) {
+      throw new BadRequestException(
+        'User must be associated with a practice to create cases',
+      );
+    }
+
     createCaseDto.assignedLawyerId = req.user.sub;
+    createCaseDto.practiceId = practiceId;
+
     return this.casesService.create(createCaseDto);
   }
 

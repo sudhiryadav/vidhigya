@@ -109,7 +109,33 @@ export class CasesService {
     }
 
     return this.prisma.legalCase.create({
-      data: createCaseDto,
+      data: {
+        caseNumber: createCaseDto.caseNumber,
+        title: createCaseDto.title,
+        description: createCaseDto.description,
+        category: createCaseDto.category,
+        priority: createCaseDto.priority,
+        judge: createCaseDto.judge || null,
+        opposingParty: createCaseDto.opposingParty || null,
+        opposingLawyer: createCaseDto.opposingLawyer || null,
+        filingDate: createCaseDto.filingDate || null,
+        nextHearingDate: createCaseDto.nextHearingDate || null,
+        estimatedCompletionDate: createCaseDto.estimatedCompletionDate || null,
+        client: {
+          connect: { id: createCaseDto.clientId },
+        },
+        practice: {
+          connect: { id: createCaseDto.practiceId },
+        },
+        assignedLawyer: {
+          connect: { id: createCaseDto.assignedLawyerId },
+        },
+        court: createCaseDto.courtId
+          ? {
+              connect: { id: createCaseDto.courtId },
+            }
+          : undefined,
+      },
       include: {
         assignedLawyer: {
           select: {
@@ -184,7 +210,7 @@ export class CasesService {
       throw new ForbiddenException('User not found');
     }
 
-    let where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {};
 
     // SUPER_ADMIN can see all cases
     if (user.role === 'SUPER_ADMIN') {

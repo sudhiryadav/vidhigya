@@ -62,9 +62,29 @@ export class PermissionService {
       }
 
       // Find the specific permission
-      const permission = rolePermissions.permissions.find(
-        (p) => p.action === action && p.resource === resource,
-      );
+      const permission = rolePermissions.permissions.find((p) => {
+        // Check for exact match first
+        if (p.action === action && p.resource === resource) {
+          return true;
+        }
+
+        // If no exact match, check if user has MANAGE permission which includes all CRUD actions
+        if (p.action === PermissionAction.MANAGE && p.resource === resource) {
+          // MANAGE includes CREATE, READ, UPDATE, DELETE
+          if (
+            [
+              PermissionAction.CREATE,
+              PermissionAction.READ,
+              PermissionAction.UPDATE,
+              PermissionAction.DELETE,
+            ].includes(action)
+          ) {
+            return true;
+          }
+        }
+
+        return false;
+      });
 
       if (!permission) {
         return false; // No permission for this action/resource
