@@ -1,6 +1,5 @@
 "use client";
 
-import { Logo } from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Briefcase,
@@ -114,13 +113,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-700 register-page">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen p-4 relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-700 register-page">
+      <div className="max-w-md w-full mx-auto space-y-8 pt-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto mb-4">
-            <Logo size="xl" showText={true} />
-          </div>
           <h2 className="text-3xl font-bold text-foreground">Create Account</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Join Vidhigya and start managing your legal practice

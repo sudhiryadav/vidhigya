@@ -16,6 +16,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("system");
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
 
+  console.log("ThemeProvider render:", { theme, resolvedTheme });
+
   const applyTheme = (themeToApply: "light" | "dark") => {
     const root = document.documentElement;
 

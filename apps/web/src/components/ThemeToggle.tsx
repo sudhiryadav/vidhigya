@@ -23,6 +23,16 @@ export function ThemeToggle() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Show loading state if theme is not loaded yet
+  if (!theme) {
+    return (
+      <div className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-muted-foreground rounded-lg border border-border bg-card">
+        <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin"></div>
+        <span className="hidden sm:inline">Loading...</span>
+      </div>
+    );
+  }
+
   const themes = [
     { value: "light", label: "Light", icon: Sun },
     { value: "dark", label: "Dark", icon: Moon },
