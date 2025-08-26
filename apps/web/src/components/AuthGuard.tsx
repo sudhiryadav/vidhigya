@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import LoadingOverlay from "./LoadingOverlay";
 
 const publicRoutes = ["/login", "/register", "/forgot-password"];
+const specialRoutes = ["/logout"]; // Routes that need special handling
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated } = useAuth();
@@ -41,6 +42,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        // If user is authenticated and on logout page, allow access (don't redirect)
+        if (isAuthenticated && pathname === "/logout") {
+          return; // Allow access to logout page
+        }
+
         // If user is authenticated and on root path, redirect to appropriate dashboard
         if (isAuthenticated && pathname === "/") {
           hasRedirected.current = true;
@@ -57,13 +63,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, isAuthenticated, pathname, router]);
 
-  // Check if current path is a public route
+  // Check if current path is a public route or special route
   const isPublicRoute = publicRoutes.includes(pathname);
+  const isSpecialRoute = specialRoutes.includes(pathname);
 
   return (
     <>
       <LoadingOverlay
-        isVisible={loading && !isPublicRoute}
+        isVisible={loading && !isPublicRoute && !isSpecialRoute}
         title="Loading Authentication"
         message="Please wait while we verify your credentials..."
         absolute={false}

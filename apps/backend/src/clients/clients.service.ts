@@ -12,11 +12,50 @@ export class ClientsService {
   constructor(private prisma: PrismaService) {}
 
   async getAllClients(userId: string) {
-    // This is a temporary method for testing - in production, clients should be scoped to practices
-    return this.prisma.client.findMany({
-      where: {
-        isActive: true,
+    // Get user's role and practice information
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        role: true,
+        primaryPracticeId: true,
+        practices: {
+          where: { isActive: true },
+          select: { practiceId: true },
+        },
       },
+    });
+
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+
+    let where: Record<string, unknown> = { isActive: true };
+
+    // SUPER_ADMIN can see all clients
+    if (user.role === 'SUPER_ADMIN') {
+      // No additional filters needed
+    }
+    // ADMIN can see all clients from all practices (read-only access)
+    else if (user.role === 'ADMIN') {
+      // No additional filters needed - admin can see all clients
+    }
+    // LAWYER, ASSOCIATE, and PARALEGAL can see clients from their practices
+    else if (['LAWYER', 'ASSOCIATE', 'PARALEGAL'].includes(user.role)) {
+      const practiceIds = user.practices.map((p) => p.practiceId);
+      if (practiceIds.length > 0) {
+        where.practiceId = { in: practiceIds };
+      } else {
+        // If no practices, they can only see clients they created
+        where.createdById = userId;
+      }
+    }
+    // CLIENT can only see their own information
+    else {
+      where.id = userId;
+    }
+
+    return this.prisma.client.findMany({
+      where,
       include: {
         practice: {
           select: {

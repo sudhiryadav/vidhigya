@@ -23,7 +23,10 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isAuthenticated: boolean;
   hasRole: (roles: string[]) => boolean;
@@ -67,7 +70,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = (await apiClient.login(email, password)) as {
         token: string;
@@ -84,14 +90,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Initialize socket connection after successful login
       getSocketService().connect(response.token);
 
-      return true;
+      return { success: true };
     } catch (error) {
       console.error("Login error:", error);
-      return false;
+      const errorMessage =
+        error instanceof Error ? error.message : "Login failed";
+      return { success: false, error: errorMessage };
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // JWT tokens are stateless, so no backend logout is needed
+    // Frontend cleanup is sufficient
+
     // Disconnect socket before logout
     getSocketService().disconnect();
 
@@ -100,11 +111,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
     }
+
+    // Clear user state
     setUser(null);
-    // Use replace to prevent back button issues and add a small delay
-    setTimeout(() => {
-      router.replace("/login");
-    }, 100);
+
+    // Note: Redirect is now handled by the logout page
+    // This prevents race conditions and allows for proper cleanup
   };
 
   const hasRole = (roles: string[]): boolean => {

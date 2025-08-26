@@ -1,4 +1,3 @@
-import { NavigationModule } from "../types/modules";
 import { Practice } from "../types/practices";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -30,13 +29,21 @@ class ApiClient {
         if (response.status === 401) {
           // Don't redirect for login/register endpoints - let them handle errors
           if (endpoint === "/auth/login" || endpoint === "/auth/register") {
-            // Parse error response for better error messages
-            try {
-              const errorData = await response.json();
-              throw new Error(errorData.message || "Authentication failed");
-            } catch (parseError) {
-              throw new Error("Invalid email or password");
+            // Get the response text first, then try to parse as JSON
+            const errorText = await response.text();
+            let errorMessage = "Authentication failed";
+
+            if (errorText) {
+              try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.message || errorMessage;
+              } catch (parseError) {
+                // If JSON parsing fails, use the raw text or default message
+                errorMessage = errorText || errorMessage;
+              }
             }
+
+            throw new Error(errorMessage);
           }
 
           // Handle unauthorized access for other endpoints
@@ -76,6 +83,13 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify(userData),
     });
+  }
+
+  async logout(): Promise<void> {
+    // JWT tokens are stateless, so no backend logout is needed
+    // The frontend will clear the token and user data
+    // This method exists for API consistency but doesn't make backend calls
+    return Promise.resolve();
   }
 
   async uploadAvatar(file: File): Promise<any> {
@@ -1422,59 +1436,6 @@ class ApiClient {
   async refreshPermissions(): Promise<unknown> {
     return this.request("/permissions/refresh", {
       method: "POST",
-    });
-  }
-
-  // Module Management endpoints
-  async getModules(practiceId?: string): Promise<NavigationModule[]> {
-    const queryParams = practiceId ? `?practiceId=${practiceId}` : "";
-    return this.request(`/admin/modules${queryParams}`);
-  }
-
-  async getModuleById(id: string): Promise<NavigationModule> {
-    return this.request(`/admin/modules/${id}`);
-  }
-
-  async createModule(moduleData: any): Promise<NavigationModule> {
-    return this.request("/admin/modules", {
-      method: "POST",
-      body: JSON.stringify(moduleData),
-    });
-  }
-
-  async updateModule(id: string, moduleData: any): Promise<NavigationModule> {
-    return this.request(`/admin/modules/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(moduleData),
-    });
-  }
-
-  async deleteModule(id: string): Promise<void> {
-    return this.request(`/admin/modules/${id}`, {
-      method: "DELETE",
-    });
-  }
-
-  async toggleModuleVisibility(id: string): Promise<NavigationModule> {
-    return this.request(`/admin/modules/${id}/toggle-visibility`, {
-      method: "PUT",
-    });
-  }
-
-  async toggleModuleActivation(id: string): Promise<NavigationModule> {
-    return this.request(`/admin/modules/${id}/toggle-activation`, {
-      method: "PUT",
-    });
-  }
-
-  async reorderModules(
-    moduleOrders: Array<{ id: string; order: number }>,
-    practiceId?: string
-  ): Promise<NavigationModule[]> {
-    const queryParams = practiceId ? `?practiceId=${practiceId}` : "";
-    return this.request(`/admin/modules/reorder${queryParams}`, {
-      method: "PUT",
-      body: JSON.stringify(moduleOrders),
     });
   }
 }

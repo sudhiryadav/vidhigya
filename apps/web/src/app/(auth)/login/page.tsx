@@ -37,11 +37,12 @@ export default function LoginPage() {
     setFormError("root", { message: "" });
 
     try {
-      const success = await login(data.email, data.password);
-      if (success) {
+      const result = await login(data.email, data.password);
+      if (result.success) {
         // Login successful, AuthGuard will handle redirect
       } else {
-        setFormError("root", { message: "Invalid email or password" });
+        // Show the actual error message from the API
+        setFormError("root", { message: result.error || "Login failed" });
       }
     } catch (err) {
       console.error("Login error:", err);
@@ -65,8 +66,8 @@ export default function LoginPage() {
     setFormError("root", { message: "" });
 
     try {
-      const success = await login(demoEmail, demoPassword);
-      if (success) {
+      const result = await login(demoEmail, demoPassword);
+      if (result.success) {
         // Get role from email for better messaging
         let role = "User";
         if (demoEmail.includes("admin")) role = "Super Admin";
@@ -80,8 +81,9 @@ export default function LoginPage() {
         toast.success(`Welcome! Logged in as ${role}`);
         // Login successful, AuthGuard will handle redirect
       } else {
-        setFormError("root", { message: "Invalid email or password" });
-        toast.error("Login failed. Please try again.");
+        // Show the actual error message from the API
+        setFormError("root", { message: result.error || "Login failed" });
+        toast.error(result.error || "Login failed. Please try again.");
       }
     } catch (err) {
       console.error("Demo login error:", err);
@@ -104,10 +106,6 @@ export default function LoginPage() {
   return (
     <>
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-700 login-page">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5 dark:opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.15)_1px,transparent_0)] dark:bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.1)_1px,transparent_0)] bg-[length:20px_20px]"></div>
-        </div>
         <div className="max-w-md w-full space-y-8">
           {/* Logo and Header */}
           <div className="text-center">
@@ -117,6 +115,15 @@ export default function LoginPage() {
             <h2 className="text-3xl font-bold text-foreground">Welcome back</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Sign in to your Vidhigya account
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Don't have an account?{" "}
+              <Link
+                href="/register"
+                className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Sign up
+              </Link>
             </p>
           </div>
 
@@ -431,19 +438,6 @@ export default function LoginPage() {
         </div>
         {/* End Background Pattern */}
       </div>
-      {/* Footer outside the flex centering container */}
-      <div className="text-center pb-6">
-        <p className="text-sm text-muted-foreground">
-          Don't have an account?{" "}
-          <Link
-            href="/register"
-            className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-          >
-            Sign up
-          </Link>
-        </p>
-      </div>
-
       {/* Force light theme for login page */}
       <style jsx global>{`
         .login-page {

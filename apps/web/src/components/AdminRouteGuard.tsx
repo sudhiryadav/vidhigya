@@ -15,7 +15,6 @@ const adminRoutes = [
   "/admin/clients",
   "/admin/documents",
   "/admin/lawyers",
-  "/admin/modules",
   "/admin/reports",
 ];
 

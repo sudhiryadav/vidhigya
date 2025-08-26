@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { usePractice } from "@/contexts/PracticeContext";
 import { apiClient } from "@/services/api";
-import { NavigationModule } from "@/types/modules";
+
 import {
   BarChart3,
   Bell,
@@ -193,14 +193,6 @@ const baseNavigationItems = [
     action: PermissionAction.READ,
     resource: PermissionResource.REPORT,
   },
-  {
-    name: "Module Management",
-    href: "/admin/modules",
-    icon: Settings,
-    roles: ["SUPER_ADMIN", "ADMIN"],
-    action: PermissionAction.MANAGE,
-    resource: PermissionResource.MODULE,
-  },
 ];
 
 interface NavigationItemProps {
@@ -276,8 +268,7 @@ const NavigationItem = ({
 export function PermissionBasedNavigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [dynamicModules, setDynamicModules] = useState<NavigationModule[]>([]);
-  const [isLoadingModules, setIsLoadingModules] = useState(false);
+
   const [userStats, setUserStats] = useState<any>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
 
@@ -286,32 +277,6 @@ export function PermissionBasedNavigation() {
   const { user, logout, hasRole } = useAuth();
   const { hasPermission } = usePermissions();
   const { currentPractice } = usePractice();
-
-  // Load dynamic navigation modules from backend
-  useEffect(() => {
-    const loadDynamicModules = async () => {
-      if (!user || !currentPractice) return;
-
-      // Only load modules if user has permission to read modules
-      if (!hasPermission(PermissionAction.READ, PermissionResource.MODULE)) {
-        setDynamicModules([]);
-        return;
-      }
-
-      try {
-        setIsLoadingModules(true);
-        const modules = await apiClient.getModules(currentPractice.id);
-        setDynamicModules(modules || []);
-      } catch (error) {
-        console.error("Failed to load dynamic modules:", error);
-        setDynamicModules([]);
-      } finally {
-        setIsLoadingModules(false);
-      }
-    };
-
-    loadDynamicModules();
-  }, [user, currentPractice, hasPermission]);
 
   // Load user dashboard stats
   useEffect(() => {
@@ -376,41 +341,8 @@ export function PermissionBasedNavigation() {
     }
   };
 
-  // Combine base navigation items with dynamic modules
-  const allNavigationItems = [
-    ...baseNavigationItems,
-    ...dynamicModules
-      .filter((module) => module.isActive && module.isVisible)
-      .map((module) => ({
-        name: module.name,
-        href: module.path,
-        icon: getIconFromString(module.icon),
-        action: PermissionAction.READ,
-        resource: PermissionResource.MODULE,
-        roles: module.permissions.length > 0 ? undefined : undefined,
-        permissions: module.permissions,
-      })),
-  ];
-
-  // Helper function to convert icon string to component
-  function getIconFromString(iconName: string) {
-    const iconMap: { [key: string]: any } = {
-      Home,
-      Settings,
-      Building2,
-      Briefcase,
-      Users,
-      FileText,
-      Calendar,
-      CheckSquare,
-      CreditCard,
-      Search,
-      BarChart3,
-      Bell,
-      User,
-    };
-    return iconMap[iconName] || Home;
-  }
+  // Use base navigation items only
+  const allNavigationItems = baseNavigationItems;
 
   return (
     <>
@@ -482,23 +414,17 @@ export function PermissionBasedNavigation() {
 
           {/* Navigation Links */}
           <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            {isLoadingModules ? (
-              <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              </div>
-            ) : (
-              allNavigationItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <NavigationItem
-                    key={`${item.name}-${item.href}`}
-                    {...item}
-                    isActive={isActive}
-                    onClick={() => setMobileMenuOpen(false)}
-                  />
-                );
-              })
-            )}
+            {allNavigationItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <NavigationItem
+                  key={`${item.name}-${item.href}`}
+                  {...item}
+                  isActive={isActive}
+                  onClick={() => setMobileMenuOpen(false)}
+                />
+              );
+            })}
           </nav>
 
           {/* Bottom Section - User Info and Actions */}

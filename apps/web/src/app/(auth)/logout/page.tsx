@@ -6,37 +6,98 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function LogoutPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const router = useRouter();
-  const [confirmText, setConfirmText] = useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!user) {
-      router.push("/login");
-    }
-  }, [user, router]);
+  const [countdown, setCountdown] = useState(3);
+  const [isCountdownActive, setIsCountdownActive] = useState(false);
 
   const handleLogout = async () => {
-    if (confirmText.toLowerCase() === "logout") {
-      setIsLoggingOut(true);
-      try {
-        await logout();
-        // The logout function should handle the redirect
-      } catch (error) {
-        console.error("Logout error:", error);
-        setIsLoggingOut(false);
+    setIsLoggingOut(true);
+    try {
+      // Clear frontend state first
+      if (typeof window !== "undefined") {
+        sessionStorage.clear();
       }
+
+      // Call the logout function
+      await logout();
+
+      // Redirect to login
+      router.replace("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      setIsLoggingOut(false);
     }
   };
 
   const handleCancel = () => {
+    // Stop countdown and go back
+    setIsCountdownActive(false);
+    setCountdown(3);
     router.back();
   };
 
-  if (!user) {
-    return null; // Will redirect to login
+  // Start countdown immediately (temporarily bypass auth check for testing)
+  useEffect(() => {
+    if (!isCountdownActive) {
+      setIsCountdownActive(true);
+      setCountdown(3);
+    }
+  }, [isCountdownActive]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (isCountdownActive && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    } else if (isCountdownActive && countdown === 0) {
+      // Auto logout when countdown reaches 0
+      handleLogout();
+    }
+  }, [isCountdownActive, countdown]);
+
+  // Check authentication status
+  useEffect(() => {
+    // If no user and not loading, redirect to login
+    if (!user && !loading) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
+
+  // Don't render if no user (but allow loading state)
+  if (!user && !loading) {
+    return null;
+  }
+
+  // Show loading state while logging out
+  if (isLoggingOut) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center">
+          <div className="bg-card rounded-lg shadow-lg border border-border p-8">
+            <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4">
+              <LogOut className="w-8 h-8 text-red-600 dark:text-red-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              Logging Out...
+            </h2>
+            <p className="text-muted-foreground mb-4">
+              Please wait while we securely log you out.
+            </p>
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-sm text-muted-foreground">
+                Clearing session...
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -49,25 +110,27 @@ export default function LogoutPage() {
               <LogOut className="w-8 h-8 text-red-600 dark:text-red-400" />
             </div>
             <h1 className="text-2xl font-bold text-foreground mb-2">
-              Confirm Logout
+              Auto Logout in Progress
             </h1>
             <p className="text-muted-foreground">
-              Are you sure you want to log out of your account?
+              You will be automatically logged out in a few seconds.
             </p>
           </div>
 
-          {/* User Info */}
-          <div className="bg-muted/50 rounded-lg p-4 mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <User className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">{user.name}</p>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
+          {/* User Info - Only show if user exists */}
+          {user && (
+            <div className="bg-muted/50 rounded-lg p-4 mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                  <User className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">{user.name}</p>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Security Notice */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
@@ -85,24 +148,25 @@ export default function LogoutPage() {
             </div>
           </div>
 
-          {/* Confirmation */}
+          {/* Countdown Timer */}
           <div className="space-y-4">
-            <div>
-              <label
-                htmlFor="confirmText"
-                className="block text-sm font-medium text-foreground mb-2"
-              >
-                Type "logout" to confirm
-              </label>
-              <input
-                type="text"
-                id="confirmText"
-                value={confirmText}
-                onChange={(e) => setConfirmText(e.target.value)}
-                placeholder="Enter 'logout' to confirm"
-                className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-ring"
-                autoComplete="off"
-              />
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="text-6xl font-bold text-red-600 dark:text-red-400 mb-2">
+                  {countdown}
+                </div>
+                <p className="text-lg text-muted-foreground">
+                  {countdown === 1 ? "second" : "seconds"} until automatic
+                  logout
+                </p>
+              </div>
+
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
+                <div
+                  className="bg-red-600 h-2 rounded-full transition-all duration-1000 ease-linear"
+                  style={{ width: `${((3 - countdown) / 3) * 100}%` }}
+                ></div>
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -112,13 +176,11 @@ export default function LogoutPage() {
                 disabled={isLoggingOut}
                 className="flex-1 px-4 py-2 text-sm font-medium text-foreground bg-background border border-input rounded-md hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancel
+                Cancel & Stay Logged In
               </button>
               <button
                 onClick={handleLogout}
-                disabled={
-                  confirmText.toLowerCase() !== "logout" || isLoggingOut
-                }
+                disabled={isLoggingOut}
                 className="flex-1 px-4 py-2 text-sm font-medium text-primary-foreground bg-red-600 hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoggingOut ? (
@@ -127,7 +189,7 @@ export default function LogoutPage() {
                     <span>Logging out...</span>
                   </div>
                 ) : (
-                  "Logout"
+                  "Logout Now"
                 )}
               </button>
             </div>

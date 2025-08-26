@@ -25,7 +25,6 @@ export enum PermissionResource {
   REPORT = 'REPORT',
   ANALYTICS = 'ANALYTICS',
   SYSTEM = 'SYSTEM',
-  MODULE = 'MODULE', // For managing navigation modules and features
 }
 
 export interface Permission {

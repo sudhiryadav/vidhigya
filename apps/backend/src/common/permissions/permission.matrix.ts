@@ -105,27 +105,6 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
         resource: PermissionResource.ANALYTICS,
         scope: 'ALL',
       },
-      // Enhanced module management for Super Admin
-      {
-        action: PermissionAction.CREATE,
-        resource: PermissionResource.MODULE,
-        scope: 'ALL',
-      },
-      {
-        action: PermissionAction.UPDATE,
-        resource: PermissionResource.MODULE,
-        scope: 'ALL',
-      },
-      {
-        action: PermissionAction.DELETE,
-        resource: PermissionResource.MODULE,
-        scope: 'ALL',
-      },
-      {
-        action: PermissionAction.MANAGE,
-        resource: PermissionResource.MODULE,
-        scope: 'ALL',
-      },
     ],
     description:
       'Full system access with no restrictions, can manage all modules across all practices',
@@ -218,27 +197,7 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
         resource: PermissionResource.ANALYTICS,
         scope: 'PRACTICE',
       },
-      // Enhanced module management for Admin within their practice
-      {
-        action: PermissionAction.CREATE,
-        resource: PermissionResource.MODULE,
-        scope: 'PRACTICE',
-      },
-      {
-        action: PermissionAction.UPDATE,
-        resource: PermissionResource.MODULE,
-        scope: 'PRACTICE',
-      },
-      {
-        action: PermissionAction.DELETE,
-        resource: PermissionResource.MODULE,
-        scope: 'PRACTICE',
-      },
-      {
-        action: PermissionAction.MANAGE,
-        resource: PermissionResource.MODULE,
-        scope: 'PRACTICE',
-      },
+
       // Cross-practice read access for Admin (can view other practices but not modify)
       {
         action: PermissionAction.READ,
@@ -367,9 +326,15 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
         resource: PermissionResource.ANALYTICS,
         scope: 'PRACTICE',
       },
+      // Basic module access for navigation
+      {
+        action: PermissionAction.READ,
+        resource: PermissionResource.MODULE,
+        scope: 'PRACTICE',
+      },
     ],
     description:
-      'Full case and client management within practice, can create new practices',
+      'Full case and client management within practice, can create new practices, basic module access for navigation',
   },
   {
     role: 'ASSOCIATE',

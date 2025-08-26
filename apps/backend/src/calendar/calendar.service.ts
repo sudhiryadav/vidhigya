@@ -184,9 +184,53 @@ export class CalendarService {
   }
 
   async findAll(userId: string, query: Record<string, unknown> = {}) {
-    const where: Record<string, unknown> = {
-      createdById: userId,
-    };
+    // Get user's role and practice information
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        role: true,
+        primaryPracticeId: true,
+        practices: {
+          where: { isActive: true },
+          select: { practiceId: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+
+    let where: Record<string, unknown> = {};
+
+    // SUPER_ADMIN can see all events
+    if (user.role === 'SUPER_ADMIN') {
+      // No additional filters needed
+    }
+    // ADMIN can see all events from all practices (read-only access)
+    else if (user.role === 'ADMIN') {
+      // No additional filters needed - admin can see all events
+    }
+    // LAWYER, ASSOCIATE, and PARALEGAL can see events from their practices
+    else if (['LAWYER', 'ASSOCIATE', 'PARALEGAL'].includes(user.role)) {
+      const practiceIds = user.practices.map((p) => p.practiceId);
+      if (practiceIds.length > 0) {
+        where.practiceId = { in: practiceIds };
+      } else {
+        // If no practices, they can only see their own events
+        where.OR = [
+          { createdById: userId },
+          { participants: { some: { userId } } },
+        ];
+      }
+    }
+    // CLIENT can only see their own events
+    else {
+      where.OR = [
+        { createdById: userId },
+        { participants: { some: { userId } } },
+      ];
+    }
 
     // Add date range filters
     if (query.startDate && query.endDate) {

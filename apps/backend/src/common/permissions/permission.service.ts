@@ -299,7 +299,6 @@ export class PermissionService {
       [PermissionResource.REPORT]: 'report',
       [PermissionResource.ANALYTICS]: 'analytics',
       [PermissionResource.SYSTEM]: 'system',
-      [PermissionResource.MODULE]: 'module',
     };
 
     return modelMap[resource] || 'user';

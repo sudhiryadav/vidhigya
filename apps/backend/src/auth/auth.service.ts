@@ -25,6 +25,8 @@ export interface RegisterRequest {
     | 'PARALEGAL';
   phone?: string;
   currency?: string;
+  practiceName?: string;
+  businessType?: 'individual' | 'firm';
 }
 
 export interface AuthResponse {
@@ -123,6 +125,35 @@ export class AuthService {
         // Note: userSettings will be created when user joins a practice
       },
     });
+
+    // Create practice for the user if they're a lawyer or admin
+    if (registerRequest.role === 'LAWYER' || registerRequest.role === 'ADMIN') {
+      const practiceName =
+        registerRequest.practiceName || `${user.name}'s Practice`;
+      const practiceType =
+        registerRequest.businessType === 'firm' ? 'FIRM' : 'INDIVIDUAL';
+
+      const practice = await this.prisma.practice.create({
+        data: {
+          name: practiceName,
+          description: `${practiceType.toLowerCase()} practice for ${user.name}`,
+          practiceType: practiceType as any, // Cast to PracticeType enum
+          isActive: true,
+          members: {
+            create: {
+              userId: user.id,
+              isActive: true,
+            },
+          },
+        },
+      });
+
+      // Update user's primary practice
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { primaryPracticeId: practice.id },
+      });
+    }
 
     const payload = { email: user.email, sub: user.id, role: user.role };
     const token = this.jwtService.sign(payload);
