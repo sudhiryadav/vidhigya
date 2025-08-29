@@ -23,6 +23,8 @@ export interface CreateEventDto {
   isAllDay?: boolean;
   isRecurring?: boolean;
   recurrenceRule?: string;
+  caseId?: string;
+  clientId?: string;
   participantIds?: string[];
   practiceId: string;
 }
@@ -86,7 +88,35 @@ export class CalendarService {
     // Validate practice access
     await this.validatePracticeAccess(userId, createEventDto.practiceId);
 
-    const { participantIds, ...eventData } = createEventDto;
+    // Filter out only the fields that are defined in the DTO interface
+    const {
+      participantIds,
+      practiceId,
+      title,
+      description,
+      startTime: startTimeInput,
+      endTime: endTimeInput,
+      location,
+      eventType,
+      isAllDay,
+      isRecurring,
+      recurrenceRule,
+      caseId,
+      clientId,
+    } = createEventDto;
+
+    // Create clean event data with only valid fields (excluding relation IDs)
+    const eventData = {
+      title,
+      description,
+      startTime: startTimeInput,
+      endTime: endTimeInput,
+      location,
+      eventType,
+      isAllDay,
+      isRecurring,
+      recurrenceRule,
+    };
 
     // Fix date formatting - ensure proper ISO-8601 format
     const startTime = this.formatDateForPrisma(eventData.startTime);
@@ -97,14 +127,104 @@ export class CalendarService {
       throw new BadRequestException('End time must be after start time');
     }
 
+    // Validate eventType
+    const validEventTypes = [
+      'HEARING',
+      'CLIENT_MEETING',
+      'COURT_APPEARANCE',
+      'DEADLINE',
+      'INTERNAL_MEETING',
+      'OTHER',
+    ];
+    if (!validEventTypes.includes(eventData.eventType)) {
+      throw new BadRequestException(
+        `Invalid event type: ${eventData.eventType}`,
+      );
+    }
+
+    // Validate recurrence rule if event is recurring
+    if (
+      eventData.isRecurring &&
+      (!eventData.recurrenceRule || eventData.recurrenceRule.trim() === '')
+    ) {
+      throw new BadRequestException(
+        'Recurrence rule is required when event is recurring',
+      );
+    }
+
+    // Validate practiceId is provided
+    if (!createEventDto.practiceId || createEventDto.practiceId.trim() === '') {
+      console.error('Practice ID validation failed:', {
+        practiceId: createEventDto.practiceId,
+        type: typeof createEventDto.practiceId,
+        dtoKeys: Object.keys(createEventDto),
+      });
+      throw new BadRequestException('Practice ID is required');
+    }
+
+    // Prepare the data object
+    const eventDataToCreate: any = {
+      ...eventData,
+      startTime,
+      endTime,
+      createdBy: {
+        connect: { id: userId },
+      },
+      practice: {
+        connect: { id: createEventDto.practiceId },
+      },
+    };
+
+    // Add case connection if caseId is provided and not empty
+    if (createEventDto.caseId && createEventDto.caseId.trim() !== '') {
+      eventDataToCreate.case = {
+        connect: { id: createEventDto.caseId },
+      };
+    }
+
+    // Add client connection if clientId is provided and not empty
+    if (createEventDto.clientId && createEventDto.clientId.trim() !== '') {
+      eventDataToCreate.client = {
+        connect: { id: createEventDto.clientId },
+      };
+    }
+
+    // Clean up boolean fields
+    if (eventDataToCreate.isAllDay === undefined) {
+      eventDataToCreate.isAllDay = false;
+    }
+    if (eventDataToCreate.isRecurring === undefined) {
+      eventDataToCreate.isRecurring = false;
+    }
+
+    // Clean up optional string fields
+    if (eventDataToCreate.location === '') {
+      eventDataToCreate.location = null;
+    }
+    if (eventDataToCreate.recurrenceRule === '') {
+      eventDataToCreate.recurrenceRule = null;
+    }
+
+    // Clean up description field
+    if (eventDataToCreate.description === '') {
+      eventDataToCreate.description = null;
+    }
+
+    // Log the cleaned data for debugging
+    console.log(
+      'Creating calendar event with data:',
+      JSON.stringify(eventDataToCreate, null, 2),
+    );
+    console.log('Practice ID from DTO:', createEventDto.practiceId);
+    console.log('Event data keys:', Object.keys(eventDataToCreate));
+    console.log('Full DTO:', JSON.stringify(createEventDto, null, 2));
+    console.log('Filtered event data:', JSON.stringify(eventData, null, 2));
+    console.log('Case ID from DTO:', createEventDto.caseId);
+    console.log('Client ID from DTO:', createEventDto.clientId);
+
     // Create the event
     const event = await this.prisma.calendarEvent.create({
-      data: {
-        ...eventData,
-        startTime,
-        endTime,
-        createdById: userId,
-      },
+      data: eventDataToCreate,
       include: {
         createdBy: {
           select: {

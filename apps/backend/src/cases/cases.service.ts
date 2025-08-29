@@ -22,9 +22,9 @@ export interface CreateCaseDto {
   judge?: string;
   opposingParty?: string;
   opposingLawyer?: string;
-  filingDate?: Date;
-  nextHearingDate?: Date;
-  estimatedCompletionDate?: Date;
+  filingDate?: Date | string | null;
+  nextHearingDate?: Date | string | null;
+  estimatedCompletionDate?: Date | string | null;
   clientId: string;
   assignedLawyerId: string;
   practiceId: string;
@@ -40,9 +40,9 @@ export interface UpdateCaseDto {
   judge?: string;
   opposingParty?: string;
   opposingLawyer?: string;
-  filingDate?: Date;
-  nextHearingDate?: Date;
-  estimatedCompletionDate?: Date;
+  filingDate?: Date | string | null;
+  nextHearingDate?: Date | string | null;
+  estimatedCompletionDate?: Date | string | null;
   assignedLawyerId?: string;
 }
 
@@ -91,7 +91,11 @@ export class CasesService {
     return true;
   }
 
-  // Case Management
+  /**
+   * Create a new legal case
+   * @param createCaseDto - Case creation data
+   * @returns Created case with related data
+   */
   async create(createCaseDto: CreateCaseDto) {
     // Validate practice access
     await this.validatePracticeAccess(
@@ -108,34 +112,84 @@ export class CasesService {
       throw new BadRequestException('Case number already exists');
     }
 
-    return this.prisma.legalCase.create({
-      data: {
-        caseNumber: createCaseDto.caseNumber,
-        title: createCaseDto.title,
-        description: createCaseDto.description,
-        category: createCaseDto.category,
-        priority: createCaseDto.priority,
-        judge: createCaseDto.judge || null,
-        opposingParty: createCaseDto.opposingParty || null,
-        opposingLawyer: createCaseDto.opposingLawyer || null,
-        filingDate: createCaseDto.filingDate || null,
-        nextHearingDate: createCaseDto.nextHearingDate || null,
-        estimatedCompletionDate: createCaseDto.estimatedCompletionDate || null,
-        client: {
-          connect: { id: createCaseDto.clientId },
-        },
-        practice: {
-          connect: { id: createCaseDto.practiceId },
-        },
-        assignedLawyer: {
-          connect: { id: createCaseDto.assignedLawyerId },
-        },
-        court: createCaseDto.courtId
-          ? {
-              connect: { id: createCaseDto.courtId },
-            }
-          : undefined,
+    /**
+     * Helper function to clean and validate date fields
+     * Converts empty strings to null and validates date strings
+     * @param dateValue - Date value to clean (string, Date, or null)
+     * @returns Cleaned Date object or null
+     */
+    const cleanDateField = (dateValue: any): Date | null => {
+      if (dateValue === '' || dateValue === null || dateValue === undefined) {
+        return null;
+      }
+      if (typeof dateValue === 'string') {
+        if (dateValue.trim() === '') {
+          return null;
+        }
+        const parsed = new Date(dateValue);
+        if (isNaN(parsed.getTime())) {
+          console.warn(
+            `Invalid date string received: "${dateValue}" - converting to null`,
+          );
+          return null;
+        }
+        return parsed;
+      }
+      if (dateValue instanceof Date) {
+        return dateValue;
+      }
+      console.warn(
+        `Unexpected date value type: ${typeof dateValue} - converting to null`,
+      );
+      return null;
+    };
+
+    const cleanedData = {
+      caseNumber: createCaseDto.caseNumber,
+      title: createCaseDto.title,
+      description: createCaseDto.description,
+      category: createCaseDto.category,
+      priority: createCaseDto.priority,
+      judge: createCaseDto.judge || null,
+      opposingParty: createCaseDto.opposingParty || null,
+      opposingLawyer: createCaseDto.opposingLawyer || null,
+      filingDate: cleanDateField(createCaseDto.filingDate),
+      nextHearingDate: cleanDateField(createCaseDto.nextHearingDate),
+      estimatedCompletionDate: cleanDateField(
+        createCaseDto.estimatedCompletionDate,
+      ),
+      client: {
+        connect: { id: createCaseDto.clientId },
       },
+      practice: {
+        connect: { id: createCaseDto.practiceId },
+      },
+      assignedLawyer: {
+        connect: { id: createCaseDto.assignedLawyerId },
+      },
+      court: createCaseDto.courtId
+        ? {
+            connect: { id: createCaseDto.courtId },
+          }
+        : undefined,
+    };
+
+    // Validate enum fields
+    if (!Object.values(CaseCategory).includes(cleanedData.category)) {
+      console.warn(`Invalid category received: ${cleanedData.category}`);
+      throw new BadRequestException(
+        `Invalid category: ${cleanedData.category}`,
+      );
+    }
+    if (!Object.values(CasePriority).includes(cleanedData.priority)) {
+      console.warn(`Invalid priority received: ${cleanedData.priority}`);
+      throw new BadRequestException(
+        `Invalid priority: ${cleanedData.priority}`,
+      );
+    }
+
+    return this.prisma.legalCase.create({
+      data: cleanedData,
       include: {
         assignedLawyer: {
           select: {
@@ -387,6 +441,13 @@ export class CasesService {
     return legalCase;
   }
 
+  /**
+   * Update an existing legal case
+   * @param id - Case ID
+   * @param updateCaseDto - Case update data
+   * @param userId - User ID performing the update
+   * @returns Updated case with related data
+   */
   async update(id: string, updateCaseDto: UpdateCaseDto, userId: string) {
     const legalCase = await this.prisma.legalCase.findFirst({
       where: {
@@ -401,9 +462,81 @@ export class CasesService {
     // Validate practice access
     await this.validatePracticeAccess(userId, legalCase.practiceId);
 
+    // Clean up date fields - convert empty strings to null and validate date strings
+    const cleanedData = { ...updateCaseDto };
+
+    /**
+     * Helper function to clean and validate date fields
+     * Converts empty strings to null and validates date strings
+     * @param dateValue - Date value to clean (string, Date, or null)
+     * @returns Cleaned Date object or null
+     */
+    const cleanDateField = (dateValue: any): Date | null => {
+      if (dateValue === '' || dateValue === null || dateValue === undefined) {
+        return null;
+      }
+      if (typeof dateValue === 'string') {
+        if (dateValue.trim() === '') {
+          return null;
+        }
+        const parsed = new Date(dateValue);
+        if (isNaN(parsed.getTime())) {
+          console.warn(
+            `Invalid date string received: "${dateValue}" - converting to null`,
+          );
+          return null;
+        }
+        return parsed;
+      }
+      if (dateValue instanceof Date) {
+        return dateValue;
+      }
+      console.warn(
+        `Unexpected date value type: ${typeof dateValue} - converting to null`,
+      );
+      return null;
+    };
+
+    cleanedData.filingDate = cleanDateField(cleanedData.filingDate);
+    cleanedData.nextHearingDate = cleanDateField(cleanedData.nextHearingDate);
+    cleanedData.estimatedCompletionDate = cleanDateField(
+      cleanedData.estimatedCompletionDate,
+    );
+
+    // Validate enum fields
+    if (
+      cleanedData.category &&
+      !Object.values(CaseCategory).includes(
+        cleanedData.category as CaseCategory,
+      )
+    ) {
+      console.warn(`Invalid category received: ${cleanedData.category}`);
+      throw new BadRequestException(
+        `Invalid category: ${cleanedData.category}`,
+      );
+    }
+    if (
+      cleanedData.priority &&
+      !Object.values(CasePriority).includes(
+        cleanedData.priority as CasePriority,
+      )
+    ) {
+      console.warn(`Invalid priority received: ${cleanedData.priority}`);
+      throw new BadRequestException(
+        `Invalid priority: ${cleanedData.priority}`,
+      );
+    }
+    if (
+      cleanedData.status &&
+      !Object.values(CaseStatus).includes(cleanedData.status as CaseStatus)
+    ) {
+      console.warn(`Invalid status received: ${cleanedData.status}`);
+      throw new BadRequestException(`Invalid status: ${cleanedData.status}`);
+    }
+
     return this.prisma.legalCase.update({
       where: { id },
-      data: updateCaseDto,
+      data: cleanedData,
       include: {
         assignedLawyer: {
           select: {

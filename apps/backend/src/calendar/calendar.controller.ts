@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -22,6 +24,7 @@ import {
   RequireRead,
   RequireUpdate,
 } from '../common/permissions';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   CalendarService,
   CreateEventDto,
@@ -61,14 +64,42 @@ export class CalendarController {
   constructor(
     private readonly calendarService: CalendarService,
     private readonly googleCalendarService: GoogleCalendarService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post()
   @RequireCreate(PermissionResource.CALENDAR)
-  create(
+  async create(
     @Body() createEventDto: CreateEventDto,
     @Request() req: AuthenticatedRequest,
   ) {
+    // Get user's practice information
+    const user = await this.prisma.user.findUnique({
+      where: { id: req.user.sub },
+      select: {
+        primaryPracticeId: true,
+        practices: {
+          where: { isActive: true },
+          select: { practiceId: true },
+          take: 1,
+        },
+      },
+    });
+
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+
+    // Set the practiceId - use primary practice or first active practice
+    const practiceId = user.primaryPracticeId || user.practices[0]?.practiceId;
+    if (!practiceId) {
+      throw new BadRequestException(
+        'User must be associated with a practice to create calendar events',
+      );
+    }
+
+    createEventDto.practiceId = practiceId;
+
     return this.calendarService.createEvent(createEventDto, req.user.sub);
   }
 
