@@ -793,7 +793,6 @@ export class AdminService {
           where: { isActive: true },
           select: {
             practiceId: true,
-            practiceRole: true,
           },
         },
       },

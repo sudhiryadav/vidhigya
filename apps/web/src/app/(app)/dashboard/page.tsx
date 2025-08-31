@@ -734,56 +734,6 @@ export default function Dashboard() {
             </>
           )}
 
-          {/* Debug Information (Development Only) */}
-          {process.env.NODE_ENV === "development" && stats && (
-            <div className="mb-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-              <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-800 mb-2">
-                Debug Info (Development)
-              </h3>
-              <div className="text-xs text-yellow-700 dark:text-yellow-700 space-y-1">
-                <p>
-                  <strong>User Role:</strong> {user?.role}
-                </p>
-                <p>
-                  <strong>API Endpoint Used:</strong>{" "}
-                  {user?.role === "ADMIN" || user?.role === "SUPER_ADMIN"
-                    ? "Practice Dashboard"
-                    : "Personal Dashboard"}
-                </p>
-                <p>
-                  <strong>Total Cases:</strong> {stats.totalCases}
-                </p>
-                <p>
-                  <strong>Active Cases:</strong> {stats.activeCases}
-                </p>
-                <p>
-                  <strong>Pending Cases:</strong> {stats.pendingCases}
-                </p>
-                <p>
-                  <strong>Closed Cases:</strong> {stats.closedCases}
-                </p>
-                <p>
-                  <strong>Total Clients:</strong> {stats.totalClients}
-                </p>
-                <p>
-                  <strong>Total Documents:</strong> {stats.totalDocuments}
-                </p>
-                <p>
-                  <strong>Total Bills:</strong> {stats.totalBills}
-                </p>
-                <p>
-                  <strong>Overdue Bills:</strong> {stats.overdueBills}
-                </p>
-                <p>
-                  <strong>Data Source:</strong>{" "}
-                  {user?.role === "ADMIN" || user?.role === "SUPER_ADMIN"
-                    ? "Practice-wide"
-                    : "Personal"}
-                </p>
-              </div>
-            </div>
-          )}
-
           {/* Admin Quick Access */}
           {(user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") && (
             <div className="mb-8">

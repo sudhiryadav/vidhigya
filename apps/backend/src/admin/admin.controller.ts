@@ -130,10 +130,10 @@ export class AdminController {
    */
   @Get('practice-users')
   async getPracticeUsers(
+    @Req() req: any,
     @Query('search') search?: string,
     @Query('role') role?: string,
     @Query('isActive') isActive?: string,
-    @Req() req: any,
   ) {
     const filters: any = { search, role };
 
@@ -170,7 +170,7 @@ export class AdminController {
       email?: string;
       phone?: string;
       isActive?: boolean;
-      role?: string;
+      role?: UserRole;
       password?: string;
     },
     @Req() req: any,
