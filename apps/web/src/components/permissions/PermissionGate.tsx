@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useAuth } from "../../contexts/AuthContext";
 import { usePermissions } from "../../contexts/PermissionContext";
 import {
   Permission,
@@ -28,16 +29,23 @@ export const PermissionGate = ({
   requireAll = true,
 }: PermissionGateProps) => {
   const { hasPermission, canAccess, getUserPermissions } = usePermissions();
+  const { user } = useAuth();
 
   // Check role-based access
   if (roles && roles.length > 0) {
-    const userPermissions = getUserPermissions();
-    if (!userPermissions) return <>{fallback}</>;
+    if (!user) return <>{fallback}</>;
 
-    const hasRequiredRole =
-      roles.includes(userPermissions.role) ||
-      (userPermissions.practiceRole &&
-        roles.includes(userPermissions.practiceRole));
+    const hasRequiredRole = roles.includes(user.role);
+
+    // Debug logging for User Management
+    if (roles.includes("ADMIN") || roles.includes("SUPER_ADMIN")) {
+      console.log("PermissionGate role check:", {
+        roles,
+        userRole: user?.role,
+        hasRequiredRole,
+        willShow: hasRequiredRole,
+      });
+    }
 
     if (!hasRequiredRole) return <>{fallback}</>;
   }

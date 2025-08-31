@@ -3,11 +3,11 @@
 import { apiClient } from "@/services/api";
 import { CheckCircle, Eye, EyeOff, Lock } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-export default function ResetPassword() {
+function ResetPasswordContent() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -16,17 +16,18 @@ export default function ResetPassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [token, setToken] = useState("");
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const tokenParam = searchParams.get("token");
+    // Get token from URL search params
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenParam = urlParams.get("token");
     if (!tokenParam) {
       toast.error("Invalid reset link");
       router.push("/forgot-password");
       return;
     }
     setToken(tokenParam);
-  }, [searchParams, router]);
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,4 +228,8 @@ export default function ResetPassword() {
       </div>
     </div>
   );
+}
+
+export default function ResetPassword() {
+  return <ResetPasswordContent />;
 }

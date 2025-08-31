@@ -56,6 +56,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     AdminModule,
     CourtsModule,
     ReportsModule,
+    PracticesModule,
     // Temporarily disabled due to practice system migration
     // ClientPortalModule,
     TasksModule,

@@ -802,6 +802,32 @@ export class AdminService {
   }
 
   /**
+   * Check if user is the practice owner (firm owner)
+   * A user is considered the practice owner if they created the practice
+   * or if they are the first member of the practice
+   */
+  async isPracticeOwner(userId: string, practiceId: string): Promise<boolean> {
+    // Check if user is SUPER_ADMIN (they have access to everything)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    // Check if user is the first member of the practice (practice owner)
+    const firstMember = await this.prisma.practiceMember.findFirst({
+      where: { practiceId },
+      orderBy: { createdAt: 'asc' },
+      select: { userId: true },
+    });
+
+    return firstMember?.userId === userId;
+  }
+
+  /**
    * Create new user
    */
   async createUser(

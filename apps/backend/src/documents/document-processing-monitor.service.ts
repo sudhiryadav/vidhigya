@@ -90,7 +90,12 @@ export class DocumentProcessingMonitorService {
 
       return response.ok;
     } catch (error) {
-      this.logger.debug('FastAPI health check failed:', error);
+      if (this.configService.get('NODE_ENV') === 'development') {
+        this.logger.debug(
+          'FastAPI health check failed:',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
       return false;
     }
   }
@@ -265,7 +270,7 @@ export class DocumentProcessingMonitorService {
     try {
       // Check if FastAPI service is healthy
       const isHealthy = await this.checkFastAPIHealth();
-      if (!isHealthy) {
+      if (!isHealthy && this.configService.get('NODE_ENV') === 'development') {
         this.logger.warn(
           `FastAPI service not healthy, cannot restart processing for ${document.id}`,
         );

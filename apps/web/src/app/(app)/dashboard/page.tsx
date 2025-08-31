@@ -753,7 +753,13 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <button
-                    onClick={() => router.push("/admin/users")}
+                    onClick={() =>
+                      router.push(
+                        user?.role === "LAWYER"
+                          ? "/practice/users"
+                          : "/admin/users"
+                      )
+                    }
                     className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                   >
                     Manage Users
@@ -811,12 +817,20 @@ export default function Dashboard() {
                 onClick={() => handleQuickAction("create-task")}
                 color="pink"
               />
-              {(user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") && (
+              {(user?.role === "ADMIN" ||
+                user?.role === "SUPER_ADMIN" ||
+                user?.role === "LAWYER") && (
                 <QuickActionCard
                   title="Manage Users"
                   description="View and edit employees"
                   icon={Users}
-                  onClick={() => router.push("/admin/users")}
+                  onClick={() =>
+                    router.push(
+                      user?.role === "LAWYER"
+                        ? "/practice/users"
+                        : "/admin/users"
+                    )
+                  }
                   color="orange"
                 />
               )}

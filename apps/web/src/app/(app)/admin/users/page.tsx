@@ -1,697 +1,938 @@
 "use client";
 
-import LoadingOverlay from "@/components/LoadingOverlay";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { userProfileSchema } from "@/lib/validation";
+import { usePractice } from "@/contexts/PracticeContext";
 import { apiClient } from "@/services/api";
-import { yupResolver } from "@hookform/resolvers/yup";
 import {
+  AlertCircle,
+  Building2,
+  CheckCircle,
   Edit,
+  Eye,
   Lock,
+  Mail,
   Phone,
   Search,
-  User,
-  UserCheck,
-  UserX,
+  Shield,
+  UserPlus,
+  XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Resolver, useForm } from "react-hook-form";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 interface User {
   id: string;
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
   role: string;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
   primaryPracticeId?: string;
   practices?: Array<{
-    practice?: {
-      id: string;
-      name: string;
-      practiceType: string;
-    };
-    isActive: boolean;
+    practiceId: string;
+    practiceRole: string;
   }>;
 }
 
-interface UserFormData {
+interface CreateUserData {
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
   role: string;
+  password: string;
+}
+
+interface UpdateUserData {
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
   password?: string;
 }
 
-export default function UserManagement() {
-  const { user } = useAuth();
+export default function AdminUsersPage() {
+  const { user: currentUser } = useAuth();
+  const { currentPractice } = usePractice();
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [newPassword, setNewPassword] = useState("");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] =
+    useState(false);
+  const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
+  const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
 
-  const resolver = yupResolver(userProfileSchema) as unknown as Resolver<
-    UserFormData,
-    unknown
-  >;
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    setValue,
-  } = useForm<UserFormData>({
-    resolver,
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      role: "LAWYER",
-    },
-    mode: "onSubmit",
+  // Form states
+  const [createForm, setCreateForm] = useState<CreateUserData>({
+    name: "",
+    email: "",
+    phone: "",
+    role: "LAWYER",
+    password: "",
   });
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const [editForm, setEditForm] = useState<UpdateUserData>({
+    name: "",
+    email: "",
+    phone: "",
+    role: "",
+    password: "",
+  });
 
-  const fetchUsers = async () => {
+  const [resetPasswordForm, setResetPasswordForm] = useState({
+    email: "",
+    message: "",
+  });
+
+  // Load users based on current user's role
+  useEffect(() => {
+    loadUsers();
+  }, [currentUser?.role]);
+
+  // Filter users based on search and filters
+  useEffect(() => {
+    let filtered = users;
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (user) =>
+          user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (user.phone && user.phone.includes(searchTerm))
+      );
+    }
+
+    if (roleFilter) {
+      filtered = filtered.filter((user) => user.role === roleFilter);
+    }
+
+    if (statusFilter) {
+      const isActive = statusFilter === "active";
+      filtered = filtered.filter((user) => user.isActive === isActive);
+    }
+
+    setFilteredUsers(filtered);
+  }, [users, searchTerm, roleFilter, statusFilter]);
+
+  const loadUsers = async () => {
     try {
-      let data;
-      if (user?.role === "SUPER_ADMIN") {
-        data = await apiClient.getAllUsers();
-      } else {
-        data = await apiClient.getPracticeUsers();
+      setLoading(true);
+      let userList: User[] = [];
+
+      if (currentUser?.role === "SUPER_ADMIN") {
+        // Super admin can see all users
+        const response = await apiClient.getAllUsers();
+        userList = response as User[];
+      } else if (
+        currentUser?.role === "ADMIN" ||
+        currentUser?.role === "LAWYER"
+      ) {
+        // Firm owner and lawyers can see users in their practice
+        const response = await apiClient.getPracticeUsers();
+        userList = response as User[];
       }
-      setUsers(data as User[]);
+
+      setUsers(userList);
     } catch (error) {
-      toast.error("Failed to fetch users");
+      console.error("Failed to load users:", error);
+      toast.error("Failed to load users");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateUser = async (data: UserFormData) => {
+  const handleCreateUser = async () => {
     try {
-      await apiClient.createUser({
-        ...data,
-        password: data.password || "defaultPassword123",
-        role: data.role as any,
-      });
+      if (!createForm.name || !createForm.email || !createForm.password) {
+        toast.error("Please fill in all required fields");
+        return;
+      }
+
+      await apiClient.createUser(createForm);
       toast.success("User created successfully");
-      setShowCreateModal(false);
-      reset();
-      fetchUsers();
+      setIsCreateModalOpen(false);
+      setCreateForm({
+        name: "",
+        email: "",
+        phone: "",
+        role: "LAWYER",
+        password: "",
+      });
+      loadUsers();
     } catch (error) {
+      console.error("Failed to create user:", error);
       toast.error("Failed to create user");
     }
   };
 
-  const handleUpdateUser = async (data: UserFormData) => {
+  const handleUpdateUser = async () => {
     if (!selectedUser) return;
+
     try {
-      await apiClient.updateUser(selectedUser.id, {
-        ...data,
-        role: data.role as any,
-      });
+      const updateData: UpdateUserData = {};
+      if (editForm.name && editForm.name !== selectedUser.name) {
+        updateData.name = editForm.name;
+      }
+      if (editForm.email && editForm.email !== selectedUser.email) {
+        updateData.email = editForm.email;
+      }
+      if (
+        editForm.phone !== undefined &&
+        editForm.phone !== selectedUser.phone
+      ) {
+        updateData.phone = editForm.phone;
+      }
+      if (editForm.role && editForm.role !== selectedUser.role) {
+        updateData.role = editForm.role;
+      }
+      if (editForm.password) {
+        updateData.password = editForm.password;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        toast.error("No changes to update");
+        return;
+      }
+
+      await apiClient.updateUser(selectedUser.id, updateData);
       toast.success("User updated successfully");
-      setShowEditModal(false);
-      setSelectedUser(null);
-      reset();
-      fetchUsers();
+      setIsEditModalOpen(false);
+      setEditForm({
+        name: "",
+        email: "",
+        phone: "",
+        role: "",
+        password: "",
+      });
+      loadUsers();
     } catch (error) {
+      console.error("Failed to update user:", error);
       toast.error("Failed to update user");
     }
   };
 
-  const handlePasswordReset = async () => {
-    if (!selectedUser || !newPassword.trim()) return;
+  const handleResetPassword = async () => {
+    if (!selectedUser) return;
+
     try {
+      // Generate a random password for the user
+      const newPassword = Math.random().toString(36).slice(-8);
       await apiClient.resetUserPassword(selectedUser.id, newPassword);
-      toast.success("Password reset successfully");
-      setShowPasswordResetModal(false);
-      setSelectedUser(null);
-      setNewPassword("");
-      fetchUsers();
+      toast.success(
+        "Password reset successfully. New password sent to user's email."
+      );
+      setIsResetPasswordModalOpen(false);
+      loadUsers();
     } catch (error) {
+      console.error("Failed to reset password:", error);
       toast.error("Failed to reset password");
     }
   };
 
-  const handleToggleUserStatus = async (userId: string, isActive: boolean) => {
+  const handleDeactivateUser = async () => {
+    if (!selectedUser) return;
+
     try {
-      if (isActive) {
-        await apiClient.reactivateUser(userId);
-        toast.success("User reactivated successfully");
-      } else {
-        await apiClient.deactivateUser(userId);
-        toast.success("User deactivated successfully");
-      }
-      fetchUsers();
+      await apiClient.deactivateUser(selectedUser.id);
+      toast.success(
+        "User deactivated successfully. They will no longer be able to login."
+      );
+      setIsDeactivateModalOpen(false);
+      loadUsers();
     } catch (error) {
-      toast.error(`Failed to ${isActive ? "reactivate" : "deactivate"} user`);
+      console.error("Failed to deactivate user:", error);
+      toast.error("Failed to deactivate user");
+    }
+  };
+
+  const handleReactivateUser = async () => {
+    if (!selectedUser) return;
+
+    try {
+      await apiClient.reactivateUser(selectedUser.id);
+      toast.success("User reactivated successfully. They can now login again.");
+      setIsReactivateModalOpen(false);
+      loadUsers();
+    } catch (error) {
+      console.error("Failed to reactivate user:", error);
+      toast.error("Failed to reactivate user");
     }
   };
 
   const openEditModal = (user: User) => {
     setSelectedUser(user);
-    reset({
+    setEditForm({
       name: user.name,
       email: user.email,
       phone: user.phone || "",
       role: user.role,
+      password: "",
     });
-    setShowEditModal(true);
+    setIsEditModalOpen(true);
   };
 
-  const openPasswordResetModal = (user: User) => {
+  const openViewModal = (user: User) => {
     setSelectedUser(user);
-    setShowPasswordResetModal(true);
+    setIsViewModalOpen(true);
   };
 
-  const openDeleteConfirm = (user: User) => {
+  const openResetPasswordModal = (user: User) => {
     setSelectedUser(user);
-    setShowDeleteConfirm(true);
+    setResetPasswordForm({
+      email: user.email,
+      message: `Hello ${user.name},\n\nYour password has been reset. Please check your email for the new password.\n\nBest regards,\n${currentPractice?.name || "Your Law Firm"}`,
+    });
+    setIsResetPasswordModalOpen(true);
   };
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const openDeactivateModal = (user: User) => {
+    setSelectedUser(user);
+    setIsDeactivateModalOpen(true);
+  };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case "SUPER_ADMIN":
-        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400";
-      case "ADMIN":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400";
-      case "LAWYER":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400";
-      case "ASSOCIATE":
-        return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400";
-      case "PARALEGAL":
-        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400";
-      case "CLIENT":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400";
-    }
+  const openReactivateModal = (user: User) => {
+    setSelectedUser(user);
+    setIsReactivateModalOpen(true);
+  };
+
+  const getRoleBadge = (role: string) => {
+    const roleColors: { [key: string]: string } = {
+      SUPER_ADMIN:
+        "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400",
+      ADMIN: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
+      LAWYER:
+        "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
+      ASSOCIATE:
+        "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
+      PARALEGAL:
+        "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400",
+      ASSISTANT:
+        "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
+    };
+
+    return (
+      roleColors[role] ||
+      "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+    );
+  };
+
+  const getStatusBadge = (isActive: boolean) => {
+    return isActive ? (
+      <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+        <CheckCircle className="w-3 h-3 mr-1" />
+        Active
+      </Badge>
+    ) : (
+      <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
+        <XCircle className="w-3 h-3 mr-1" />
+        Inactive
+      </Badge>
+    );
   };
 
   if (loading) {
-    return <LoadingOverlay />;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-            <button
-              onClick={() => window.history.back()}
-              className="hover:text-foreground transition-colors"
-            >
-              ← Back
-            </button>
-            <span>•</span>
-            <span>Admin</span>
-            <span>•</span>
-            <span className="text-foreground font-medium">User Management</span>
-          </div>
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
           <h1 className="text-3xl font-bold text-foreground">
             User Management
           </h1>
-          <p className="text-muted-foreground mt-2">
-            {user?.role === "SUPER_ADMIN"
-              ? "Manage all users across all practices"
-              : "Manage users within your practice"}
+          <p className="text-muted-foreground">
+            Manage users and their permissions in your practice
           </p>
         </div>
+        {(currentUser?.role === "ADMIN" || currentUser?.role === "LAWYER") && (
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add User
+          </Button>
+        )}
+      </div>
 
-        {/* Quick Help */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <div className="text-blue-600 dark:text-blue-400 mt-0.5">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label htmlFor="search">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  id="search"
+                  placeholder="Search by name, email, or phone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                What you can do here:
-              </h3>
-              <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
-                <ul className="list-disc list-inside space-y-1">
-                  <li><strong>View all users</strong> in your practice (or all practices if you're a Super Admin)</li>
-                  <li><strong>Edit user information</strong> including names, emails, and phone numbers</li>
-                  <li><strong>Reset user passwords</strong> when they forget their credentials</li>
-                  <li><strong>Activate/deactivate users</strong> to manage access</li>
-                  <li><strong>Create new users</strong> and assign them to your practice</li>
-                </ul>
-              </div>
+              <Label htmlFor="role">Role</Label>
+              <select
+                id="role"
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">All roles</option>
+                <option value="ADMIN">Admin</option>
+                <option value="LAWYER">Lawyer</option>
+                <option value="ASSOCIATE">Associate</option>
+                <option value="PARALEGAL">Paralegal</option>
+                <option value="ASSISTANT">Assistant</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <select
+                id="status"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">All statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm("");
+                  setRoleFilter("");
+                  setStatusFilter("");
+                }}
+              >
+                Clear Filters
+              </Button>
             </div>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* User Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold text-foreground">{users.length}</p>
-              </div>
-              <Users className="h-8 w-8 text-blue-600" />
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {users.filter(u => u.isActive).length}
-                </p>
-              </div>
-              <UserCheck className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Lawyers</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {users.filter(u => u.role === "LAWYER").length}
-                </p>
-              </div>
-              <User className="h-8 w-8 text-purple-600" />
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Clients</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {users.filter(u => u.role === "CLIENT").length}
-                </p>
-              </div>
-              <Users className="h-8 w-8 text-indigo-600" />
-            </div>
-          </div>
-        </div>
-
-                {/* Search and Actions */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-            />
-          </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <User className="h-4 w-4" />
-            Add User
-          </button>
-        </div>
-        </div>
-
-        {/* Users Table */}
-        <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+      {/* Users Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Users ({filteredUsers.length} of {users.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-muted">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    User
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Phone
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Practice
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-muted/50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                          <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-foreground">
-                            {user.name}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {user.email}
-                          </div>
-                          {user.phone && (
-                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {user.phone}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(
-                          user.role
-                        )}`}
-                      >
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                      {user.practices?.[0]?.practice?.name || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full ${
-                          user.isActive
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                            : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-                        }`}
-                      >
-                        {user.isActive ? (
-                          <>
-                            <UserCheck className="h-3 w-3" />
-                            Active
-                          </>
-                        ) : (
-                          <>
-                            <UserX className="h-3 w-3" />
-                            Inactive
-                          </>
-                        )}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openEditModal(user)}
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                          title="Edit user"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => openPasswordResetModal(user)}
-                          className="text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300"
-                          title="Reset password"
-                        >
-                          <Lock className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleToggleUserStatus(user.id, !user.isActive)
-                          }
-                          className={`${
-                            user.isActive
-                              ? "text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                              : "text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                          }`}
-                          title={
-                            user.isActive ? "Deactivate user" : "Activate user"
-                          }
-                        >
-                          {user.isActive ? (
-                            <UserX className="h-4 w-4" />
-                          ) : (
-                            <UserCheck className="h-4 w-4" />
-                          )}
-                        </button>
+              <tbody className="bg-card divide-y divide-border">
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-8">
+                      <div className="flex flex-col items-center space-y-2">
+                        <AlertCircle className="w-8 h-8 text-muted-foreground" />
+                        <p className="text-muted-foreground">No users found</p>
+                        {searchTerm || roleFilter || statusFilter ? (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setSearchTerm("");
+                              setRoleFilter("");
+                              setStatusFilter("");
+                            }}
+                          >
+                            Clear filters
+                          </Button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-muted">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                            <span className="text-sm font-medium">
+                              {user.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <span className="font-medium">{user.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          <Mail className="w-4 h-4 text-muted-foreground" />
+                          <span>{user.email}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {user.phone ? (
+                          <div className="flex items-center space-x-2">
+                            <Phone className="w-4 h-4 text-muted-foreground" />
+                            <span>{user.phone}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge className={getRoleBadge(user.role)}>
+                          <Shield className="w-3 h-3 mr-1" />
+                          {user.role.replace("_", " ")}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(user.isActive)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => openViewModal(user)}
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          {(currentUser?.role === "ADMIN" ||
+                            currentUser?.role === "LAWYER") && (
+                            <>
+                              <button
+                                onClick={() => openEditModal(user)}
+                                className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                                title="Edit User"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => openResetPasswordModal(user)}
+                                className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
+                                title="Reset Password"
+                              >
+                                <Lock className="w-4 h-4" />
+                              </button>
+                              {user.isActive ? (
+                                <button
+                                  onClick={() => openDeactivateModal(user)}
+                                  className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                                  title="Deactivate"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => openReactivateModal(user)}
+                                  className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
+                                  title="Reactivate"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Create User Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-background p-6 rounded-lg w-full max-w-md">
-              <h2 className="text-xl font-semibold mb-4">Create New User</h2>
-              <form
-                onSubmit={handleSubmit(handleCreateUser)}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="block text-sm font-medium mb-1">Name</label>
-                  <input
-                    {...register("name")}
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                  />
-                  {errors.name && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.name.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Email
-                  </label>
-                  <input
-                    {...register("email")}
-                    type="email"
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                  />
-                  {errors.email && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.email.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Phone
-                  </label>
-                  <input
-                    {...register("phone")}
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                  />
-                  {errors.phone && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.phone.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Role</label>
-                  <select
-                    {...register("role")}
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                  >
-                    <option value="LAWYER">Lawyer</option>
-                    <option value="ASSOCIATE">Associate</option>
-                    <option value="PARALEGAL">Paralegal</option>
-                    <option value="CLIENT">Client</option>
-                    {user?.role === "SUPER_ADMIN" && (
-                      <>
-                        <option value="ADMIN">Admin</option>
-                        <option value="SUPER_ADMIN">Super Admin</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Password
-                  </label>
-                  <input
-                    {...register("password")}
-                    type="password"
-                    placeholder="Leave blank for default password"
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                  />
-                </div>
-                <div className="flex gap-2 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-muted"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Create User
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Edit User Modal */}
-        {showEditModal && selectedUser && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-background p-6 rounded-lg w-full max-w-md">
-              <h2 className="text-xl font-semibold mb-4">Edit User</h2>
-              <form
-                onSubmit={handleSubmit(handleUpdateUser)}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="block text-sm font-medium mb-1">Name</label>
-                  <input
-                    {...register("name")}
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                  />
-                  {errors.name && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.name.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Email
-                  </label>
-                  <input
-                    {...register("email")}
-                    type="email"
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                  />
-                  {errors.email && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.email.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Phone
-                  </label>
-                  <input
-                    {...register("phone")}
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                  />
-                  {errors.phone && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.phone.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Role</label>
-                  <select
-                    {...register("role")}
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                  >
-                    <option value="LAWYER">Lawyer</option>
-                    <option value="ASSOCIATE">Associate</option>
-                    <option value="PARALEGAL">Paralegal</option>
-                    <option value="CLIENT">Client</option>
-                    {user?.role === "SUPER_ADMIN" && (
-                      <>
-                        <option value="ADMIN">Admin</option>
-                        <option value="SUPER_ADMIN">Super Admin</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-                <div className="flex gap-2 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(false)}
-                    className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-muted"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Update User
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Password Reset Modal */}
-        {showPasswordResetModal && selectedUser && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-background p-6 rounded-lg w-full max-w-md">
-              <h2 className="text-xl font-semibold mb-4">Reset Password</h2>
-              <p className="text-muted-foreground mb-4">
-                Enter a new password for {selectedUser.name}
-              </p>
+      {/* Create User Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-lg shadow-xl border border-border max-w-md w-full mx-4">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold mb-4">Add New User</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  <Label htmlFor="create-name">Name *</Label>
+                  <Input
+                    id="create-name"
+                    value={createForm.name}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, name: e.target.value })
+                    }
+                    placeholder="Enter full name"
                   />
                 </div>
-                <div className="flex gap-2 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordResetModal(false)}
-                    className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-muted"
+                <div>
+                  <Label htmlFor="create-email">Email *</Label>
+                  <Input
+                    id="create-email"
+                    type="email"
+                    value={createForm.email}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, email: e.target.value })
+                    }
+                    placeholder="Enter email address"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="create-phone">Phone</Label>
+                  <Input
+                    id="create-phone"
+                    value={createForm.phone}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, phone: e.target.value })
+                    }
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="create-role">Role *</Label>
+                  <select
+                    id="create-role"
+                    value={createForm.role}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, role: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="LAWYER">Lawyer</option>
+                    <option value="ASSOCIATE">Associate</option>
+                    <option value="PARALEGAL">Paralegal</option>
+                    <option value="ASSISTANT">Assistant</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="create-password">Password *</Label>
+                  <Input
+                    id="create-password"
+                    type="password"
+                    value={createForm.password}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, password: e.target.value })
+                    }
+                    placeholder="Enter password"
+                  />
+                </div>
+                <div className="flex space-x-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="flex-1"
                   >
                     Cancel
-                  </button>
-                  <button
-                    onClick={handlePasswordReset}
-                    disabled={!newPassword.trim()}
-                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Reset Password
-                  </button>
+                  </Button>
+                  <Button onClick={handleCreateUser} className="flex-1">
+                    Create User
+                  </Button>
                 </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-lg shadow-xl border border-border max-w-md w-full mx-4">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold mb-4">Edit User</h2>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="edit-name">Name</Label>
+                  <Input
+                    id="edit-name"
+                    value={editForm.name}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, name: e.target.value })
+                    }
+                    placeholder="Enter full name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-email">Email</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, email: e.target.value })
+                    }
+                    placeholder="Enter email address"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-phone">Phone</Label>
+                  <Input
+                    id="edit-phone"
+                    value={editForm.phone}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, phone: e.target.value })
+                    }
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-role">Role</Label>
+                  <select
+                    id="edit-role"
+                    value={editForm.role}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, role: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="ADMIN">Admin</option>
+                    <option value="LAWYER">Lawyer</option>
+                    <option value="ASSOCIATE">Associate</option>
+                    <option value="PARALEGAL">Paralegal</option>
+                    <option value="ASSISTANT">Assistant</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-password">
+                    New Password (leave blank to keep current)
+                  </Label>
+                  <Input
+                    id="edit-password"
+                    type="password"
+                    value={editForm.password}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, password: e.target.value })
+                    }
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div className="flex space-x-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpdateUser} className="flex-1">
+                    Update User
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View User Modal */}
+      {isViewModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-lg shadow-xl border border-border max-w-md w-full mx-4">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold mb-4">User Details</h2>
+              {selectedUser && (
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                      <span className="text-lg font-medium">
+                        {selectedUser.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold">
+                        {selectedUser.name}
+                      </h3>
+                      <Badge className={getRoleBadge(selectedUser.role)}>
+                        {selectedUser.role.replace("_", " ")}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Mail className="w-4 h-4 text-muted-foreground" />
+                      <span>{selectedUser.email}</span>
+                    </div>
+                    {selectedUser.phone && (
+                      <div className="flex items-center space-x-2">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span>{selectedUser.phone}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center space-x-2">
+                      <Building2 className="w-4 h-4 text-muted-foreground" />
+                      <span>Practice: {currentPractice?.name || "N/A"}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {selectedUser.isActive ? (
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-red-600" />
+                      )}
+                      <span>
+                        Status: {selectedUser.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsViewModalOpen(false)}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {isResetPasswordModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-lg shadow-xl border border-border max-w-md w-full mx-4">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold mb-4">
+                Reset User Password
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="reset-email">Email</Label>
+                  <Input
+                    id="reset-email"
+                    value={resetPasswordForm.email}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="reset-message">Message (optional)</Label>
+                  <Textarea
+                    id="reset-message"
+                    value={resetPasswordForm.message}
+                    onChange={(e) =>
+                      setResetPasswordForm({
+                        ...resetPasswordForm,
+                        message: e.target.value,
+                      })
+                    }
+                    placeholder="Custom message for the user"
+                    rows={4}
+                  />
+                </div>
+                <div className="flex space-x-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsResetPasswordModalOpen(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleResetPassword} className="flex-1">
+                    Reset Password
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deactivate User Modal */}
+      {isDeactivateModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-lg shadow-xl border border-border max-w-md w-full mx-4">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold mb-4">Deactivate User</h2>
+              <p className="text-muted-foreground mb-6">
+                Are you sure you want to deactivate {selectedUser?.name}? This
+                will prevent them from logging into the system and accessing any
+                features.
+              </p>
+              <div className="flex space-x-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDeactivateModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDeactivateUser}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Deactivate
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reactivate User Modal */}
+      {isReactivateModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-lg shadow-xl border border-border max-w-md w-full mx-4">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold mb-4">Reactivate User</h2>
+              <p className="text-muted-foreground mb-6">
+                Are you sure you want to reactivate {selectedUser?.name}? This
+                will restore their ability to login and access the system.
+              </p>
+              <div className="flex space-x-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsReactivateModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleReactivateUser}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Reactivate
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

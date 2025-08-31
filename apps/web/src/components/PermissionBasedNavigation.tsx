@@ -199,6 +199,15 @@ const baseNavigationItems = [
     action: PermissionAction.READ,
     resource: PermissionResource.REPORT,
   },
+  // Practice Users - only for firm owners (LAWYER role who created the practice)
+  {
+    name: "Practice Users",
+    href: "/practice/users",
+    icon: Users,
+    roles: ["LAWYER"],
+    action: PermissionAction.MANAGE,
+    resource: PermissionResource.PRACTICE,
+  },
 ];
 
 interface NavigationItemProps {
@@ -226,8 +235,23 @@ const NavigationItem = ({
 }: NavigationItemProps) => {
   const { user } = useAuth();
 
+  // Debug logging for User Management
+  if (name === "User Management") {
+    console.log("NavigationItem for User Management:", {
+      name,
+      userRole: user?.role,
+      roles,
+      excludeRoles,
+      action,
+      resource,
+    });
+  }
+
   // Check if user role should be excluded
   if (excludeRoles && user && excludeRoles.includes(user.role)) {
+    if (name === "User Management") {
+      console.log("User Management excluded by excludeRoles");
+    }
     return null;
   }
 
@@ -422,6 +446,18 @@ export function PermissionBasedNavigation() {
           <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
             {allNavigationItems.map((item) => {
               const isActive = pathname === item.href;
+              // Debug logging for User Management item
+              if (item.name === "User Management") {
+                console.log("User Management item:", {
+                  item,
+                  userRole: user?.role,
+                  hasRoles: !!item.roles,
+                  roles: item.roles,
+                  shouldShow: item.roles
+                    ? item.roles.includes(user?.role || "")
+                    : true,
+                });
+              }
               return (
                 <NavigationItem
                   key={`${item.name}-${item.href}`}

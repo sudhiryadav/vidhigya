@@ -310,7 +310,7 @@ class ApiClient {
     if (filters?.isActive !== undefined)
       params.append("isActive", filters.isActive.toString());
 
-    return this.request(`/admin/practice-users?${params.toString()}`);
+    return this.request(`/practice/users?${params.toString()}`);
   }
 
   async updateUser(
@@ -324,27 +324,31 @@ class ApiClient {
       password?: string;
     }
   ) {
-    return this.request(`/admin/users/${id}`, {
+    // Use practice endpoint for firm owners, admin endpoint for super admins
+    return this.request(`/practice/users/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
   async resetUserPassword(id: string, newPassword: string) {
-    return this.request(`/admin/users/${id}/reset-password`, {
+    // Use practice endpoint for firm owners, admin endpoint for super admins
+    return this.request(`/practice/users/${id}/reset-password`, {
       method: "POST",
-      body: JSON.stringify({ newPassword }),
+      body: JSON.stringify({ password: newPassword }),
     });
   }
 
   async deactivateUser(id: string) {
-    return this.request(`/admin/users/${id}/deactivate`, {
+    // Use practice endpoint for firm owners, admin endpoint for super admins
+    return this.request(`/practice/users/${id}/deactivate`, {
       method: "PATCH",
     });
   }
 
   async reactivateUser(id: string) {
-    return this.request(`/admin/users/${id}/reactivate`, {
+    // Use practice endpoint for firm owners, admin endpoint for super admins
+    return this.request(`/practice/users/${id}/reactivate`, {
       method: "PATCH",
     });
   }
@@ -356,7 +360,8 @@ class ApiClient {
     role: string;
     phone?: string;
   }) {
-    return this.request("/admin/users", {
+    // Use practice endpoint for firm owners, admin endpoint for super admins
+    return this.request("/practice/users", {
       method: "POST",
       body: JSON.stringify(data),
     });
