@@ -9,6 +9,7 @@ import LoadingOverlay from "./LoadingOverlay";
 const adminRoutes = [
   "/admin",
   "/admin/dashboard",
+  "/admin/users",
   "/admin/settings",
   "/admin/analytics",
   "/admin/billing",

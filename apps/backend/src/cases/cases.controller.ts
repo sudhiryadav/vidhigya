@@ -92,6 +92,11 @@ export class CasesController {
     return this.casesService.getDashboardStats(req.user.sub);
   }
 
+  @Get('practice-dashboard')
+  getPracticeDashboardStats(@Request() req: AuthenticatedRequest) {
+    return this.casesService.getPracticeDashboardStats(req.user.sub);
+  }
+
   @Get('overdue-bills')
   getOverdueBills(@Request() req: AuthenticatedRequest) {
     return this.casesService.getOverdueBills(req.user.sub);

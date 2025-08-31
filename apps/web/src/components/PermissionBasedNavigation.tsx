@@ -44,6 +44,12 @@ const baseNavigationItems = [
     roles: ["SUPER_ADMIN", "ADMIN"],
   },
   {
+    name: "User Management",
+    href: "/admin/users",
+    icon: Users,
+    roles: ["SUPER_ADMIN", "ADMIN"],
+  },
+  {
     name: "System Settings",
     href: "/admin/settings",
     icon: Settings,

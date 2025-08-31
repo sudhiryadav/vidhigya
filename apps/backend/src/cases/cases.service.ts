@@ -979,6 +979,173 @@ export class CasesService {
     };
   }
 
+  // Practice-level Dashboard Statistics (for firm owners/admins)
+  async getPracticeDashboardStats(userId: string) {
+    const now = new Date();
+    const lastMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() - 1,
+      now.getDate(),
+    );
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get user's practice ID
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { primaryPracticeId: true },
+    });
+
+    if (!user?.primaryPracticeId) {
+      throw new BadRequestException('User must be associated with a practice');
+    }
+
+    const practiceId = user.primaryPracticeId;
+
+    const [
+      totalCases,
+      activeCases,
+      pendingCases,
+      closedCases,
+      totalClients,
+      totalDocuments,
+      totalBills,
+      upcomingHearings,
+      overdueBills,
+      // Month-over-month comparisons
+      lastMonthCases,
+      newCasesThisMonth,
+      newClientsThisMonth,
+    ] = await Promise.all([
+      this.prisma.legalCase.count({
+        where: { practiceId },
+      }),
+      this.prisma.legalCase.count({
+        where: {
+          practiceId,
+          status: { in: ['OPEN', 'IN_PROGRESS'] },
+        },
+      }),
+      this.prisma.legalCase.count({
+        where: {
+          practiceId,
+          status: 'PENDING',
+        },
+      }),
+      this.prisma.legalCase.count({
+        where: {
+          practiceId,
+          status: { in: ['CLOSED', 'ARCHIVED'] },
+        },
+      }),
+      this.prisma.client.count({
+        where: {
+          practiceId,
+          isActive: true,
+        },
+      }),
+      this.prisma.legalDocument.count({
+        where: {
+          case: {
+            practiceId,
+          },
+        },
+      }),
+      this.prisma.billingRecord.count({
+        where: {
+          case: {
+            practiceId,
+          },
+        },
+      }),
+      this.prisma.legalCase.findMany({
+        where: {
+          practiceId,
+          nextHearingDate: {
+            gte: new Date(),
+            lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Next 7 days
+          },
+        },
+        select: {
+          id: true,
+          caseNumber: true,
+          title: true,
+          nextHearingDate: true,
+          client: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          nextHearingDate: 'asc',
+        },
+        take: 5,
+      }),
+      this.prisma.billingRecord.count({
+        where: {
+          case: {
+            practiceId,
+          },
+          status: 'PENDING',
+          dueDate: {
+            lt: new Date(),
+          },
+        },
+      }),
+      // Cases from last month
+      this.prisma.legalCase.count({
+        where: {
+          practiceId,
+          createdAt: {
+            lt: thisMonth,
+            gte: lastMonth,
+          },
+        },
+      }),
+      // New cases this month
+      this.prisma.legalCase.count({
+        where: {
+          practiceId,
+          createdAt: {
+            gte: thisMonth,
+          },
+        },
+      }),
+      // New clients this month
+      this.prisma.client.count({
+        where: {
+          practiceId,
+          isActive: true,
+          createdAt: {
+            gte: thisMonth,
+          },
+        },
+      }),
+    ]);
+
+    // Calculate percentage changes
+    const caseChangePercent =
+      lastMonthCases > 0
+        ? Math.round(((totalCases - lastMonthCases) / lastMonthCases) * 100)
+        : 0;
+
+    return {
+      totalCases,
+      activeCases,
+      pendingCases,
+      closedCases,
+      totalClients,
+      totalDocuments,
+      totalBills,
+      upcomingHearings,
+      overdueBills,
+      // Month-over-month data
+      caseChangePercent,
+      newCasesThisMonth,
+      newClientsThisMonth,
+    };
+  }
+
   // Recent Activity for User
   async getRecentActivity(userId: string, limit: number = 10) {
     // Get user's role to determine what activities to show

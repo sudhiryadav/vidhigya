@@ -1,4 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -457,8 +463,421 @@ export class AdminService {
     });
   }
 
+  /**
+   * Get all users (SUPER_ADMIN only - can see all users across all practices)
+   */
+  async getAllUsers(filters?: {
+    search?: string;
+    role?: string;
+    isActive?: boolean;
+    practiceId?: string;
+  }) {
+    const where: Record<string, unknown> = {};
+
+    if (filters?.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (filters?.role && filters.role !== 'all') {
+      where.role = filters.role;
+    }
+
+    if (filters?.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
+
+    if (filters?.practiceId) {
+      where.practices = {
+        some: {
+          practiceId: filters.practiceId,
+          isActive: true,
+        },
+      };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phone: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        primaryPracticeId: true,
+        practices: {
+          where: { isActive: true },
+          select: {
+            practice: {
+              select: {
+                id: true,
+                name: true,
+                practiceType: true,
+              },
+            },
+            isActive: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return users;
+  }
+
+  /**
+   * Get users within a specific practice (ADMIN can see practice users)
+   */
+  async getPracticeUsers(
+    practiceId: string,
+    filters?: {
+      search?: string;
+      role?: string;
+      isActive?: boolean;
+    },
+  ) {
+    const where: Record<string, unknown> = {
+      practices: {
+        some: {
+          practiceId,
+          isActive: true,
+        },
+      },
+    };
+
+    if (filters?.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (filters?.role && filters.role !== 'all') {
+      where.role = filters.role;
+    }
+
+    if (filters?.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phone: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        practices: {
+          where: { practiceId, isActive: true },
+          select: {
+            isActive: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return users;
+  }
+
+  /**
+   * Update user information (including password change)
+   */
+  async updateUser(
+    userId: string,
+    updateData: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      isActive?: boolean;
+      role?: UserRole;
+      password?: string;
+    },
+    currentUserId: string,
+    currentUserRole: string,
+    currentUserPracticeId?: string,
+  ) {
+    // Check if current user has permission to update this user
+    const canUpdate = await this.canUpdateUser(
+      currentUserId,
+      currentUserRole,
+      currentUserPracticeId,
+      userId,
+    );
+
+    if (!canUpdate) {
+      throw new ForbiddenException(
+        'You do not have permission to update this user',
+      );
+    }
+
+    // If changing password, hash it
+    if (updateData.password) {
+      updateData.password = await this.hashPassword(updateData.password);
+    }
+
+    // Update user
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phone: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return updatedUser;
+  }
+
+  /**
+   * Check if current user can update target user
+   */
+  private async canUpdateUser(
+    currentUserId: string,
+    currentUserRole: string,
+    currentUserPracticeId?: string,
+    targetUserId?: string,
+  ): Promise<boolean> {
+    // SUPER_ADMIN can update any user
+    if (currentUserRole === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    // ADMIN can only update users in their practice
+    if (currentUserRole === 'ADMIN' && currentUserPracticeId) {
+      if (!targetUserId) return false;
+
+      const targetUser = await this.prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: {
+          practices: {
+            where: {
+              practiceId: currentUserPracticeId,
+              isActive: true,
+            },
+          },
+        },
+      });
+
+      return targetUser && targetUser.practices.length > 0;
+    }
+
+    return false;
+  }
+
+  /**
+   * Reset user password (admin-initiated)
+   */
+  async resetUserPassword(
+    userId: string,
+    newPassword: string,
+    currentUserId: string,
+    currentUserRole: string,
+    currentUserPracticeId?: string,
+  ) {
+    // Check if current user has permission to reset password
+    const canUpdate = await this.canUpdateUser(
+      currentUserId,
+      currentUserRole,
+      currentUserPracticeId,
+      userId,
+    );
+
+    if (!canUpdate) {
+      throw new ForbiddenException(
+        "You do not have permission to reset this user's password",
+      );
+    }
+
+    const hashedPassword = await this.hashPassword(newPassword);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return { message: 'Password reset successfully' };
+  }
+
+  /**
+   * Deactivate user
+   */
+  async deactivateUser(
+    userId: string,
+    currentUserId: string,
+    currentUserRole: string,
+    currentUserPracticeId?: string,
+  ) {
+    // Check if current user has permission to deactivate this user
+    const canUpdate = await this.canUpdateUser(
+      currentUserId,
+      currentUserRole,
+      currentUserPracticeId,
+      userId,
+    );
+
+    if (!canUpdate) {
+      throw new ForbiddenException(
+        'You do not have permission to deactivate this user',
+      );
+    }
+
+    // Prevent deactivating own account
+    if (userId === currentUserId) {
+      throw new BadRequestException('You cannot deactivate your own account');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive: false },
+    });
+
+    return { message: 'User deactivated successfully' };
+  }
+
+  /**
+   * Reactivate user
+   */
+  async reactivateUser(
+    userId: string,
+    currentUserId: string,
+    currentUserRole: string,
+    currentUserPracticeId?: string,
+  ) {
+    // Check if current user has permission to reactivate this user
+    const canUpdate = await this.canUpdateUser(
+      currentUserId,
+      currentUserRole,
+      currentUserPracticeId,
+      userId,
+    );
+
+    if (!canUpdate) {
+      throw new ForbiddenException(
+        'You do not have permission to reactivate this user',
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive: true },
+    });
+
+    return { message: 'User reactivated successfully' };
+  }
+
+  /**
+   * Get current user's practice information
+   */
+  async getCurrentUserPractice(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        primaryPracticeId: true,
+        practices: {
+          where: { isActive: true },
+          select: {
+            practiceId: true,
+            practiceRole: true,
+          },
+        },
+      },
+    });
+
+    return user;
+  }
+
+  /**
+   * Create new user
+   */
+  async createUser(
+    createData: {
+      name: string;
+      email: string;
+      password: string;
+      role: string;
+      phone?: string;
+    },
+    currentUserId: string,
+    currentUserRole: string,
+    currentUserPracticeId?: string,
+  ) {
+    // Check if current user has permission to create users
+    if (currentUserRole !== 'SUPER_ADMIN' && currentUserRole !== 'ADMIN') {
+      throw new ForbiddenException(
+        'You do not have permission to create users',
+      );
+    }
+
+    // Check if email already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: createData.email },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('User with this email already exists');
+    }
+
+    // Hash password
+    const hashedPassword = await this.hashPassword(createData.password);
+
+    // Create user
+    const newUser = await this.prisma.user.create({
+      data: {
+        email: createData.email,
+        password: hashedPassword,
+        name: createData.name,
+        role: createData.role as any,
+        phone: createData.phone,
+        isActive: true,
+      },
+    });
+
+    // If user is created by ADMIN (not SUPER_ADMIN), add them to the practice
+    if (currentUserRole === 'ADMIN' && currentUserPracticeId) {
+      await this.prisma.practiceMember.create({
+        data: {
+          practiceId: currentUserPracticeId,
+          userId: newUser.id,
+          isActive: true,
+        },
+      });
+
+      // Update user's primary practice
+      await this.prisma.user.update({
+        where: { id: newUser.id },
+        data: { primaryPracticeId: currentUserPracticeId },
+      });
+    }
+
+    return {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      phone: newUser.phone,
+      isActive: newUser.isActive,
+      createdAt: newUser.createdAt,
+      updatedAt: newUser.updatedAt,
+    };
+  }
+
   private async hashPassword(password: string): Promise<string> {
-    const bcrypt = await import('bcryptjs');
     return bcrypt.hash(password, 10);
   }
 }

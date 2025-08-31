@@ -65,6 +65,16 @@ export class AuthController {
     return this.authService.register(registerDto);
   }
 
+  @Post('forgot-password')
+  async forgotPassword(@Body() data: { email: string }) {
+    return this.authService.forgotPassword(data.email);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() data: { token: string; newPassword: string }) {
+    return this.authService.resetPassword(data.token, data.newPassword);
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Get('users')

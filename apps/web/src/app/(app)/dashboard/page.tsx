@@ -271,18 +271,35 @@ export default function Dashboard() {
           billsResponse,
           activityResponse,
         ] = await Promise.all([
-          apiClient.getDashboardStats(),
+          // Use practice dashboard for firm owners/admins, personal dashboard for lawyers
+          user?.role === "ADMIN" || user?.role === "SUPER_ADMIN"
+            ? apiClient.getPracticeDashboardStats()
+            : apiClient.getDashboardStats(),
           apiClient.getUpcomingHearings(),
           apiClient.getOverdueBills(),
           apiClient.getUserRecentActivity(), // Use user-specific endpoint for lawyers
         ]);
 
+        console.log("Dashboard API responses:", {
+          stats: statsResponse,
+          hearings: hearingsResponse,
+          bills: billsResponse,
+          activity: activityResponse,
+          userRole: user?.role,
+          isAdmin: user?.role === "ADMIN" || user?.role === "SUPER_ADMIN",
+        });
+
         if (
           statsResponse &&
           typeof statsResponse === "object" &&
           "totalCases" in statsResponse
-        )
+        ) {
+          console.log("Setting stats:", statsResponse);
           setStats(statsResponse as DashboardStats);
+        } else {
+          console.warn("Invalid stats response:", statsResponse);
+        }
+
         if (hearingsResponse && Array.isArray(hearingsResponse))
           setUpcomingHearings(hearingsResponse);
         if (billsResponse && Array.isArray(billsResponse))
@@ -313,6 +330,8 @@ export default function Dashboard() {
           setRecentBills(billsResponse);
       }
     } catch (error: any) {
+      console.error("Dashboard data fetch error:", error);
+
       // Provide more specific error messages
       if (error.message?.includes("403")) {
         setError("Access denied. You don't have permission to view this data.");
@@ -320,8 +339,12 @@ export default function Dashboard() {
         setError("Authentication failed. Please log in again.");
       } else if (error.message?.includes("HTTP error")) {
         setError(`Server error: ${error.message}`);
+      } else if (error.message?.includes("Failed to fetch")) {
+        setError("Network error. Please check your connection and try again.");
       } else {
-        setError("Failed to load dashboard data. Please try again.");
+        setError(
+          `Failed to load dashboard data: ${error.message || "Unknown error"}`
+        );
       }
     } finally {
       setLoading(false);
@@ -646,37 +669,147 @@ export default function Dashboard() {
 
           {/* Statistics Grid */}
           {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <StatCard
-                title="Total Cases"
-                value={stats.totalCases}
-                icon={Briefcase}
-                color="blue"
-                change={`+${stats.caseChangePercent}%`}
-                onClick={() => router.push("/cases")}
-              />
-              <StatCard
-                title="Active Cases"
-                value={stats.activeCases}
-                icon={CheckSquare}
-                color="green"
-                onClick={() => router.push("/cases?status=ACTIVE")}
-              />
-              <StatCard
-                title="Total Clients"
-                value={stats.totalClients}
-                icon={Users}
-                color="purple"
-                change={`+${stats.newClientsThisMonth}`}
-                onClick={() => router.push("/clients")}
-              />
-              <StatCard
-                title="Overdue Bills"
-                value={stats.overdueBills}
-                icon={AlertTriangle}
-                color="red"
-                onClick={() => router.push("/billing?status=OVERDUE")}
-              />
+            <>
+              {stats.totalCases === 0 && (
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="text-blue-600 dark:text-blue-400">
+                      <svg
+                        className="w-5 h-5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                        No data found
+                      </h3>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        {user?.role === "ADMIN" || user?.role === "SUPER_ADMIN"
+                          ? "No cases, clients, or documents found in your practice yet. Start by creating your first case or adding a client."
+                          : "No cases assigned to you yet. Contact your administrator to get assigned to cases."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <StatCard
+                  title="Total Cases"
+                  value={stats.totalCases}
+                  icon={Briefcase}
+                  color="blue"
+                  change={`+${stats.caseChangePercent}%`}
+                  onClick={() => router.push("/cases")}
+                />
+                <StatCard
+                  title="Active Cases"
+                  value={stats.activeCases}
+                  icon={CheckSquare}
+                  color="green"
+                  onClick={() => router.push("/cases?status=ACTIVE")}
+                />
+                <StatCard
+                  title="Total Clients"
+                  value={stats.totalClients}
+                  icon={Users}
+                  color="purple"
+                  change={`+${stats.newClientsThisMonth}`}
+                  onClick={() => router.push("/clients")}
+                />
+                <StatCard
+                  title="Overdue Bills"
+                  value={stats.overdueBills}
+                  icon={AlertTriangle}
+                  color="red"
+                  onClick={() => router.push("/billing?status=OVERDUE")}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Debug Information (Development Only) */}
+          {process.env.NODE_ENV === "development" && stats && (
+            <div className="mb-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-800 mb-2">
+                Debug Info (Development)
+              </h3>
+              <div className="text-xs text-yellow-700 dark:text-yellow-700 space-y-1">
+                <p>
+                  <strong>User Role:</strong> {user?.role}
+                </p>
+                <p>
+                  <strong>API Endpoint Used:</strong>{" "}
+                  {user?.role === "ADMIN" || user?.role === "SUPER_ADMIN"
+                    ? "Practice Dashboard"
+                    : "Personal Dashboard"}
+                </p>
+                <p>
+                  <strong>Total Cases:</strong> {stats.totalCases}
+                </p>
+                <p>
+                  <strong>Active Cases:</strong> {stats.activeCases}
+                </p>
+                <p>
+                  <strong>Pending Cases:</strong> {stats.pendingCases}
+                </p>
+                <p>
+                  <strong>Closed Cases:</strong> {stats.closedCases}
+                </p>
+                <p>
+                  <strong>Total Clients:</strong> {stats.totalClients}
+                </p>
+                <p>
+                  <strong>Total Documents:</strong> {stats.totalDocuments}
+                </p>
+                <p>
+                  <strong>Total Bills:</strong> {stats.totalBills}
+                </p>
+                <p>
+                  <strong>Overdue Bills:</strong> {stats.overdueBills}
+                </p>
+                <p>
+                  <strong>Data Source:</strong>{" "}
+                  {user?.role === "ADMIN" || user?.role === "SUPER_ADMIN"
+                    ? "Practice-wide"
+                    : "Personal"}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Admin Quick Access */}
+          {(user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") && (
+            <div className="mb-8">
+              <h2 className="text-lg font-medium text-foreground mb-4">
+                Admin Tools
+              </h2>
+              <div className="bg-card border border-border rounded-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      User Management
+                    </h3>
+                    <p className="text-muted-foreground">
+                      {user?.role === "SUPER_ADMIN"
+                        ? "Manage all users across all practices"
+                        : "Manage users within your practice"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => router.push("/admin/users")}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  >
+                    Manage Users
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -728,7 +861,16 @@ export default function Dashboard() {
                 onClick={() => handleQuickAction("create-task")}
                 color="pink"
               />
-              <QuickActionCard
+              {(user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") && (
+                <QuickActionCard
+                  title="Manage Users"
+                  description="View and edit employees"
+                  icon={Users}
+                  onClick={() => router.push("/admin/users")}
+                  color="orange"
+                />
+              )}
+              {/* <QuickActionCard
                 title="Video Call"
                 description="Start instant call"
                 icon={Video}
@@ -741,7 +883,7 @@ export default function Dashboard() {
                 icon={MessageSquare}
                 onClick={() => handleQuickAction("send-message")}
                 color="teal"
-              />
+              /> */}
             </div>
           </div>
 

@@ -1,8 +1,11 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -49,6 +52,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async validateUser(email: string, password: string) {
@@ -188,5 +192,94 @@ export class AuthService {
     const token = this.jwtService.sign(payload);
 
     return { token };
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      // Don't reveal if user exists or not for security
+      return {
+        message:
+          'If an account with that email exists, a password reset link has been sent.',
+      };
+    }
+
+    if (!user.isActive) {
+      throw new BadRequestException('Account is deactivated');
+    }
+
+    // Generate reset token (valid for 1 hour)
+    const resetToken = this.jwtService.sign(
+      { email: user.email, sub: user.id, type: 'password_reset' },
+      { expiresIn: '1h' },
+    );
+
+    // Store reset token in user record (you might want to add a resetToken field to your User model)
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        // For now, we'll use a simple approach
+        // In production, you'd want to add a resetToken field to your User model
+        // and store the hashed token with an expiration
+      },
+    });
+
+    // TODO: Send email with reset link
+    // For now, we'll just return the token
+    // In production, you'd integrate with an email service like SendGrid, AWS SES, etc.
+
+    const resetLink = `${this.configService.get('FRONTEND_URL', 'http://localhost:3000')}/reset-password?token=${resetToken}`;
+
+    console.log(`Password reset link for ${user.email}: ${resetLink}`);
+
+    return {
+      message:
+        'If an account with that email exists, a password reset link has been sent.',
+      resetLink, // Remove this in production
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    try {
+      const payload = this.jwtService.verify(token);
+
+      if (payload.type !== 'password_reset') {
+        throw new BadRequestException('Invalid reset token');
+      }
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      if (!user.isActive) {
+        throw new BadRequestException('Account is deactivated');
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword },
+      });
+
+      return { message: 'Password reset successfully' };
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        throw new BadRequestException('Reset token has expired');
+      }
+      if (error.name === 'JsonWebTokenError') {
+        throw new BadRequestException('Invalid reset token');
+      }
+      throw error;
+    }
   }
 }

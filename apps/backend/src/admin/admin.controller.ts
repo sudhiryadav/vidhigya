@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -91,5 +103,171 @@ export class AdminController {
   @Get('reports')
   async getReports() {
     return this.adminService.getReports();
+  }
+
+  /**
+   * Get all users (SUPER_ADMIN only)
+   */
+  @Get('users')
+  @Roles(UserRole.SUPER_ADMIN)
+  async getAllUsers(
+    @Query('search') search?: string,
+    @Query('role') role?: string,
+    @Query('isActive') isActive?: string,
+    @Query('practiceId') practiceId?: string,
+  ) {
+    const filters: any = { search, role, practiceId };
+
+    if (isActive !== undefined) {
+      filters.isActive = isActive === 'true';
+    }
+
+    return this.adminService.getAllUsers(filters);
+  }
+
+  /**
+   * Get practice users (ADMIN can see users in their practice)
+   */
+  @Get('practice-users')
+  async getPracticeUsers(
+    @Query('search') search?: string,
+    @Query('role') role?: string,
+    @Query('isActive') isActive?: string,
+    @Req() req: any,
+  ) {
+    const filters: any = { search, role };
+
+    if (isActive !== undefined) {
+      filters.isActive = isActive === 'true';
+    }
+
+    // Get current user's practice ID
+    const currentUser = await this.adminService.getCurrentUserPractice(
+      req.user.sub,
+    );
+
+    if (!currentUser.primaryPracticeId) {
+      throw new ForbiddenException(
+        'You must be associated with a practice to view practice users',
+      );
+    }
+
+    return this.adminService.getPracticeUsers(
+      currentUser.primaryPracticeId,
+      filters,
+    );
+  }
+
+  /**
+   * Update user information
+   */
+  @Put('users/:id')
+  async updateUser(
+    @Param('id') id: string,
+    @Body()
+    updateData: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      isActive?: boolean;
+      role?: string;
+      password?: string;
+    },
+    @Req() req: any,
+  ) {
+    const currentUser = await this.adminService.getCurrentUserPractice(
+      req.user.sub,
+    );
+
+    return this.adminService.updateUser(
+      id,
+      updateData,
+      req.user.sub,
+      req.user.role,
+      currentUser.primaryPracticeId,
+    );
+  }
+
+  /**
+   * Reset user password
+   */
+  @Post('users/:id/reset-password')
+  async resetUserPassword(
+    @Param('id') id: string,
+    @Body() data: { newPassword: string },
+    @Req() req: any,
+  ) {
+    const currentUser = await this.adminService.getCurrentUserPractice(
+      req.user.sub,
+    );
+
+    return this.adminService.resetUserPassword(
+      id,
+      data.newPassword,
+      req.user.sub,
+      req.user.role,
+      currentUser.primaryPracticeId,
+    );
+  }
+
+  /**
+   * Deactivate user
+   */
+  @Patch('users/:id/deactivate')
+  async deactivateUser(@Param('id') id: string, @Req() req: any) {
+    const currentUser = await this.adminService.getCurrentUserPractice(
+      req.user.sub,
+    );
+
+    return this.adminService.deactivateUser(
+      id,
+      req.user.sub,
+      req.user.role,
+      currentUser.primaryPracticeId,
+    );
+  }
+
+  /**
+   * Reactivate user
+   */
+  @Patch('users/:id/reactivate')
+  async reactivateUser(@Param('id') id: string, @Req() req: any) {
+    const currentUser = await this.adminService.getCurrentUserPractice(
+      req.user.sub,
+    );
+
+    return this.adminService.reactivateUser(
+      id,
+      req.user.sub,
+      req.user.role,
+      currentUser.primaryPracticeId,
+    );
+  }
+
+  /**
+   * Create new user
+   */
+  @Post('users')
+  async createUser(
+    @Body()
+    createData: {
+      name: string;
+      email: string;
+      password: string;
+      role: string;
+      phone?: string;
+    },
+    @Req() req: any,
+  ) {
+    const currentUser = await this.adminService.getCurrentUserPractice(
+      req.user.sub,
+    );
+
+    return this.adminService.createUser(
+      createData,
+      req.user.sub,
+      req.user.role,
+      currentUser.primaryPracticeId,
+    );
   }
 }

@@ -92,6 +92,20 @@ class ApiClient {
     return Promise.resolve();
   }
 
+  async forgotPassword(email: string) {
+    return this.request("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    return this.request("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, newPassword }),
+    });
+  }
+
   async uploadAvatar(file: File): Promise<any> {
     try {
       const formData = new FormData();
@@ -268,6 +282,86 @@ class ApiClient {
     });
   }
 
+  // User Management endpoints
+  async getAllUsers(filters?: {
+    search?: string;
+    role?: string;
+    isActive?: boolean;
+    practiceId?: string;
+  }) {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.role) params.append("role", filters.role);
+    if (filters?.isActive !== undefined)
+      params.append("isActive", filters.isActive.toString());
+    if (filters?.practiceId) params.append("practiceId", filters.practiceId);
+
+    return this.request(`/admin/users?${params.toString()}`);
+  }
+
+  async getPracticeUsers(filters?: {
+    search?: string;
+    role?: string;
+    isActive?: boolean;
+  }) {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.role) params.append("role", filters.role);
+    if (filters?.isActive !== undefined)
+      params.append("isActive", filters.isActive.toString());
+
+    return this.request(`/admin/practice-users?${params.toString()}`);
+  }
+
+  async updateUser(
+    id: string,
+    data: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      isActive?: boolean;
+      role?: string;
+      password?: string;
+    }
+  ) {
+    return this.request(`/admin/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async resetUserPassword(id: string, newPassword: string) {
+    return this.request(`/admin/users/${id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ newPassword }),
+    });
+  }
+
+  async deactivateUser(id: string) {
+    return this.request(`/admin/users/${id}/deactivate`, {
+      method: "PATCH",
+    });
+  }
+
+  async reactivateUser(id: string) {
+    return this.request(`/admin/users/${id}/reactivate`, {
+      method: "PATCH",
+    });
+  }
+
+  async createUser(data: {
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+    phone?: string;
+  }) {
+    return this.request("/admin/users", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
   // New admin endpoints for admin pages
   async getAdminDocuments(filters?: {
     search?: string;
@@ -312,6 +406,10 @@ class ApiClient {
   // Dashboard endpoints
   async getDashboardStats() {
     return this.request("/cases/dashboard");
+  }
+
+  async getPracticeDashboardStats() {
+    return this.request("/cases/practice-dashboard");
   }
 
   async getUpcomingHearings() {
