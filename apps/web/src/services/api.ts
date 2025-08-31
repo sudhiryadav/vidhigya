@@ -517,6 +517,10 @@ class ApiClient {
     location?: string;
     eventType: string;
     isAllDay?: boolean;
+    isRecurring?: boolean;
+    recurrenceRule?: string;
+    caseId?: string;
+    clientId?: string;
     participantIds?: string[];
   }) {
     return this.request("/calendar", {
@@ -535,6 +539,10 @@ class ApiClient {
       location?: string;
       eventType?: string;
       isAllDay?: boolean;
+      isRecurring?: boolean;
+      recurrenceRule?: string;
+      caseId?: string;
+      clientId?: string;
     }
   ) {
     return this.request(`/calendar/${id}`, {

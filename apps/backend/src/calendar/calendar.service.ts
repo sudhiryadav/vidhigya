@@ -45,6 +45,8 @@ export interface UpdateEventDto {
   isAllDay?: boolean;
   isRecurring?: boolean;
   recurrenceRule?: string;
+  caseId?: string;
+  clientId?: string;
 }
 
 export interface UpdateParticipantStatusDto {
@@ -451,21 +453,45 @@ export class CalendarService {
   }
 
   async update(id: string, updateEventDto: UpdateEventDto, userId: string) {
+    // Find the event and check permissions
     const event = await this.prisma.calendarEvent.findFirst({
-      where: {
-        id,
-        createdById: userId,
+      where: { id },
+      include: {
+        createdBy: { select: { id: true } },
+        practice: { select: { id: true } },
       },
     });
 
     if (!event) {
-      throw new NotFoundException(
-        'Event not found or you do not have permission to edit it',
-      );
+      throw new NotFoundException('Event not found');
     }
 
-    // Validate practice access
-    await this.validatePracticeAccess(userId, event.practiceId);
+    // Check if user can edit this event
+    // Users can edit if they: created the event, are admin, or have practice access
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+
+    const canEdit =
+      event.createdBy.id === userId ||
+      user.role === 'SUPER_ADMIN' ||
+      user.role === 'ADMIN';
+
+    if (!canEdit) {
+      // Check if user has practice access
+      try {
+        await this.validatePracticeAccess(userId, event.practice.id);
+      } catch {
+        throw new ForbiddenException(
+          'You do not have permission to edit this event',
+        );
+      }
+    }
 
     // Validate dates if both are provided
     if (updateEventDto.startTime && updateEventDto.endTime) {
@@ -477,8 +503,39 @@ export class CalendarService {
       }
     }
 
-    // Prepare the update data with proper date formatting
-    const updateData: any = { ...updateEventDto };
+    // Validate eventType if provided
+    if (updateEventDto.eventType) {
+      const validEventTypes = [
+        'HEARING',
+        'CLIENT_MEETING',
+        'COURT_APPEARANCE',
+        'DEADLINE',
+        'INTERNAL_MEETING',
+        'OTHER',
+      ];
+      if (!validEventTypes.includes(updateEventDto.eventType)) {
+        throw new BadRequestException(
+          `Invalid event type: ${updateEventDto.eventType}`,
+        );
+      }
+    }
+
+    // Validate recurrence rule if event is being made recurring
+    if (
+      updateEventDto.isRecurring &&
+      (!updateEventDto.recurrenceRule ||
+        updateEventDto.recurrenceRule.trim() === '')
+    ) {
+      throw new BadRequestException(
+        'Recurrence rule is required when event is recurring',
+      );
+    }
+
+    // Clean and prepare the update data
+    const { caseId, clientId, ...cleanUpdateData } = updateEventDto;
+
+    // Prepare the update data with proper date formatting and relation handling
+    const updateData: any = { ...cleanUpdateData };
 
     // Convert string dates to Date objects if they exist
     if (updateData.startTime) {
@@ -487,6 +544,43 @@ export class CalendarService {
     if (updateData.endTime) {
       updateData.endTime = this.formatDateForPrisma(updateData.endTime);
     }
+
+    // Clean up optional string fields
+    if (updateData.location === '') {
+      updateData.location = null;
+    }
+    if (updateData.recurrenceRule === '') {
+      updateData.recurrenceRule = null;
+    }
+    if (updateData.description === '') {
+      updateData.description = null;
+    }
+
+    // Handle case connection if caseId is provided
+    if (caseId !== undefined) {
+      if (caseId && caseId.trim() !== '') {
+        updateData.case = { connect: { id: caseId } };
+      } else {
+        updateData.case = { disconnect: true };
+      }
+    }
+
+    // Handle client connection if clientId is provided
+    if (clientId !== undefined) {
+      if (clientId && clientId.trim() !== '') {
+        updateData.client = { connect: { id: clientId } };
+      } else {
+        updateData.client = { disconnect: true };
+      }
+    }
+
+    // Log the update data for debugging
+    console.log(
+      'Updating calendar event with data:',
+      JSON.stringify(updateData, null, 2),
+    );
+    console.log('Case ID from update DTO:', caseId);
+    console.log('Client ID from update DTO:', clientId);
 
     return this.prisma.calendarEvent.update({
       where: { id },
@@ -522,22 +616,50 @@ export class CalendarService {
   }
 
   async remove(id: string, userId: string) {
+    // Find the event and check permissions
     const event = await this.prisma.calendarEvent.findFirst({
-      where: {
-        id,
-        createdById: userId,
+      where: { id },
+      include: {
+        createdBy: { select: { id: true } },
+        practice: { select: { id: true } },
       },
     });
 
     if (!event) {
-      throw new NotFoundException(
-        'Event not found or you do not have permission to delete it',
-      );
+      throw new NotFoundException('Event not found');
     }
 
-    // Validate practice access
-    await this.validatePracticeAccess(userId, event.practiceId);
+    // Check if user can delete this event
+    // Users can delete if they: created the event, are admin, or have practice access
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
 
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+
+    const canDelete =
+      event.createdBy.id === userId ||
+      user.role === 'SUPER_ADMIN' ||
+      user.role === 'ADMIN';
+
+    if (!canDelete) {
+      // Check if user has practice access
+      try {
+        await this.validatePracticeAccess(userId, event.practice.id);
+      } catch {
+        throw new ForbiddenException(
+          'You do not have permission to delete this event',
+        );
+      }
+    }
+
+    // Log the deletion for debugging
+    console.log(`Deleting calendar event ${id} by user ${userId}`);
+
+    // Delete the event (Prisma will handle cascading deletes for participants)
     return this.prisma.calendarEvent.delete({
       where: { id },
     });

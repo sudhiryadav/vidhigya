@@ -30,6 +30,8 @@ interface CalendarEvent {
   location?: string;
   eventType: string;
   isAllDay: boolean;
+  isRecurring?: boolean;
+  recurrenceRule?: string;
   createdAt: string;
   createdBy: {
     id: string;
@@ -40,6 +42,11 @@ interface CalendarEvent {
     id: string;
     caseNumber: string;
     title: string;
+  };
+  client?: {
+    id: string;
+    name: string;
+    email: string;
   };
   participants: Array<{
     id: string;
@@ -62,6 +69,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  role?: string;
 }
 
 export default function CalendarPage() {
@@ -114,7 +122,10 @@ export default function CalendarPage() {
     location: "",
     eventType: "CLIENT_MEETING",
     isAllDay: false,
+    isRecurring: false,
+    recurrenceRule: "",
     caseId: "",
+    clientId: "",
     participants: [] as string[],
   });
 
@@ -126,7 +137,10 @@ export default function CalendarPage() {
     location: "",
     eventType: "CLIENT_MEETING",
     isAllDay: false,
+    isRecurring: false,
+    recurrenceRule: "",
     caseId: "",
+    clientId: "",
     participants: [] as string[],
   });
 
@@ -188,7 +202,7 @@ export default function CalendarPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await apiClient.getLawyers();
+      const response = await apiClient.getClients();
       if (response && Array.isArray(response)) {
         setUsers(response);
       } else {
@@ -237,7 +251,10 @@ export default function CalendarPage() {
           location: "",
           eventType: "CLIENT_MEETING",
           isAllDay: false,
+          isRecurring: false,
+          recurrenceRule: "",
           caseId: "",
+          clientId: "",
           participants: [],
         });
         fetchEvents();
@@ -257,12 +274,15 @@ export default function CalendarPage() {
     setEditFormData({
       title: event.title,
       description: event.description || "",
-      startTime: event.startTime,
-      endTime: event.endTime,
+      startTime: formatDateForInput(event.startTime),
+      endTime: formatDateForInput(event.endTime),
       location: event.location || "",
       eventType: event.eventType,
       isAllDay: event.isAllDay,
+      isRecurring: event.isRecurring || false,
+      recurrenceRule: event.recurrenceRule || "",
       caseId: event.case?.id || "",
+      clientId: event.client?.id || "",
       participants: event.participants.map((p) => p.user.id),
     });
     setShowEditModal(true);
@@ -353,6 +373,24 @@ export default function CalendarPage() {
     });
   };
 
+  // Helper function to format date for datetime-local input
+  const formatDateForInput = (dateString: string) => {
+    const date = new Date(dateString);
+
+    // Handle timezone conversion to local time
+    const localDate = new Date(
+      date.getTime() - date.getTimezoneOffset() * 60000
+    );
+
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, "0");
+    const day = String(localDate.getDate()).padStart(2, "0");
+    const hours = String(localDate.getHours()).padStart(2, "0");
+    const minutes = String(localDate.getMinutes()).padStart(2, "0");
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const getEventTypeIcon = (eventType: string) => {
     switch (eventType) {
       case "HEARING":
@@ -401,22 +439,57 @@ export default function CalendarPage() {
   };
 
   // Calendar navigation functions
-  const goToPreviousMonth = () => {
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
-    );
+  const goToPreviousPeriod = () => {
+    if (viewMode === "month") {
+      setCurrentDate(
+        new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+      );
+    } else if (viewMode === "week") {
+      const newDate = new Date(currentDate);
+      newDate.setDate(currentDate.getDate() - 7);
+      setCurrentDate(newDate);
+    } else if (viewMode === "day") {
+      const newDate = new Date(selectedDate);
+      newDate.setDate(selectedDate.getDate() - 1);
+      setSelectedDate(newDate);
+      setCurrentDate(newDate);
+    }
   };
 
-  const goToNextMonth = () => {
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
-    );
+  const goToNextPeriod = () => {
+    if (viewMode === "month") {
+      setCurrentDate(
+        new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+      );
+    } else if (viewMode === "week") {
+      const newDate = new Date(currentDate);
+      newDate.setDate(currentDate.getDate() + 7);
+      setCurrentDate(newDate);
+    } else if (viewMode === "day") {
+      const newDate = new Date(selectedDate);
+      newDate.setDate(selectedDate.getDate() + 1);
+      setSelectedDate(newDate);
+      setCurrentDate(newDate);
+    }
   };
 
   const goToToday = () => {
     const today = new Date();
     setCurrentDate(today);
     setSelectedDate(today);
+  };
+
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
+    if (viewMode === "day") {
+      setCurrentDate(date);
+    }
+  };
+
+  const handleDateDoubleClick = (date: Date) => {
+    setSelectedDate(date);
+    setCurrentDate(date);
+    setViewMode("day");
   };
 
   const getDaysInMonth = (date: Date) => {
@@ -459,6 +532,43 @@ export default function CalendarPage() {
   const isSelected = (date: Date) => {
     if (!date) return false;
     return date.toDateString() === selectedDate.toDateString();
+  };
+
+  // Week and Day view helper functions
+  const getWeekDays = (date: Date) => {
+    const weekDays = [];
+    const startOfWeek = new Date(date);
+    startOfWeek.setDate(date.getDate() - date.getDay()); // Start from Sunday
+
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      weekDays.push(day);
+    }
+
+    return weekDays;
+  };
+
+  const getTimeSlots = () => {
+    const slots = [];
+    for (let hour = 6; hour <= 22; hour++) {
+      slots.push(`${hour.toString().padStart(2, "0")}:00`);
+    }
+    return slots;
+  };
+
+  const getEventsForDateAndTime = (date: Date, timeSlot: string) => {
+    if (!date) return [];
+    const [hour] = timeSlot.split(":").map(Number);
+
+    return events.filter((event) => {
+      const eventDate = new Date(event.startTime);
+      const eventHour = eventDate.getHours();
+
+      return (
+        eventDate.toDateString() === date.toDateString() && eventHour === hour
+      );
+    });
   };
 
   return (
@@ -523,19 +633,28 @@ export default function CalendarPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-4">
               <button
-                onClick={goToPreviousMonth}
+                onClick={goToPreviousPeriod}
                 className="p-2 text-muted-foreground hover:text-foreground"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <h2 className="text-lg font-semibold text-foreground">
-                {currentDate.toLocaleDateString("en-US", {
-                  month: "long",
-                  year: "numeric",
-                })}
+                {viewMode === "month" &&
+                  currentDate.toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                {viewMode === "week" &&
+                  `${getWeekDays(currentDate)[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${getWeekDays(currentDate)[6].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+                {viewMode === "day" &&
+                  selectedDate.toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
               </h2>
               <button
-                onClick={goToNextMonth}
+                onClick={goToNextPeriod}
                 className="p-2 text-muted-foreground hover:text-foreground"
               >
                 <ChevronRight className="w-5 h-5" />
@@ -576,60 +695,192 @@ export default function CalendarPage() {
           </div>
 
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
-            {/* Day headers */}
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div
-                key={day}
-                className="bg-muted p-2 text-center text-sm font-medium text-muted-foreground"
-              >
-                {day}
-              </div>
-            ))}
+          {viewMode === "month" && (
+            <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden p-1">
+              {/* Day headers */}
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <div
+                  key={day}
+                  className="bg-muted p-2 text-center text-sm font-medium text-muted-foreground"
+                >
+                  {day}
+                </div>
+              ))}
 
-            {/* Calendar days */}
-            {getDaysInMonth(currentDate).map((date, index) => (
-              <div
-                key={index}
-                className={`min-h-[120px] bg-card p-3 ${
-                  date && isToday(date) ? "bg-blue-50 dark:bg-blue-900/20" : ""
-                } ${date && isSelected(date) ? "ring-2 ring-blue-500" : ""}`}
-              >
-                {date && (
-                  <>
-                    <div className="text-sm font-medium text-foreground mb-1 pl-1">
-                      {date.getDate()}
+              {/* Calendar days */}
+              {getDaysInMonth(currentDate).map((date, index) => (
+                <div
+                  key={index}
+                  className={`min-h-[120px] bg-card p-3 cursor-pointer hover:bg-muted transition-colors ${
+                    date && isToday(date)
+                      ? "bg-blue-50 dark:bg-blue-900/20"
+                      : ""
+                  } ${date && isSelected(date) ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
+                  onClick={() => date && handleDateClick(date)}
+                  onDoubleClick={() => date && handleDateDoubleClick(date)}
+                >
+                  {date && (
+                    <>
+                      <div className="text-sm font-medium text-foreground mb-1 pl-1">
+                        {date.getDate()}
+                      </div>
+                      <div className="space-y-1">
+                        {getEventsForDate(date)
+                          .slice(0, 3)
+                          .map((event) => (
+                            <div
+                              key={event.id}
+                              className={`text-xs p-1 rounded cursor-pointer ${getEventTypeColor(
+                                event.eventType
+                              )}`}
+                              onClick={() =>
+                                canManageEvents
+                                  ? handleEditClick(event)
+                                  : handleViewClick(event)
+                              }
+                            >
+                              <div className="font-medium truncate">
+                                {event.title}
+                              </div>
+                              <div className="text-xs opacity-75">
+                                {formatTime(event.startTime)}
+                              </div>
+                            </div>
+                          ))}
+                        {getEventsForDate(date).length > 3 && (
+                          <div className="text-xs text-muted-foreground text-center">
+                            +{getEventsForDate(date).length - 3} more
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Week View */}
+          {viewMode === "week" && (
+            <div className="grid grid-cols-8 gap-px bg-border rounded-lg overflow-hidden p-1">
+              {/* Time column header */}
+              <div className="bg-muted p-2 text-center text-sm font-medium text-muted-foreground">
+                Time
+              </div>
+
+              {/* Day headers */}
+              {getWeekDays(currentDate).map((date) => (
+                <div
+                  key={date.toISOString()}
+                  className="bg-muted p-2 text-center text-sm font-medium text-muted-foreground"
+                >
+                  <div>
+                    {date.toLocaleDateString("en-US", { weekday: "short" })}
+                  </div>
+                  <div className="text-xs">{date.getDate()}</div>
+                </div>
+              ))}
+
+              {/* Time slots */}
+              {getTimeSlots().map((timeSlot) => (
+                <div key={timeSlot} className="contents">
+                  {/* Time label */}
+                  <div className="bg-card p-2 text-xs text-muted-foreground text-right pr-3 border-r border-border">
+                    {timeSlot}
+                  </div>
+
+                  {/* Day columns */}
+                  {getWeekDays(currentDate).map((date) => (
+                    <div
+                      key={date.toISOString()}
+                      className={`bg-card p-1 border-r border-border min-h-[60px] ${
+                        isToday(date) ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                      }`}
+                    >
+                      {getEventsForDateAndTime(date, timeSlot).map((event) => (
+                        <div
+                          key={event.id}
+                          className={`text-xs p-1 rounded cursor-pointer mb-1 ${getEventTypeColor(
+                            event.eventType
+                          )}`}
+                          onClick={() =>
+                            canManageEvents
+                              ? handleEditClick(event)
+                              : handleViewClick(event)
+                          }
+                        >
+                          <div className="font-medium truncate">
+                            {event.title}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="space-y-1">
-                      {getEventsForDate(date)
-                        .slice(0, 3)
-                        .map((event) => (
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Day View */}
+          {viewMode === "day" && (
+            <div className="grid grid-cols-1 gap-px bg-border rounded-lg overflow-hidden p-1">
+              {/* Day header */}
+              <div className="bg-muted p-4 text-center">
+                <div className="text-lg font-medium text-foreground">
+                  {selectedDate.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </div>
+              </div>
+
+              {/* Time slots */}
+              {getTimeSlots().map((timeSlot) => (
+                <div
+                  key={timeSlot}
+                  className="bg-card p-3 border-b border-border min-h-[80px]"
+                >
+                  <div className="flex">
+                    <div className="w-20 text-sm font-medium text-muted-foreground">
+                      {timeSlot}
+                    </div>
+                    <div className="flex-1">
+                      {getEventsForDateAndTime(selectedDate, timeSlot).map(
+                        (event) => (
                           <div
                             key={event.id}
-                            className={`text-xs p-1 rounded cursor-pointer ${getEventTypeColor(
+                            className={`p-2 rounded cursor-pointer mb-2 ${getEventTypeColor(
                               event.eventType
                             )}`}
-                            onClick={() => handleViewClick(event)}
+                            onClick={() =>
+                              canManageEvents
+                                ? handleEditClick(event)
+                                : handleViewClick(event)
+                            }
                           >
-                            <div className="font-medium truncate">
-                              {event.title}
-                            </div>
-                            <div className="text-xs opacity-75">
-                              {formatTime(event.startTime)}
-                            </div>
+                            <div className="font-medium">{event.title}</div>
+                            {event.description && (
+                              <div className="text-sm opacity-75 mt-1">
+                                {event.description}
+                              </div>
+                            )}
+                            {event.location && (
+                              <div className="text-xs opacity-75 mt-1 flex items-center">
+                                <MapPin className="w-3 h-3 mr-1" />
+                                {event.location}
+                              </div>
+                            )}
                           </div>
-                        ))}
-                      {getEventsForDate(date).length > 3 && (
-                        <div className="text-xs text-muted-foreground text-center">
-                          +{getEventsForDate(date).length - 3} more
-                        </div>
+                        )
                       )}
                     </div>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Events List */}
@@ -898,6 +1149,69 @@ export default function CalendarPage() {
                   </select>
                 </div>
               )}
+              {users.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Related Client (Optional)
+                  </label>
+                  <select
+                    value={createFormData.clientId}
+                    onChange={(e) =>
+                      setCreateFormData({
+                        ...createFormData,
+                        clientId: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  >
+                    <option value="">Select a client</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name} - {user.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isRecurring"
+                  checked={createFormData.isRecurring}
+                  onChange={(e) =>
+                    setCreateFormData({
+                      ...createFormData,
+                      isRecurring: e.target.checked,
+                    })
+                  }
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label
+                  htmlFor="isRecurring"
+                  className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                >
+                  Recurring event
+                </label>
+              </div>
+              {createFormData.isRecurring && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Recurrence Rule
+                  </label>
+                  <input
+                    type="text"
+                    value={createFormData.recurrenceRule}
+                    onChange={(e) =>
+                      setCreateFormData({
+                        ...createFormData,
+                        recurrenceRule: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., FREQ=WEEKLY;INTERVAL=1"
+                    className="mt-1 block w-full border border-border rounded-md px-3 py-2 text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -1071,6 +1385,71 @@ export default function CalendarPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+              )}
+              {users.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Related Client (Optional)
+                  </label>
+                  <select
+                    value={editFormData.clientId}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        clientId: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  >
+                    <option value="">Select a client</option>
+                    {users
+                      .filter((user) => user.role === "CLIENT")
+                      .map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name} - {user.email}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="editIsRecurring"
+                  checked={editFormData.isRecurring}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      isRecurring: e.target.checked,
+                    })
+                  }
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label
+                  htmlFor="editIsRecurring"
+                  className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                >
+                  Recurring event
+                </label>
+              </div>
+              {editFormData.isRecurring && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Recurrence Rule
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.recurrenceRule}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        recurrenceRule: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., FREQ=WEEKLY;INTERVAL=1"
+                    className="mt-1 block w-full border border-border rounded-md px-3 py-2 text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               )}
               <div className="flex items-center">
