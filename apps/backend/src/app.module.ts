@@ -20,6 +20,7 @@ import { QdrantModule } from './config/qdrant.module';
 import { S3Module } from './config/s3.module';
 import { CourtsModule } from './courts/courts.module';
 import { DocumentsModule } from './documents/documents.module';
+import { EcourtsModule } from './ecourts/ecourts.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { LogsModule } from './logs/logs.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -61,6 +62,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     // ClientPortalModule,
     TasksModule,
     NotificationsModule,
+    EcourtsModule,
     // VideoCallsModule,
   ],
   controllers: [AppController],

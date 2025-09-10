@@ -36,16 +36,12 @@ export default function LoginPage() {
     setFormError("root", { message: "" });
 
     try {
-      console.log("🔐 Attempting login with:", data.email);
       const result = await login(data.email, data.password);
-      console.log("🔐 Login result:", result);
 
       if (result.success) {
         toast.success("Login successful! Redirecting...");
-        console.log("✅ Login successful, waiting for AuthGuard redirect...");
         // Let AuthGuard handle the redirect automatically
       } else {
-        console.log("❌ Login failed:", result.error);
         setFormError("root", { message: result.error || "Login failed" });
       }
     } catch (err) {
@@ -69,10 +65,7 @@ export default function LoginPage() {
     setFormError("root", { message: "" });
 
     try {
-      console.log("🔐 Attempting demo login with:", demoEmail);
       const result = await login(demoEmail, demoPassword);
-      console.log("🔐 Demo login result:", result);
-
       if (result.success) {
         // Get role from email for better messaging
         let role = "User";
@@ -84,14 +77,8 @@ export default function LoginPage() {
         else if (demoEmail.includes("sarah")) role = "Individual Lawyer";
 
         toast.success(`Welcome! Logged in as ${role}`);
-        console.log(
-          "✅ Demo login successful as",
-          role,
-          "- waiting for AuthGuard redirect..."
-        );
         // Let AuthGuard handle the redirect automatically
       } else {
-        console.log("❌ Demo login failed:", result.error);
         setFormError("root", { message: result.error || "Login failed" });
         toast.error(result.error || "Login failed. Please try again.");
       }

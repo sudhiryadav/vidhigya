@@ -22,10 +22,6 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized access
-      console.log("Unauthorized access");
-    }
     return Promise.reject(error);
   }
 );

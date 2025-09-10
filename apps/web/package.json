@@ -21,7 +21,10 @@
     "react-hot-toast": "^2.5.2",
     "react-select": "^5.10.2",
     "socket.io-client": "^4.8.1",
-    "yup": "^1.7.0"
+    "yup": "^1.7.0",
+    "date-fns": "^2.30.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.28.3",

@@ -280,21 +280,11 @@ export default function Dashboard() {
           apiClient.getUserRecentActivity(), // Use user-specific endpoint for lawyers
         ]);
 
-        console.log("Dashboard API responses:", {
-          stats: statsResponse,
-          hearings: hearingsResponse,
-          bills: billsResponse,
-          activity: activityResponse,
-          userRole: user?.role,
-          isAdmin: user?.role === "ADMIN" || user?.role === "SUPER_ADMIN",
-        });
-
         if (
           statsResponse &&
           typeof statsResponse === "object" &&
           "totalCases" in statsResponse
         ) {
-          console.log("Setting stats:", statsResponse);
           setStats(statsResponse as DashboardStats);
         } else {
           console.warn("Invalid stats response:", statsResponse);

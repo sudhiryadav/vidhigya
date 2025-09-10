@@ -34,19 +34,7 @@ export const PermissionGate = ({
   // Check role-based access
   if (roles && roles.length > 0) {
     if (!user) return <>{fallback}</>;
-
     const hasRequiredRole = roles.includes(user.role);
-
-    // Debug logging for User Management
-    if (roles.includes("ADMIN") || roles.includes("SUPER_ADMIN")) {
-      console.log("PermissionGate role check:", {
-        roles,
-        userRole: user?.role,
-        hasRequiredRole,
-        willShow: hasRequiredRole,
-      });
-    }
-
     if (!hasRequiredRole) return <>{fallback}</>;
   }
 

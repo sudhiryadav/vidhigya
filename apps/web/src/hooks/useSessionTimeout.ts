@@ -17,7 +17,6 @@ export function useSessionTimeout() {
     const timeoutMs = sessionTimeout * 60 * 1000; // Convert minutes to milliseconds
 
     timeoutRef.current = setTimeout(() => {
-      console.log(`Session expired after ${sessionTimeout} minutes`);
       logout();
     }, timeoutMs);
 
@@ -28,7 +27,6 @@ export function useSessionTimeout() {
       }
 
       timeoutRef.current = setTimeout(() => {
-        console.log(`Session expired after ${sessionTimeout} minutes`);
         logout();
       }, timeoutMs);
     };

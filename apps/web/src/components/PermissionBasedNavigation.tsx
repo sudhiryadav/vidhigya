@@ -13,8 +13,10 @@ import {
   Calendar,
   CheckSquare,
   ChevronDown,
+  ChevronRight,
   CreditCard,
   FileText,
+  Gavel,
   Home,
   LogOut,
   Menu,
@@ -91,13 +93,13 @@ const baseNavigationItems = [
     action: PermissionAction.READ,
     resource: PermissionResource.DOCUMENT,
   },
-  {
-    name: "Calendar",
-    href: "/calendar",
-    icon: Calendar,
-    action: PermissionAction.READ,
-    resource: PermissionResource.CALENDAR,
-  },
+  // {
+  //   name: "Calendar",
+  //   href: "/calendar",
+  //   icon: Calendar,
+  //   action: PermissionAction.READ,
+  //   resource: PermissionResource.CALENDAR,
+  // },
   {
     name: "Tasks",
     href: "/tasks",
@@ -140,6 +142,41 @@ const baseNavigationItems = [
     href: "/notifications",
     icon: Bell,
     // Always visible for authenticated users
+  },
+  {
+    name: "eCourts Services",
+    href: "/ecourts",
+    icon: Gavel,
+    action: PermissionAction.READ,
+    resource: PermissionResource.CASE,
+    hasSubMenu: true,
+    subMenuItems: [
+      {
+        name: "Case Search",
+        href: "/ecourts/cases/search",
+        icon: Search,
+      },
+      {
+        name: "Court Search",
+        href: "/ecourts/courts/search",
+        icon: Building2,
+      },
+      {
+        name: "Judge Search",
+        href: "/ecourts/judges/search",
+        icon: User,
+      },
+      {
+        name: "Hearings",
+        href: "/ecourts/hearings",
+        icon: Calendar,
+      },
+      {
+        name: "Orders",
+        href: "/ecourts/orders",
+        icon: FileText,
+      },
+    ],
   },
 
   // Admin specific navigation
@@ -220,6 +257,12 @@ interface NavigationItemProps {
   resource?: PermissionResource;
   isActive: boolean;
   onClick: () => void;
+  hasSubMenu?: boolean;
+  subMenuItems?: Array<{
+    name: string;
+    href: string;
+    icon: any;
+  }>;
 }
 
 const NavigationItem = ({
@@ -232,30 +275,42 @@ const NavigationItem = ({
   resource,
   isActive,
   onClick,
+  hasSubMenu = false,
+  subMenuItems = [],
 }: NavigationItemProps) => {
   const { user } = useAuth();
-
-  // Debug logging for User Management
-  if (name === "User Management") {
-    console.log("NavigationItem for User Management:", {
-      name,
-      userRole: user?.role,
-      roles,
-      excludeRoles,
-      action,
-      resource,
-    });
-  }
+  const [subMenuOpen, setSubMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   // Check if user role should be excluded
   if (excludeRoles && user && excludeRoles.includes(user.role)) {
-    if (name === "User Management") {
-      console.log("User Management excluded by excludeRoles");
-    }
     return null;
   }
 
-  const linkContent = (
+  // Check if any sub-menu item is active
+  const isSubMenuActive = subMenuItems.some((item) => pathname === item.href);
+  const isMainMenuActive = isActive || isSubMenuActive;
+
+  const mainMenuContent = hasSubMenu ? (
+    <button
+      onClick={() => setSubMenuOpen(!subMenuOpen)}
+      className={`flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+        isMainMenuActive
+          ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-r-2 border-blue-600"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+      }`}
+    >
+      <div className="flex items-center space-x-3">
+        <Icon className="w-5 h-5" />
+        <span>{name}</span>
+      </div>
+      <ChevronRight
+        className={`w-4 h-4 transition-transform duration-200 ${
+          subMenuOpen ? "rotate-90" : ""
+        }`}
+      />
+    </button>
+  ) : (
     <Link
       href={href}
       className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
@@ -270,16 +325,47 @@ const NavigationItem = ({
     </Link>
   );
 
+  const subMenuContent = hasSubMenu && subMenuOpen && (
+    <div className="ml-6 mt-1 space-y-1">
+      {subMenuItems.map((subItem) => {
+        const isSubActive = pathname === subItem.href;
+        const SubIcon = subItem.icon;
+        return (
+          <Link
+            key={subItem.href}
+            href={subItem.href}
+            className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+              isSubActive
+                ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+            onClick={onClick}
+          >
+            <SubIcon className="w-4 h-4" />
+            <span>{subItem.name}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+
+  const content = (
+    <div>
+      {mainMenuContent}
+      {subMenuContent}
+    </div>
+  );
+
   // If no specific permissions required, just check roles
   if (!action || !resource) {
     if (roles && roles.length > 0) {
       return (
         <PermissionGate roles={roles} requireAll={false}>
-          {linkContent}
+          {content}
         </PermissionGate>
       );
     }
-    return linkContent;
+    return content;
   }
 
   // Use permission-based gate
@@ -290,7 +376,7 @@ const NavigationItem = ({
       roles={roles}
       requireAll={false}
     >
-      {linkContent}
+      {content}
     </PermissionGate>
   );
 };
@@ -446,18 +532,6 @@ export function PermissionBasedNavigation() {
           <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
             {allNavigationItems.map((item) => {
               const isActive = pathname === item.href;
-              // Debug logging for User Management item
-              if (item.name === "User Management") {
-                console.log("User Management item:", {
-                  item,
-                  userRole: user?.role,
-                  hasRoles: !!item.roles,
-                  roles: item.roles,
-                  shouldShow: item.roles
-                    ? item.roles.includes(user?.role || "")
-                    : true,
-                });
-              }
               return (
                 <NavigationItem
                   key={`${item.name}-${item.href}`}

@@ -57,8 +57,6 @@ export default function RegisterPage() {
         businessType: formData.businessType,
       };
 
-      console.log("Registering user with data:", registrationData);
-
       // Call backend registration API
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/auth/register`,
@@ -77,8 +75,6 @@ export default function RegisterPage() {
       }
 
       const result = await response.json();
-      console.log("Registration successful:", result);
-
       // If registration is successful, automatically log in the user
       if (result.token) {
         // Store the token and user data
