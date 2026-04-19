@@ -878,7 +878,7 @@ export default function BillingPage() {
             className="space-y-4"
             onSubmit={handleCreateBill}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Amount *
@@ -905,7 +905,14 @@ export default function BillingPage() {
                 </div>
               </div>
               <div>
+                <label
+                  htmlFor="create-bill-bill-type"
+                  className="block text-sm font-medium text-foreground mb-1"
+                >
+                  Bill type <span className="text-red-500">*</span>
+                </label>
                 <select
+                  id="create-bill-bill-type"
                   value={formData.billType}
                   onChange={(e) =>
                     setFormData({
@@ -913,7 +920,8 @@ export default function BillingPage() {
                       billType: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground min-h-[42px]"
+                  required
                 >
                   <option value="CONSULTATION">Consultation</option>
                   <option value="COURT_FILING">Court Filing</option>
@@ -938,11 +946,18 @@ export default function BillingPage() {
                       dueDate: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground min-h-[42px]"
                 />
               </div>
               <div>
+                <label
+                  htmlFor="create-bill-client"
+                  className="block text-sm font-medium text-foreground mb-1"
+                >
+                  Client <span className="text-red-500">*</span>
+                </label>
                 <select
+                  id="create-bill-client"
                   value={formData.clientId}
                   onChange={(e) =>
                     setFormData({
@@ -950,7 +965,8 @@ export default function BillingPage() {
                       clientId: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground min-h-[42px]"
+                  required
                 >
                   <option value="">Select a client</option>
                   {cases.map((caseItem) => (
@@ -960,8 +976,18 @@ export default function BillingPage() {
                   ))}
                 </select>
               </div>
-              <div>
+              <div className="md:col-span-2">
+                <label
+                  htmlFor="create-bill-case"
+                  className="block text-sm font-medium text-foreground mb-1"
+                >
+                  Related case{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </label>
                 <select
+                  id="create-bill-case"
                   value={formData.caseId}
                   onChange={(e) =>
                     setFormData({
@@ -969,7 +995,7 @@ export default function BillingPage() {
                       caseId: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground min-h-[42px]"
                 >
                   <option value="">Select case (optional)</option>
                   {cases.map((caseItem) => (

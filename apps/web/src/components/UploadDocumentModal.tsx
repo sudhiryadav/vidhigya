@@ -71,22 +71,24 @@ export default function UploadDocumentModal({
     try {
       setLoading(true);
 
-      // Create FormData for file upload
-      const uploadData = new FormData();
-      uploadData.append("title", formData.title);
-      uploadData.append("description", formData.description);
-      uploadData.append("category", formData.category);
-      if (formData.caseId) {
-        uploadData.append("caseId", formData.caseId);
+      // Backend expects multipart field name `file` (single file per request).
+      for (const file of selectedFiles) {
+        const uploadData = new FormData();
+        uploadData.append("title", formData.title);
+        uploadData.append("description", formData.description);
+        uploadData.append("category", formData.category);
+        if (formData.caseId) {
+          uploadData.append("caseId", formData.caseId);
+        }
+        uploadData.append("file", file);
+        await apiClient.uploadDocument(uploadData);
       }
 
-      selectedFiles.forEach((file) => {
-        uploadData.append("files", file);
-      });
-
-      await apiClient.uploadDocument(uploadData);
-
-      toast.success("Documents uploaded successfully!");
+      toast.success(
+        selectedFiles.length > 1
+          ? `${selectedFiles.length} documents uploaded successfully!`
+          : "Document uploaded successfully!",
+      );
 
       // Reset form
       setFormData({
@@ -103,7 +105,11 @@ export default function UploadDocumentModal({
       }
     } catch (error) {
       console.error("Error uploading documents:", error);
-      toast.error("Failed to upload documents. Please try again.");
+      const msg =
+        error instanceof Error
+          ? error.message
+          : "Failed to upload documents. Please try again.";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { formatDocumentAssistantAnswer } from "@/utils/documentSearchHits";
 
 interface QAMessage {
   id: string;
@@ -949,13 +950,15 @@ export default function DocumentQA() {
                         )}
                         <div className="flex-1">
                           <p className="text-sm whitespace-pre-wrap">
-                            {message.content}
+                            {message.type === "answer"
+                              ? formatDocumentAssistantAnswer(message.content)
+                              : message.content}
                           </p>
 
                           {message.type === "answer" &&
                             message.sources &&
                             message.sources.length > 0 && (
-                              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 hidden">
+                              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                                   Sources:
                                 </p>
@@ -1031,7 +1034,15 @@ export default function DocumentQA() {
                         </span>
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => copyToClipboard(message.content)}
+                            onClick={() =>
+                              copyToClipboard(
+                                message.type === "answer"
+                                  ? formatDocumentAssistantAnswer(
+                                      message.content,
+                                    )
+                                  : message.content,
+                              )
+                            }
                             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                           >
                             <Copy className="w-3 h-3" />

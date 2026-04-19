@@ -79,18 +79,18 @@ export function CaseDetails({
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-6"></div>
+          <div className="h-8 bg-muted rounded w-1/3 mb-4"></div>
+          <div className="h-4 bg-muted rounded w-2/3 mb-6"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+              <div className="h-4 bg-muted rounded w-1/2"></div>
+              <div className="h-4 bg-muted rounded w-3/4"></div>
             </div>
             <div className="space-y-4">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+              <div className="h-4 bg-muted rounded w-1/2"></div>
+              <div className="h-4 bg-muted rounded w-3/4"></div>
             </div>
           </div>
         </div>
@@ -101,13 +101,13 @@ export function CaseDetails({
   return (
     <div className="space-y-6">
       {/* Case Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl font-bold text-foreground mb-2">
               {caseData.caseNumber}
             </h1>
-            <h2 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">
+            <h2 className="text-lg font-medium text-foreground mb-3">
               {caseData.caseTitle}
             </h2>
             <div className="flex items-center gap-3">
@@ -116,7 +116,7 @@ export function CaseDetails({
               >
                 {caseData.status.replace("_", " ")}
               </span>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-muted-foreground">
                 Stage: {caseData.caseStage}
               </span>
             </div>
@@ -126,36 +126,36 @@ export function CaseDetails({
         {/* Case Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-gray-400" />
+            <Calendar className="h-5 w-5 text-muted-foreground" />
             <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="text-sm text-muted-foreground">
                 Filing Date
               </div>
-              <div className="font-medium text-gray-900 dark:text-white">
+              <div className="font-medium text-foreground">
                 {formatDate(caseData.filingDate)}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <MapPin className="w-5 h-5 text-gray-400" />
+            <MapPin className="h-5 w-5 text-muted-foreground" />
             <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="text-sm text-muted-foreground">
                 Court
               </div>
-              <div className="font-medium text-gray-900 dark:text-white">
+              <div className="font-medium text-foreground">
                 {caseData.court.name}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <FileText className="w-5 h-5 text-gray-400" />
+            <FileText className="h-5 w-5 text-muted-foreground" />
             <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="text-sm text-muted-foreground">
                 Case Type
               </div>
-              <div className="font-medium text-gray-900 dark:text-white">
+              <div className="font-medium text-foreground">
                 {caseData.caseType}
               </div>
             </div>
@@ -166,33 +166,33 @@ export function CaseDetails({
       {/* Case Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Parties Information */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <User className="w-5 h-5" />
             Parties
           </h3>
 
           {caseData.petitioner.length > 0 && (
             <div className="mb-4">
-              <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+              <h4 className="font-medium text-foreground mb-2">
                 Petitioners
               </h4>
               <div className="space-y-2">
                 {caseData.petitioner.map((party, index) => (
                   <div
                     key={index}
-                    className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
+                    className="rounded-lg bg-primary/10 p-3"
                   >
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="font-medium text-foreground">
                       {party.name}
                     </div>
                     {party.address && (
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <div className="text-sm text-muted-foreground mt-1">
                         {party.address}
                       </div>
                     )}
                     {party.phone && (
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="text-sm text-muted-foreground">
                         Phone: {party.phone}
                       </div>
                     )}
@@ -204,25 +204,25 @@ export function CaseDetails({
 
           {caseData.respondent.length > 0 && (
             <div>
-              <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+              <h4 className="font-medium text-foreground mb-2">
                 Respondents
               </h4>
               <div className="space-y-2">
                 {caseData.respondent.map((party, index) => (
                   <div
                     key={index}
-                    className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg"
+                    className="rounded-lg bg-destructive/10 p-3"
                   >
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="font-medium text-foreground">
                       {party.name}
                     </div>
                     {party.address && (
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <div className="text-sm text-muted-foreground mt-1">
                         {party.address}
                       </div>
                     )}
                     {party.phone && (
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="text-sm text-muted-foreground">
                         Phone: {party.phone}
                       </div>
                     )}
@@ -234,8 +234,8 @@ export function CaseDetails({
         </div>
 
         {/* Advocates Information */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <Gavel className="w-5 h-5" />
             Advocates
           </h3>
@@ -245,26 +245,26 @@ export function CaseDetails({
               {caseData.advocate.map((advocate, index) => (
                 <div
                   key={index}
-                  className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                  className="rounded-lg bg-muted p-3"
                 >
-                  <div className="font-medium text-gray-900 dark:text-white">
+                  <div className="font-medium text-foreground">
                     {advocate.name}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm text-muted-foreground">
                     Type: {advocate.type.replace("_", " ")}
                   </div>
                   {advocate.barCouncilNumber && (
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-muted-foreground">
                       Bar Council: {advocate.barCouncilNumber}
                     </div>
                   )}
                   {advocate.phone && (
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-muted-foreground">
                       Phone: {advocate.phone}
                     </div>
                   )}
                   {advocate.address && (
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-muted-foreground">
                       Address: {advocate.address}
                     </div>
                   )}
@@ -272,7 +272,7 @@ export function CaseDetails({
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-muted-foreground">
               No advocate information available
             </p>
           )}
@@ -281,38 +281,38 @@ export function CaseDetails({
 
       {/* Case Details Information */}
       {caseData.caseDetails && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4">
             Case Details
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
               {caseData.caseDetails.caseCategory && (
                 <div>
-                  <span className="font-medium text-gray-600 dark:text-gray-400">
+                  <span className="font-medium text-muted-foreground">
                     Category:
                   </span>
-                  <span className="ml-2 text-gray-900 dark:text-white">
+                  <span className="ml-2 text-foreground">
                     {caseData.caseDetails.caseCategory}
                   </span>
                 </div>
               )}
               {caseData.caseDetails.caseSubCategory && (
                 <div>
-                  <span className="font-medium text-gray-600 dark:text-gray-400">
+                  <span className="font-medium text-muted-foreground">
                     Sub Category:
                   </span>
-                  <span className="ml-2 text-gray-900 dark:text-white">
+                  <span className="ml-2 text-foreground">
                     {caseData.caseDetails.caseSubCategory}
                   </span>
                 </div>
               )}
               {caseData.caseDetails.caseValue && (
                 <div>
-                  <span className="font-medium text-gray-600 dark:text-gray-400">
+                  <span className="font-medium text-muted-foreground">
                     Case Value:
                   </span>
-                  <span className="ml-2 text-gray-900 dark:text-white">
+                  <span className="ml-2 text-foreground">
                     ₹{caseData.caseDetails.caseValue.toLocaleString()}
                   </span>
                 </div>
@@ -321,30 +321,30 @@ export function CaseDetails({
             <div className="space-y-3">
               {caseData.caseDetails.caseNature && (
                 <div>
-                  <span className="font-medium text-gray-600 dark:text-gray-400">
+                  <span className="font-medium text-muted-foreground">
                     Nature:
                   </span>
-                  <span className="ml-2 text-gray-900 dark:text-white">
+                  <span className="ml-2 text-foreground">
                     {caseData.caseDetails.caseNature}
                   </span>
                 </div>
               )}
               {caseData.caseDetails.caseAct && (
                 <div>
-                  <span className="font-medium text-gray-600 dark:text-gray-400">
+                  <span className="font-medium text-muted-foreground">
                     Act:
                   </span>
-                  <span className="ml-2 text-gray-900 dark:text-white">
+                  <span className="ml-2 text-foreground">
                     {caseData.caseDetails.caseAct}
                   </span>
                 </div>
               )}
               {caseData.caseDetails.caseSection && (
                 <div>
-                  <span className="font-medium text-gray-600 dark:text-gray-400">
+                  <span className="font-medium text-muted-foreground">
                     Section:
                   </span>
-                  <span className="ml-2 text-gray-900 dark:text-white">
+                  <span className="ml-2 text-foreground">
                     {caseData.caseDetails.caseSection}
                   </span>
                 </div>
@@ -353,10 +353,10 @@ export function CaseDetails({
           </div>
           {caseData.caseDetails.caseDescription && (
             <div className="mt-4">
-              <span className="font-medium text-gray-600 dark:text-gray-400">
+              <span className="font-medium text-muted-foreground">
                 Description:
               </span>
-              <p className="mt-1 text-gray-900 dark:text-white">
+              <p className="mt-1 text-foreground">
                 {caseData.caseDetails.caseDescription}
               </p>
             </div>
@@ -366,8 +366,8 @@ export function CaseDetails({
 
       {/* Hearings */}
       {hearings.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <Calendar className="w-5 h-5" />
             Hearings
           </h3>
@@ -375,13 +375,13 @@ export function CaseDetails({
             {hearings.map((hearing) => (
               <div
                 key={hearing.id}
-                className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg"
+                className="p-4 rounded-lg border border-border"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       {getHearingStatusIcon(hearing.status)}
-                      <span className="font-medium text-gray-900 dark:text-white">
+                      <span className="font-medium text-foreground">
                         {formatDateTime(
                           hearing.hearingDate,
                           hearing.hearingTime
@@ -393,16 +393,16 @@ export function CaseDetails({
                         {hearing.status}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    <div className="text-sm text-muted-foreground mb-2">
                       Purpose: {hearing.purpose}
                     </div>
                     {hearing.judge && (
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="text-sm text-muted-foreground">
                         Judge: {hearing.judge.name}
                       </div>
                     )}
                     {hearing.remarks && (
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      <div className="text-sm text-muted-foreground mt-2">
                         Remarks: {hearing.remarks}
                       </div>
                     )}
@@ -416,8 +416,8 @@ export function CaseDetails({
 
       {/* Orders */}
       {orders.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <FileText className="w-5 h-5" />
             Orders
           </h3>
@@ -425,14 +425,14 @@ export function CaseDetails({
             {orders.map((order) => (
               <div
                 key={order.id}
-                className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg"
+                className="p-4 rounded-lg border border-border"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="font-medium text-foreground">
                       {order.orderType.replace("_", " ")}
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-muted-foreground">
                       {formatDate(order.orderDate)}
                     </div>
                   </div>
@@ -442,10 +442,10 @@ export function CaseDetails({
                     {order.orderStatus}
                   </span>
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <div className="text-sm text-muted-foreground mb-2">
                   Judge: {order.judge.name}
                 </div>
-                <div className="text-sm text-gray-900 dark:text-white">
+                <div className="text-sm text-foreground">
                   {order.orderText}
                 </div>
                 {order.pdfUrl && (
@@ -454,7 +454,7 @@ export function CaseDetails({
                       href={order.pdfUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm"
+                      className="text-sm text-primary hover:text-primary/80"
                     >
                       View PDF
                     </a>

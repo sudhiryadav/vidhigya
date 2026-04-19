@@ -323,7 +323,7 @@ export class CalendarService {
       throw new ForbiddenException('User not found');
     }
 
-    let where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {};
 
     // SUPER_ADMIN can see all events
     if (user.role === 'SUPER_ADMIN') {

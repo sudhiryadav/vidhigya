@@ -4,7 +4,12 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { ChevronDown, Monitor, Moon, Sun } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-export function ThemeToggle() {
+type ThemeToggleProps = {
+  /** Use "above" when the control sits near the bottom of the viewport (e.g. sidebar). */
+  menuPlacement?: "above" | "below";
+};
+
+export function ThemeToggle({ menuPlacement = "below" }: ThemeToggleProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -56,7 +61,13 @@ export function ThemeToggle() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 bg-card rounded-lg shadow-lg border border-border py-1 z-[9999] backdrop-blur-sm">
+        <div
+          className={`absolute right-0 w-48 bg-card rounded-lg shadow-lg border border-border py-1 z-[9999] backdrop-blur-sm ${
+            menuPlacement === "above"
+              ? "bottom-full mb-2"
+              : "top-full mt-2"
+          }`}
+        >
           {themes.map((themeOption) => {
             const ThemeIcon = themeOption.icon;
             return (

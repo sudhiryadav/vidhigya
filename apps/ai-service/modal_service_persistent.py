@@ -20,7 +20,9 @@ from sentence_transformers import SentenceTransformer
 # Initialize Modal app with unique identifier to force rebuild
 app = modal.App("qurieus-app-v58")  # Increment version for rebuild
 
-API_KEY = os.environ.get("API_KEY")
+def _modal_expected_api_key() -> Optional[str]:
+    """Must match backend AI_SERVICE_API_KEY (or MODAL_API_KEY). Modal secret QURIEUS_KEY may define API_KEY or AI_SERVICE_API_KEY."""
+    return os.environ.get("API_KEY") or os.environ.get("AI_SERVICE_API_KEY")
 
 # Hugging Face token (no longer directly used for llama-cpp-python wheel download, but kept if other HF models/data are used later)
 HF_TOKEN = "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"
@@ -194,7 +196,8 @@ web_app = FastAPI(title="Qurieus GPU Service with Persistent Storage", version="
 
 
 def verify_api_key(x_api_key: str = Header(...)):
-    if x_api_key != API_KEY:
+    expected = _modal_expected_api_key()
+    if not expected or x_api_key != expected:
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
 
@@ -273,6 +276,7 @@ async def query_documents_endpoint(
         # Initialize Qdrant client
         try:
             from qdrant_client import QdrantClient
+            from qdrant_client.models import Filter, FieldCondition, MatchValue
 
             if qdrant_api_key:
                 qdrant_client = QdrantClient(
@@ -322,36 +326,37 @@ async def query_documents_endpoint(
                 },
             )
 
-        # Search Qdrant for similar vectors with optimized parameters
+        # Search Qdrant for similar vectors (query_points replaces deprecated search)
         search_start = time.time()
+        query_filter = Filter(
+            must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))]
+        )
         try:
             # First search with higher threshold for quality results
-            search_results = qdrant_client.search(
+            response = qdrant_client.query_points(
                 collection_name=qdrant_collection,
-                query_vector=query_embedding,
-                query_filter={
-                    "must": [{"key": "user_id", "match": {"value": user_id}}]
-                },
-                limit=12,  # Increased for better coverage
+                query=query_embedding,
+                query_filter=query_filter,
+                limit=12,
                 with_payload=True,
-                score_threshold=0.3,  # Higher threshold for better quality
+                score_threshold=0.3,
             )
+            search_results = response.points if hasattr(response, "points") else []
 
             # If we don't get enough results, try with lower threshold
             if len(search_results) < 3:
                 print(
                     f"Only {len(search_results)} results with high threshold, trying lower threshold..."
                 )
-                search_results = qdrant_client.search(
+                response = qdrant_client.query_points(
                     collection_name=qdrant_collection,
-                    query_vector=query_embedding,
-                    query_filter={
-                        "must": [{"key": "user_id", "match": {"value": user_id}}]
-                    },
+                    query=query_embedding,
+                    query_filter=query_filter,
                     limit=8,
                     with_payload=True,
-                    score_threshold=0.2,  # Lower threshold as fallback
+                    score_threshold=0.2,
                 )
+                search_results = response.points if hasattr(response, "points") else []
 
             print(
                 f"PERFLOG: Qdrant search completed in {time.time() - search_start:.2f}s"
@@ -512,6 +517,7 @@ Instructions:
 - Structure your response logically and be concise
 - Do not make up information that's not in the context
 - For follow-up questions, build upon previous answers when relevant
+- Reply in plain English sentences and short paragraphs only. Never output JSON, YAML, CSV, or raw structured dumps of search results or document metadata
 [/INST]"""
 
         print(f"Generating response with prompt length: {len(prompt)}")
@@ -677,8 +683,9 @@ Instructions:
 async def health_check(x_api_key: str = Header(...)):
     print("=== Health Check Started ===")
     print(f"Received x_api_key: {x_api_key}")
-    print(f"Expected API_KEY: {API_KEY}")
-    print(f"Keys match: {x_api_key == API_KEY}")
+    expected = _modal_expected_api_key()
+    print(f"Expected API_KEY: {expected}")
+    print(f"Keys match: {x_api_key == expected}")
     verify_api_key(x_api_key)
     print("API Key verification passed")
 

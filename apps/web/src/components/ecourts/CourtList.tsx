@@ -68,15 +68,15 @@ export function CourtList({
         {[...Array(3)].map((_, index) => (
           <div
             key={index}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 animate-pulse"
+            className="animate-pulse rounded-lg border border-border bg-card p-6 shadow-sm"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-2"></div>
-                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                <div className="mb-2 h-4 w-1/4 rounded bg-muted"></div>
+                <div className="mb-3 h-6 w-3/4 rounded bg-muted"></div>
+                <div className="h-3 w-1/2 rounded bg-muted"></div>
               </div>
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+              <div className="h-8 w-20 rounded bg-muted"></div>
             </div>
           </div>
         ))}
@@ -87,11 +87,11 @@ export function CourtList({
   if (courts.length === 0) {
     return (
       <div className="text-center py-12">
-        <Building2 className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+        <Building2 className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+        <h3 className="mb-2 text-lg font-medium text-foreground">
           No courts found
         </h3>
-        <p className="text-gray-500 dark:text-gray-400">
+        <p className="text-muted-foreground">
           Try adjusting your search criteria to find more courts.
         </p>
       </div>
@@ -103,15 +103,15 @@ export function CourtList({
       {courts.map((court) => (
         <div
           key={court.id}
-          className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer transition-all duration-200 hover:shadow-md ${
-            selectedCourt === court.id ? "ring-2 ring-blue-500" : ""
+          className={`cursor-pointer rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md ${
+            selectedCourt === court.id ? "ring-2 ring-ring" : ""
           }`}
           onClick={() => handleCourtClick(court.id)}
         >
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-lg font-semibold text-foreground">
                   {court.name}
                 </h3>
                 <span
@@ -121,7 +121,7 @@ export function CourtList({
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
+              <div className="grid grid-cols-1 gap-4 text-sm text-muted-foreground md:grid-cols-2">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4" />
                   <span>
@@ -150,7 +150,7 @@ export function CourtList({
                       href={court.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                      className="text-primary hover:text-primary/80"
                       onClick={(e) => e.stopPropagation()}
                     >
                       Visit Website
@@ -160,8 +160,8 @@ export function CourtList({
               </div>
 
               {court.address && (
-                <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="flex items-start gap-2 text-gray-700 dark:text-gray-300">
+                <div className="mt-3 rounded-lg bg-muted p-3">
+                  <div className="flex items-start gap-2 text-foreground">
                     <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <span className="text-sm">{court.address}</span>
                   </div>
@@ -172,13 +172,13 @@ export function CourtList({
             <div className="flex items-center gap-2 ml-4">
               <button
                 onClick={(e) => handleViewDetails(e, court.id)}
-                className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="p-2 text-muted-foreground transition-colors hover:text-primary"
                 title="View Details"
               >
                 <Eye className="w-5 h-5" />
               </button>
               <ChevronRight
-                className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+                className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${
                   selectedCourt === court.id ? "rotate-90" : ""
                 }`}
               />
@@ -187,43 +187,43 @@ export function CourtList({
 
           {/* Expanded Details */}
           {selectedCourt === court.id && (
-            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+            <div className="mt-6 border-t border-border pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Court Information */}
                 <div>
-                  <h5 className="font-medium text-gray-900 dark:text-white mb-3">
+                  <h5 className="mb-3 font-medium text-foreground">
                     Court Information
                   </h5>
                   <div className="space-y-2 text-sm">
                     <div>
-                      <span className="font-medium text-gray-600 dark:text-gray-400">
+                      <span className="font-medium text-muted-foreground">
                         ID:
                       </span>
-                      <span className="ml-2 text-gray-900 dark:text-white">
+                      <span className="ml-2 text-foreground">
                         {court.id}
                       </span>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-600 dark:text-gray-400">
+                      <span className="font-medium text-muted-foreground">
                         Type:
                       </span>
-                      <span className="ml-2 text-gray-900 dark:text-white">
+                      <span className="ml-2 text-foreground">
                         {court.type.replace("_", " ")}
                       </span>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-600 dark:text-gray-400">
+                      <span className="font-medium text-muted-foreground">
                         District:
                       </span>
-                      <span className="ml-2 text-gray-900 dark:text-white">
+                      <span className="ml-2 text-foreground">
                         {court.district}
                       </span>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-600 dark:text-gray-400">
+                      <span className="font-medium text-muted-foreground">
                         State:
                       </span>
-                      <span className="ml-2 text-gray-900 dark:text-white">
+                      <span className="ml-2 text-foreground">
                         {court.state}
                       </span>
                     </div>
@@ -232,40 +232,40 @@ export function CourtList({
 
                 {/* Contact Information */}
                 <div>
-                  <h5 className="font-medium text-gray-900 dark:text-white mb-3">
+                  <h5 className="mb-3 font-medium text-foreground">
                     Contact Information
                   </h5>
                   <div className="space-y-2 text-sm">
                     {court.phone && (
                       <div>
-                        <span className="font-medium text-gray-600 dark:text-gray-400">
+                        <span className="font-medium text-muted-foreground">
                           Phone:
                         </span>
-                        <span className="ml-2 text-gray-900 dark:text-white">
+                        <span className="ml-2 text-foreground">
                           {court.phone}
                         </span>
                       </div>
                     )}
                     {court.email && (
                       <div>
-                        <span className="font-medium text-gray-600 dark:text-gray-400">
+                        <span className="font-medium text-muted-foreground">
                           Email:
                         </span>
-                        <span className="ml-2 text-gray-900 dark:text-white">
+                        <span className="ml-2 text-foreground">
                           {court.email}
                         </span>
                       </div>
                     )}
                     {court.website && (
                       <div>
-                        <span className="font-medium text-gray-600 dark:text-gray-400">
+                        <span className="font-medium text-muted-foreground">
                           Website:
                         </span>
                         <a
                           href={court.website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                          className="ml-2 text-primary hover:text-primary/80"
                         >
                           {court.website}
                         </a>
@@ -278,11 +278,11 @@ export function CourtList({
               {/* Address */}
               {court.address && (
                 <div className="mt-6">
-                  <h5 className="font-medium text-gray-900 dark:text-white mb-3">
+                  <h5 className="mb-3 font-medium text-foreground">
                     Address
                   </h5>
-                  <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <div className="rounded-lg bg-muted p-3">
+                    <p className="text-sm text-foreground">
                       {court.address}
                     </p>
                   </div>

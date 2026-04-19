@@ -2,10 +2,35 @@ import os
 from typing import List, Optional
 
 from dotenv import load_dotenv
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+def _strip_env_quotes(value: Optional[str]) -> Optional[str]:
+    """Avoid stray quotes from .env breaking URLs and keys."""
+    if value is None:
+        return None
+    s = str(value).strip().strip("'").strip('"').strip()
+    return s if s else None
+
+
+def default_qdrant_collection() -> str:
+    """
+    Collection name when QDRANT_COLLECTION is unset.
+    Override via QDRANT_COLLECTION in .env (must match Nest backend QDRANT_COLLECTION).
+    """
+    explicit = (os.getenv("QDRANT_COLLECTION") or "").strip()
+    if explicit:
+        return explicit
+    env = (os.getenv("ENVIRONMENT") or "development").lower()
+    if env in ("production", "prod"):
+        return "vidhigya"
+    if env in ("staging", "stage"):
+        return "vidhigya-stage"
+    return "vidhigya_dev"
 
 
 class Settings(BaseSettings):
@@ -37,10 +62,20 @@ class Settings(BaseSettings):
     POSTMAN_API_KEY: Optional[str] = os.getenv("POSTMAN_API_KEY")
     POSTMAN_COLLECTION_ID: Optional[str] = os.getenv("POSTMAN_COLLECTION_ID")
 
-    # Qdrant settings
-    QDRANT_URL: str = os.getenv("QDRANT_URL")
-    QDRANT_COLLECTION: str = os.getenv("QDRANT_COLLECTION")
+    # Qdrant settings (QDRANT_COLLECTION defaults by ENVIRONMENT if unset — see default_qdrant_collection)
+    QDRANT_URL: Optional[str] = os.getenv("QDRANT_URL")
+    QDRANT_COLLECTION: str = Field(default_factory=default_qdrant_collection)
     QDRANT_API_KEY: Optional[str] = os.getenv("QDRANT_API_KEY")
+
+    @field_validator("QDRANT_URL", "QDRANT_API_KEY", mode="before")
+    @classmethod
+    def normalize_qdrant_strings(cls, v):
+        return _strip_env_quotes(v if isinstance(v, str) else v)
+
+    @field_validator("QDRANT_URL", mode="after")
+    @classmethod
+    def qdrant_url_trim_slash(cls, v: Optional[str]) -> Optional[str]:
+        return v.rstrip("/") if v else v
 
     # Backend API Key for authentication
     AI_SERVICE_API_KEY: str = os.getenv("AI_SERVICE_API_KEY", "")
@@ -75,3 +110,4 @@ if settings.DEBUG:
     print(f"Debug mode: {settings.DEBUG}")
     print(f"BACKEND_URL URL: {settings.BACKEND_URL}")
     print(f"NEXTAUTH_SECRET set: {'Yes' if settings.NEXTAUTH_SECRET else 'No'}")
+    print(f"QDRANT_COLLECTION (effective): {settings.QDRANT_COLLECTION}")

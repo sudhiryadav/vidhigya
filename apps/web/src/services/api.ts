@@ -680,7 +680,20 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      let message = `Upload failed (${response.status})`;
+      try {
+        const errBody = (await response.json()) as {
+          message?: string | string[];
+        };
+        if (typeof errBody?.message === "string") {
+          message = errBody.message;
+        } else if (Array.isArray(errBody?.message)) {
+          message = errBody.message.join(", ");
+        }
+      } catch {
+        // response may not be JSON
+      }
+      throw new Error(message);
     }
 
     return response.json();
@@ -919,6 +932,39 @@ class ApiClient {
     return this.request(`/documents/status/${aiDocumentId}`, {
       method: "GET",
     });
+  }
+
+  async retryDocumentProcessing(documentId: string): Promise<unknown> {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const url = `${API_BASE_URL}/documents/${documentId}/retry-processing`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      let message = `Request failed (${response.status})`;
+      try {
+        const errBody = (await response.json()) as {
+          message?: string | string[];
+        };
+        if (typeof errBody?.message === "string") {
+          message = errBody.message;
+        } else if (Array.isArray(errBody?.message)) {
+          message = errBody.message.join(", ");
+        }
+      } catch {
+        /* ignore */
+      }
+      throw new Error(message);
+    }
+
+    return response.json();
   }
 
   async downloadDocument(id: string) {

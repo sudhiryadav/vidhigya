@@ -1,6 +1,7 @@
 import { apiClient } from "@/services/api";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import LoadingOverlay from "./LoadingOverlay";
+import toast from "react-hot-toast";
 
 interface ProcessingStatus {
   status: string;
@@ -16,17 +17,21 @@ interface DocumentProgressTrackerProps {
   filename: string;
   onComplete?: () => void;
   onError?: (error: string) => void;
+  onRetrySuccess?: () => void;
   apiClient: typeof apiClient;
 }
 
 export default function DocumentProgressTracker({
+  documentId,
   aiDocumentId,
   onComplete,
   onError,
+  onRetrySuccess,
   apiClient,
 }: DocumentProgressTrackerProps) {
   const [status, setStatus] = useState<ProcessingStatus | null>(null);
   const [isPolling, setIsPolling] = useState(true);
+  const [retrying, setRetrying] = useState(false);
   const cleanupRef = useRef(false);
   const pollCountRef = useRef(0);
   const lastSuccessfulPollRef = useRef<number>(Date.now());
@@ -218,13 +223,14 @@ export default function DocumentProgressTracker({
 
   if (!status) {
     return (
-      <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
-        <LoadingOverlay
-          isVisible={true}
-          title="Checking Status"
-          message="Please wait while we check document processing status..."
-          absolute={false}
-        />
+      <div className="rounded-md border border-border bg-muted/40 p-3 flex items-start gap-3">
+        <Loader2 className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-foreground">Checking status…</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            You can leave this page — processing continues on the server.
+          </p>
+        </div>
       </div>
     );
   }
@@ -259,24 +265,60 @@ export default function DocumentProgressTracker({
         </div>
       )}
 
-      {status.error && status.status !== "NOT_FOUND" && (
-        <div className="p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-700 dark:text-red-300">
-            {status.error}
-          </p>
+      {(status.status === "ERROR" ||
+        (status.error && status.status !== "NOT_FOUND")) && (
+        <div className="p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg space-y-2">
+          {status.error && (
+            <p className="text-sm text-red-700 dark:text-red-300">
+              {status.error}
+            </p>
+          )}
+          {status.status === "ERROR" && (
+            <button
+              type="button"
+              disabled={retrying}
+              onClick={async () => {
+                setRetrying(true);
+                try {
+                  await apiClient.retryDocumentProcessing(documentId);
+                  onRetrySuccess?.();
+                } catch (error) {
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Could not restart processing.",
+                  );
+                } finally {
+                  setRetrying(false);
+                }
+              }}
+              className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              <RefreshCw
+                className={`w-3 h-3 mr-1 ${retrying ? "animate-spin" : ""}`}
+              />
+              {retrying ? "Retrying…" : "Retry processing"}
+            </button>
+          )}
         </div>
       )}
 
-      {isPolling && status.status === "PROCESSING" && (
-        <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-          <LoadingOverlay
-            isVisible={true}
-            title="Processing Document"
-            message="Please wait while we process your document..."
-            absolute={false}
-          />
-        </div>
-      )}
+      {isPolling &&
+        (status.status === "PROCESSING" || status.status === "PENDING") && (
+          <div className="rounded-md border border-blue-200 dark:border-blue-900 bg-blue-50/90 dark:bg-blue-950/50 p-3 flex items-start gap-3 mt-2">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Processing document…
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Embedding and indexing your file. You don&apos;t need to stay on
+                this page — work continues in the background. Refresh or return
+                later to see the updated status.
+              </p>
+            </div>
+          </div>
+        )}
 
       {status.timestamp && (
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">

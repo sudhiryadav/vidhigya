@@ -135,7 +135,7 @@ export abstract class BaseScraperService<T> {
       }
     }
 
-    throw lastError!;
+    throw lastError;
   }
 
   protected async closeBrowser(): Promise<void> {

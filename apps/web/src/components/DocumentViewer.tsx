@@ -1,13 +1,22 @@
 "use client";
 
 import { Download, ExternalLink, FileText, Loader2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+/** NEXT_PUBLIC_API_URL may be `http://host:port` or `http://host:port/api`. */
+function documentsApiBase(): string {
+  const raw = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+  if (!raw) return "";
+  return raw.endsWith("/api") ? raw : `${raw}/api`;
+}
 
 interface DocumentViewerProps {
   documentId: string;
   documentTitle: string;
   fileType: string;
   onClose: () => void;
+  /** 1-based page index for PDF viewers (uses `#page=` fragment). */
+  initialPage?: number;
 }
 
 export default function DocumentViewer({
@@ -15,6 +24,7 @@ export default function DocumentViewer({
   documentTitle,
   fileType,
   onClose,
+  initialPage,
 }: DocumentViewerProps) {
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,8 +37,13 @@ export default function DocumentViewer({
         setError(null);
 
         // Get the document download URL
+        const apiBase = documentsApiBase();
+        if (!apiBase) {
+          throw new Error("NEXT_PUBLIC_API_URL is not configured");
+        }
+
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/documents/${documentId}/download`,
+          `${apiBase}/documents/${documentId}/download`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -74,6 +89,20 @@ export default function DocumentViewer({
       }
     };
   }, [documentId]);
+
+  const viewerMediaUrl = useMemo(() => {
+    if (!documentUrl) return null;
+    const page =
+      typeof initialPage === "number" && initialPage > 0 ? initialPage : null;
+    if (!page || !fileType.toLowerCase().includes("pdf")) {
+      return documentUrl;
+    }
+    const hash = `page=${page}`;
+    if (documentUrl.includes("#")) {
+      return `${documentUrl}&${hash}`;
+    }
+    return `${documentUrl}#${hash}`;
+  }, [documentUrl, initialPage, fileType]);
 
   const handleDownload = () => {
     if (documentUrl) {
@@ -138,7 +167,7 @@ export default function DocumentViewer({
     if (fileType.includes("pdf")) {
       return (
         <iframe
-          src={documentUrl}
+          src={viewerMediaUrl || documentUrl}
           className="w-full h-full border-0"
           title={documentTitle}
         />
@@ -149,7 +178,7 @@ export default function DocumentViewer({
       return (
         <div className="flex items-center justify-center h-full">
           <img
-            src={documentUrl}
+            src={viewerMediaUrl || documentUrl}
             alt={documentTitle}
             className="max-w-full max-h-full object-contain"
           />
@@ -180,7 +209,7 @@ export default function DocumentViewer({
       return (
         <div className="h-full overflow-auto p-4">
           <iframe
-            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(documentUrl)}`}
+            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewerMediaUrl || documentUrl)}`}
             className="w-full h-full border-0"
             title={documentTitle}
           />

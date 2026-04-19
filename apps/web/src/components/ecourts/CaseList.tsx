@@ -68,15 +68,15 @@ export function CaseList({
         {[...Array(3)].map((_, index) => (
           <div
             key={index}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 animate-pulse"
+            className="animate-pulse rounded-lg border border-border bg-card p-6 shadow-sm"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-2"></div>
-                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                <div className="mb-2 h-4 w-1/4 rounded bg-muted"></div>
+                <div className="mb-3 h-6 w-3/4 rounded bg-muted"></div>
+                <div className="h-3 w-1/2 rounded bg-muted"></div>
               </div>
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+              <div className="h-8 w-20 rounded bg-muted"></div>
             </div>
           </div>
         ))}
@@ -87,11 +87,11 @@ export function CaseList({
   if (cases.length === 0) {
     return (
       <div className="text-center py-12">
-        <FileText className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+        <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+        <h3 className="mb-2 text-lg font-medium text-foreground">
           No cases found
         </h3>
-        <p className="text-gray-500 dark:text-gray-400">
+        <p className="text-muted-foreground">
           Try adjusting your search criteria to find more cases.
         </p>
       </div>
@@ -103,15 +103,15 @@ export function CaseList({
       {cases.map((caseItem) => (
         <div
           key={caseItem.caseNumber}
-          className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer transition-all duration-200 hover:shadow-md ${
-            selectedCase === caseItem.caseNumber ? "ring-2 ring-blue-500" : ""
+          className={`cursor-pointer rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md ${
+            selectedCase === caseItem.caseNumber ? "ring-2 ring-ring" : ""
           }`}
           onClick={() => handleCaseClick(caseItem.caseNumber)}
         >
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-lg font-semibold text-foreground">
                   {caseItem.caseNumber}
                 </h3>
                 <span
@@ -121,11 +121,11 @@ export function CaseList({
                 </span>
               </div>
 
-              <h4 className="text-base font-medium text-gray-800 dark:text-gray-200 mb-3">
+              <h4 className="mb-3 text-base font-medium text-foreground">
                 {caseItem.caseTitle}
               </h4>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
+              <div className="grid grid-cols-1 gap-4 text-sm text-muted-foreground md:grid-cols-2">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   <span>Filed: {formatDate(caseItem.filingDate)}</span>
@@ -152,8 +152,8 @@ export function CaseList({
               </div>
 
               {caseItem.nextHearingDate && (
-                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                <div className="mt-3 rounded-lg bg-primary/10 p-3">
+                  <div className="flex items-center gap-2 text-primary">
                     <Calendar className="w-4 h-4" />
                     <span className="text-sm font-medium">
                       Next Hearing: {formatDate(caseItem.nextHearingDate)}
@@ -166,13 +166,13 @@ export function CaseList({
             <div className="flex items-center gap-2 ml-4">
               <button
                 onClick={(e) => handleViewDetails(e, caseItem.caseNumber)}
-                className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="p-2 text-muted-foreground transition-colors hover:text-primary"
                 title="View Details"
               >
                 <Eye className="w-5 h-5" />
               </button>
               <ChevronRight
-                className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+                className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${
                   selectedCase === caseItem.caseNumber ? "rotate-90" : ""
                 }`}
               />
@@ -181,46 +181,46 @@ export function CaseList({
 
           {/* Expanded Details */}
           {selectedCase === caseItem.caseNumber && (
-            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+            <div className="mt-6 border-t border-border pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Case Details */}
                 <div>
-                  <h5 className="font-medium text-gray-900 dark:text-white mb-3">
+                  <h5 className="mb-3 font-medium text-foreground">
                     Case Details
                   </h5>
                   <div className="space-y-2 text-sm">
                     <div>
-                      <span className="font-medium text-gray-600 dark:text-gray-400">
+                      <span className="font-medium text-muted-foreground">
                         Type:
                       </span>
-                      <span className="ml-2 text-gray-900 dark:text-white">
+                      <span className="ml-2 text-foreground">
                         {caseItem.caseType}
                       </span>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-600 dark:text-gray-400">
+                      <span className="font-medium text-muted-foreground">
                         Stage:
                       </span>
-                      <span className="ml-2 text-gray-900 dark:text-white">
+                      <span className="ml-2 text-foreground">
                         {caseItem.caseStage}
                       </span>
                     </div>
                     {caseItem.caseDetails.caseCategory && (
                       <div>
-                        <span className="font-medium text-gray-600 dark:text-gray-400">
+                        <span className="font-medium text-muted-foreground">
                           Category:
                         </span>
-                        <span className="ml-2 text-gray-900 dark:text-white">
+                        <span className="ml-2 text-foreground">
                           {caseItem.caseDetails.caseCategory}
                         </span>
                       </div>
                     )}
                     {caseItem.caseDetails.caseValue && (
                       <div>
-                        <span className="font-medium text-gray-600 dark:text-gray-400">
+                        <span className="font-medium text-muted-foreground">
                           Value:
                         </span>
-                        <span className="ml-2 text-gray-900 dark:text-white">
+                        <span className="ml-2 text-foreground">
                           ₹{caseItem.caseDetails.caseValue.toLocaleString()}
                         </span>
                       </div>
@@ -230,39 +230,39 @@ export function CaseList({
 
                 {/* Court Information */}
                 <div>
-                  <h5 className="font-medium text-gray-900 dark:text-white mb-3">
+                  <h5 className="mb-3 font-medium text-foreground">
                     Court Information
                   </h5>
                   <div className="space-y-2 text-sm">
                     <div>
-                      <span className="font-medium text-gray-600 dark:text-gray-400">
+                      <span className="font-medium text-muted-foreground">
                         Name:
                       </span>
-                      <span className="ml-2 text-gray-900 dark:text-white">
+                      <span className="ml-2 text-foreground">
                         {caseItem.court.name}
                       </span>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-600 dark:text-gray-400">
+                      <span className="font-medium text-muted-foreground">
                         Type:
                       </span>
-                      <span className="ml-2 text-gray-900 dark:text-white">
+                      <span className="ml-2 text-foreground">
                         {caseItem.court.type.replace("_", " ")}
                       </span>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-600 dark:text-gray-400">
+                      <span className="font-medium text-muted-foreground">
                         District:
                       </span>
-                      <span className="ml-2 text-gray-900 dark:text-white">
+                      <span className="ml-2 text-foreground">
                         {caseItem.court.district}
                       </span>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-600 dark:text-gray-400">
+                      <span className="font-medium text-muted-foreground">
                         State:
                       </span>
-                      <span className="ml-2 text-gray-900 dark:text-white">
+                      <span className="ml-2 text-foreground">
                         {caseItem.court.state}
                       </span>
                     </div>
@@ -273,24 +273,24 @@ export function CaseList({
               {/* Advocates */}
               {caseItem.advocate.length > 0 && (
                 <div className="mt-6">
-                  <h5 className="font-medium text-gray-900 dark:text-white mb-3">
+                  <h5 className="mb-3 font-medium text-foreground">
                     Advocates
                   </h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {caseItem.advocate.map((advocate, index) => (
                       <div
                         key={index}
-                        className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                        className="rounded-lg bg-muted p-3"
                       >
-                        <div className="font-medium text-gray-900 dark:text-white">
+                        <div className="font-medium text-foreground">
                           {advocate.name}
                         </div>
                         {advocate.barCouncilNumber && (
-                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                          <div className="text-sm text-muted-foreground">
                             Bar Council: {advocate.barCouncilNumber}
                           </div>
                         )}
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                        <div className="text-sm text-muted-foreground">
                           Type: {advocate.type.replace("_", " ")}
                         </div>
                       </div>

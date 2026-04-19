@@ -81,14 +81,14 @@ export default function CourtSearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="mb-2 text-3xl font-bold text-foreground">
             Court Search
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-muted-foreground">
             Search for courts in the eCourts database by location, type, or name
           </p>
         </div>
@@ -101,7 +101,7 @@ export default function CourtSearchPage() {
         {/* Error Display */}
         {error && (
           <div className="mb-6">
-            <div className="border border-red-200 text-red-800 bg-red-50 dark:border-red-800 dark:text-red-200 dark:bg-red-900/20 rounded-lg p-4 flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive">
               <AlertCircle className="h-4 w-4" />
               <span>{error}</span>
             </div>
@@ -110,14 +110,14 @@ export default function CourtSearchPage() {
 
         {/* Search Results */}
         {searchPerformed && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <div className="rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-xl font-semibold text-foreground">
                 <Search className="w-5 h-5" />
                 Search Results
               </h2>
               {totalResults > 0 && (
-                <div className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="text-sm text-muted-foreground">
                   {totalResults} court{totalResults !== 1 ? "s" : ""} found
                 </div>
               )}
@@ -136,7 +136,7 @@ export default function CourtSearchPage() {
                 <button
                   onClick={handleLoadMore}
                   disabled={isLoading}
-                  className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-md border border-transparent bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isLoading ? "Loading..." : "Load More"}
                 </button>
@@ -148,11 +148,11 @@ export default function CourtSearchPage() {
         {/* No Search Performed State */}
         {!searchPerformed && (
           <div className="text-center py-12">
-            <Building2 className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            <Building2 className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
+            <h3 className="mb-2 text-lg font-medium text-foreground">
               Start Your Search
             </h3>
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-muted-foreground">
               Use the search form above to find courts in the eCourts database.
             </p>
           </div>

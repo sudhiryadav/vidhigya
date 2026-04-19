@@ -2,13 +2,21 @@
 
 import { AccessDenied } from "@/components/AccessDenied";
 import DocumentQA from "@/components/DocumentQA";
+import DocumentViewer from "@/components/DocumentViewer";
 import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import {
+  type DocumentSearchHit,
+  extractDocumentSearchHits,
+  formatSearchHitScore,
+} from "@/utils/documentSearchHits";
+import {
   ChevronDown,
+  ChevronLeft,
   ChevronUp,
   Copy,
+  FileStack,
   FileText,
   Loader2,
   Quote,
@@ -16,22 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-
-interface SearchResult {
-  score: number;
-  content: string;
-  filename: string;
-  page_number?: number;
-  chunk_index: number;
-  document_id: string;
-  file_type: string;
-  document_title?: string;
-  document_category?: string;
-  uploaded_by?: string;
-  uploaded_at?: string;
-  start_char?: number;
-  end_char?: number;
-}
+import toast from "react-hot-toast";
 
 interface Document {
   id: string;
@@ -70,19 +63,18 @@ interface Citation {
   createdAt: string;
 }
 
+const TAB_STORAGE_KEY = "vidhigya_search_page_tab";
+
 export default function SearchPage() {
   const { user } = useAuth();
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<"search" | "qa">("qa");
+  // Tab state (default: vector search; optional remembered choice)
+  const [activeTab, setActiveTab] = useState<"search" | "qa">("search");
 
   // Search states
   const [searchTerm, setSearchTerm] = useState("");
   const [searching, setSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(
-    null
-  );
+  const [searchResults, setSearchResults] = useState<DocumentSearchHit[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
@@ -96,13 +88,16 @@ export default function SearchPage() {
     null
   );
   const [showDocumentViewer, setShowDocumentViewer] = useState(false);
-  const [documentContent, setDocumentContent] = useState("");
+  const [viewerInitialPage, setViewerInitialPage] = useState<
+    number | undefined
+  >();
 
   // Draft states
   const [drafts, setDrafts] = useState<DraftSection[]>([]);
   const [currentDraft, setCurrentDraft] = useState<DraftSection | null>(null);
   const [showDraftModal, setShowDraftModal] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
+  const [draftDrawerOpen, setDraftDrawerOpen] = useState(false);
 
   // Role-based access control
   const isLawyer =
@@ -112,6 +107,25 @@ export default function SearchPage() {
   const isClient = user?.role === "CLIENT";
   const canAccessSearch = isLawyer || isClient;
   const canManageDrafts = isLawyer; // Only lawyers can manage drafts
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(TAB_STORAGE_KEY);
+      if (saved === "qa" || saved === "search") {
+        setActiveTab(saved);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(TAB_STORAGE_KEY, activeTab);
+    } catch {
+      /* ignore */
+    }
+  }, [activeTab]);
 
   // Save search query to history
   const saveSearchHistory = (query: string) => {
@@ -128,8 +142,8 @@ export default function SearchPage() {
     saveSearchHistory(searchTerm);
 
     try {
-      const results = await apiClient.searchDocuments(searchTerm, 50);
-      setSearchResults(results as SearchResult[]);
+      const raw = await apiClient.searchDocuments(searchTerm, 50);
+      setSearchResults(extractDocumentSearchHits(raw));
     } catch (error) {
       console.error("Search failed:", error);
       setSearchResults([]);
@@ -139,38 +153,62 @@ export default function SearchPage() {
   };
 
   // Handle result click to view document
-  const handleResultClick = async (result: SearchResult) => {
+  const handleResultClick = async (result: DocumentSearchHit) => {
     try {
-      const document = await apiClient.getDocument(result.document_id);
-      setSelectedDocument(document as Document);
+      const document = (await apiClient.getDocument(
+        result.document_id,
+      )) as Document;
+      setSelectedDocument(document);
+      setViewerInitialPage(
+        result.page_number != null && result.page_number > 0
+          ? result.page_number
+          : undefined,
+      );
       setShowDocumentViewer(true);
-
-      // Use content from search result
-      setDocumentContent(result.content);
     } catch (error) {
       console.error("Failed to fetch document:", error);
     }
   };
 
-  // Add search result to current draft
-  const handleAddToDraft = (result: SearchResult) => {
-    if (!currentDraft) return;
+  // Add search result to current draft (creates an in-memory draft if none is active)
+  const handleAddToDraft = (result: DocumentSearchHit) => {
+    const excerpt = result.content ?? "";
+    const citationId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-    const citation: Citation = {
-      id: Date.now().toString(),
-      documentId: result.document_id,
-      documentTitle: result.document_title || result.filename,
-      pageNumber: result.page_number,
-      content: result.content,
-      quote: result.content.substring(0, 100) + "...",
-      createdAt: new Date().toISOString(),
-    };
+    setCurrentDraft((prev) => {
+      const base: DraftSection =
+        prev ??
+        ({
+          id: `${Date.now()}`,
+          title: "",
+          content: "",
+          citations: [],
+          createdAt: new Date().toISOString(),
+        } satisfies DraftSection);
 
-    setCurrentDraft((prev) => ({
-      ...prev!,
-      content: prev!.content + "\n\n" + result.content,
-      citations: [...prev!.citations, citation],
-    }));
+      const citation: Citation = {
+        id: citationId,
+        documentId: result.document_id,
+        documentTitle:
+          result.document_title || result.filename || "Document",
+        pageNumber: result.page_number,
+        content: excerpt,
+        quote: `${excerpt.slice(0, 100)}${excerpt.length > 100 ? "…" : ""}`,
+        createdAt: new Date().toISOString(),
+      };
+
+      const nextContent = base.content
+        ? `${base.content}\n\n${excerpt}`
+        : excerpt;
+
+      return {
+        ...base,
+        content: nextContent,
+        citations: [...base.citations, citation],
+      };
+    });
+
+    toast.success("Passage added to draft");
   };
 
   // Create new draft
@@ -183,6 +221,7 @@ export default function SearchPage() {
       citations: [],
       createdAt: new Date().toISOString(),
     });
+    setDraftDrawerOpen(true);
     setShowDraftModal(true);
   };
 
@@ -207,14 +246,16 @@ export default function SearchPage() {
     });
 
     setShowDraftModal(false);
-    setCurrentDraft(null);
-    setDraftTitle("");
+    // Keep the saved draft active so "add to draft" from search keeps appending
+    setCurrentDraft(draftToSave);
+    setDraftTitle(draftToSave.title);
   };
 
   // Open existing draft
   const openDraft = (draft: DraftSection) => {
     setCurrentDraft(draft);
     setDraftTitle(draft.title);
+    setDraftDrawerOpen(true);
     setShowDraftModal(true);
   };
 
@@ -250,7 +291,7 @@ export default function SearchPage() {
   };
 
   // Filter search results
-  const filterResult = (result: SearchResult) => {
+  const filterResult = (result: DocumentSearchHit) => {
     if (
       categoryFilter !== "all" &&
       result.document_category !== categoryFilter
@@ -278,8 +319,13 @@ export default function SearchPage() {
   };
 
   // Copy text to clipboard
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Text copied to clipboard");
+    } catch {
+      toast.error("Could not copy text");
+    }
   };
 
   // Handle keyboard navigation for search history
@@ -307,6 +353,48 @@ export default function SearchPage() {
     }
   }, [historyIndex, searchHistory]);
 
+  const currentDraftSaved =
+    currentDraft != null &&
+    drafts.some((d) => d.id === currentDraft.id);
+
+  const showDraftSidebar =
+    canManageDrafts &&
+    (drafts.length > 0 ||
+      (currentDraft != null &&
+        (currentDraft.citations.length > 0 ||
+          currentDraft.content.trim().length > 0)));
+
+  const showUnsavedCurrent =
+    currentDraft != null &&
+    !currentDraftSaved &&
+    (currentDraft.citations.length > 0 ||
+      currentDraft.content.trim().length > 0);
+
+  const openCurrentDraft = () => {
+    if (!currentDraft) return;
+    setDraftTitle(currentDraft.title ? currentDraft.title : draftTitle);
+    setDraftDrawerOpen(true);
+    setShowDraftModal(true);
+  };
+
+  const toggleDraftDrawer = () => {
+    setDraftDrawerOpen((open) => !open);
+  };
+
+  const startNewDraft = () => {
+    if (
+      currentDraft &&
+      !drafts.some((d) => d.id === currentDraft.id) &&
+      (currentDraft.citations.length > 0 || currentDraft.content.trim())
+    ) {
+      const ok = window.confirm(
+        "Discard the current unsaved draft and start a new one?",
+      );
+      if (!ok) return;
+    }
+    createNewDraft();
+  };
+
   // If user doesn't have access to search, show access denied
   if (!canAccessSearch) {
     return (
@@ -319,7 +407,7 @@ export default function SearchPage() {
 
   return (
     <div className="h-screen bg-background overflow-hidden">
-      <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-8 flex flex-col">
+      <div className="mx-auto flex h-full min-h-0 max-w-7xl flex-col px-4 py-8 pt-16 sm:px-6 md:pt-8 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">
@@ -335,16 +423,7 @@ export default function SearchPage() {
           <div className="border-b border-border">
             <nav className="-mb-px flex space-x-8">
               <button
-                onClick={() => setActiveTab("qa")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "qa"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-                }`}
-              >
-                AI Assistant
-              </button>
-              <button
+                type="button"
                 onClick={() => setActiveTab("search")}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === "search"
@@ -354,22 +433,45 @@ export default function SearchPage() {
               >
                 Document Search
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("qa")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "qa"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                }`}
+              >
+                AI Assistant
+              </button>
             </nav>
           </div>
         </div>
 
-        {/* AI Assistant Tab */}
-        {activeTab === "qa" && (
-          <div className="flex-1 bg-card rounded-lg shadow-sm border border-border overflow-hidden min-h-0">
-            <DocumentQA />
-          </div>
-        )}
-
         {/* Document Search Tab */}
         {activeTab === "search" && (
-          <div className="flex-1 space-y-6 overflow-y-auto min-h-0">
+          <div className="flex flex-1 flex-col gap-6 min-h-0 overflow-hidden">
+            {/* Active draft hint (esp. before first save — sidebar lists unsaved draft too) */}
+            {canManageDrafts && showUnsavedCurrent && (
+              <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+                <p className="text-sm text-foreground">
+                  You have an unsaved draft with{" "}
+                  {currentDraft!.citations.length} passage
+                  {currentDraft!.citations.length === 1 ? "" : "s"} — open it
+                  to add a title and save.
+                </p>
+                <button
+                  type="button"
+                  onClick={openCurrentDraft}
+                  className="btn-primary shrink-0 px-4 py-2 text-sm"
+                >
+                  Open draft
+                </button>
+              </div>
+            )}
+
             {/* Search Bar */}
-            <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+            <div className="shrink-0 bg-card rounded-lg shadow-sm border border-border p-6">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
@@ -470,17 +572,17 @@ export default function SearchPage() {
               )}
             </div>
 
-            {/* Search Results */}
+            {/* Search Results — flex-1 so the list fills space down to the bottom of the viewport */}
             {searchResults.length > 0 && (
-              <div className="bg-card rounded-lg shadow-sm border border-border">
-                <div className="p-6 max-h-96 overflow-y-auto">
-                  <h3 className="text-lg font-medium text-foreground mb-4">
+              <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-card shadow-sm">
+                <div className="min-h-0 flex-1 overflow-y-auto p-6">
+                  <h3 className="mb-4 text-lg font-medium text-foreground">
                     Search Results ({searchResults.filter(filterResult).length})
                   </h3>
                   <div className="space-y-4">
                     {searchResults.filter(filterResult).map((result, index) => (
                       <div
-                        key={`${result.document_id}-${result.chunk_index}`}
+                        key={`${result.document_id}-${index}`}
                         className="p-4 border border-border rounded-lg hover:bg-muted transition-colors"
                       >
                         <div className="flex items-start justify-between">
@@ -488,50 +590,91 @@ export default function SearchPage() {
                             <div className="flex items-center space-x-2 mb-2">
                               <FileText className="w-4 h-4 text-blue-600" />
                               <span className="font-medium text-foreground">
-                                {result.document_title || result.filename}
+                                {result.document_title ||
+                                  result.filename ||
+                                  "Document"}
                               </span>
-                              {result.page_number && (
-                                <span className="text-sm text-gray-500 dark:text-gray-400">
-                                  (Page {result.page_number})
-                                </span>
-                              )}
+                              {result.page_number != null &&
+                                result.page_number > 0 && (
+                                  <span className="text-sm text-muted-foreground">
+                                    (Page {result.page_number})
+                                  </span>
+                                )}
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-                              {result.content}
+                            {(result.page_number != null &&
+                              result.page_number > 0) ||
+                            (result.start_char != null &&
+                              result.end_char != null) ? (
+                              <p className="text-xs text-muted-foreground mb-2">
+                                <span className="font-medium text-foreground">
+                                  Source:{" "}
+                                </span>
+                                {result.page_number != null &&
+                                result.page_number > 0 ? (
+                                  <>Page {result.page_number}</>
+                                ) : (
+                                  <>Matched excerpt</>
+                                )}
+                                {result.start_char != null &&
+                                result.end_char != null ? (
+                                  <>
+                                    {" "}
+                                    · characters {result.start_char}–
+                                    {result.end_char}
+                                  </>
+                                ) : null}
+                              </p>
+                            ) : null}
+                            <p className="text-sm text-muted-foreground mb-2 break-words">
+                              {result.content ?? "(No excerpt)"}
                             </p>
-                            <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
-                              <span>Score: {result.score.toFixed(2)}</span>
-                              <span>•</span>
-                              <span>{result.file_type}</span>
-                              {result.uploaded_by && (
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                              <span>
+                                Score: {formatSearchHitScore(result.score)}
+                              </span>
+                              {result.file_type ? (
                                 <>
-                                  <span>•</span>
+                                  <span aria-hidden="true">•</span>
+                                  <span>{result.file_type}</span>
+                                </>
+                              ) : null}
+                              {result.uploaded_by ? (
+                                <>
+                                  <span aria-hidden="true">•</span>
                                   <span>By: {result.uploaded_by}</span>
                                 </>
-                              )}
+                              ) : null}
                             </div>
                           </div>
                           <div className="flex items-center space-x-2 ml-4">
                             <button
+                              type="button"
                               onClick={() => handleResultClick(result)}
-                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                              title="View Document"
+                              className="cursor-pointer text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                              title="Open document in viewer"
+                              aria-label="Open document in viewer"
                             >
                               <FileText className="w-4 h-4" />
                             </button>
                             {canManageDrafts && (
                               <button
+                                type="button"
                                 onClick={() => handleAddToDraft(result)}
-                                className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
-                                title="Add to Draft"
+                                className="cursor-pointer text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                                title="Add this passage to your draft"
+                                aria-label="Add this passage to your draft"
                               >
                                 <Quote className="w-4 h-4" />
                               </button>
                             )}
                             <button
-                              onClick={() => copyToClipboard(result.content)}
-                              className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
-                              title="Copy Content"
+                              type="button"
+                              onClick={() =>
+                                copyToClipboard(result.content ?? "")
+                              }
+                              className="cursor-pointer text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
+                              title="Copy passage to clipboard"
+                              aria-label="Copy passage to clipboard"
                             >
                               <Copy className="w-4 h-4" />
                             </button>
@@ -546,7 +689,7 @@ export default function SearchPage() {
 
             {/* No Results */}
             {searchResults.length === 0 && searchTerm && !searching && (
-              <div className="bg-card rounded-lg shadow-sm border border-border p-8 text-center">
+              <div className="shrink-0 rounded-lg border border-border bg-card p-8 text-center shadow-sm">
                 <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-foreground mb-2">
                   No results found
@@ -556,6 +699,13 @@ export default function SearchPage() {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* AI Assistant Tab */}
+        {activeTab === "qa" && (
+          <div className="flex-1 bg-card rounded-lg shadow-sm border border-border overflow-hidden min-h-0">
+            <DocumentQA />
           </div>
         )}
       </div>
@@ -651,76 +801,138 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* Document Viewer Modal */}
-      {showDocumentViewer && selectedDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-foreground">
-                {selectedDocument.title}
-              </h3>
-              <button
-                onClick={() => setShowDocumentViewer(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
+      {showDocumentViewer && selectedDocument ? (
+        <DocumentViewer
+          documentId={selectedDocument.id}
+          documentTitle={selectedDocument.title}
+          fileType={selectedDocument.fileType}
+          initialPage={viewerInitialPage}
+          onClose={() => {
+            setShowDocumentViewer(false);
+            setSelectedDocument(null);
+            setViewerInitialPage(undefined);
+          }}
+        />
+      ) : null}
+
+      {/* Slide-out drafts drawer: top-aligned; panel width animates (toggle always clickable) */}
+      {canManageDrafts && activeTab === "search" && (
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-end pt-14 md:pt-6">
+          <div className="pointer-events-auto flex max-h-[min(32rem,calc(100vh-6rem))] flex-row items-start gap-0 overflow-visible border-0 bg-transparent p-0 shadow-none ring-0">
+            <div
+              id="draft-drawer-panel"
+              className={`min-h-0 overflow-hidden transition-[max-width] duration-500 ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none motion-reduce:duration-0 ${draftDrawerOpen ? "max-w-[min(18rem,calc(100vw-5rem))]" : "max-w-0"}`}
+            >
+              <div className="flex h-full min-h-0 w-[min(18rem,calc(100vw-5rem))] flex-col rounded-l-xl border border-border bg-card shadow-xl dark:border-border">
+                <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+                  <h4 className="shrink-0 text-base font-semibold tracking-tight text-foreground">
+                    Drafts
+                  </h4>
+                  {showDraftSidebar ? (
+                    <>
+                      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain">
+                        {showUnsavedCurrent && (
+                          <button
+                            type="button"
+                            onClick={openCurrentDraft}
+                            className="w-full rounded-md border border-primary/40 bg-primary/10 p-2 text-left transition-colors hover:bg-primary/15"
+                          >
+                            <div className="text-xs font-medium uppercase tracking-wide text-primary">
+                              Not saved yet
+                            </div>
+                            <div className="truncate text-sm font-medium text-foreground">
+                              {draftTitle.trim() ||
+                                currentDraft!.title.trim() ||
+                                "Untitled draft"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {currentDraft!.citations.length} passage
+                              {currentDraft!.citations.length === 1 ? "" : "s"}{" "}
+                              ·{" "}
+                              {new Date(
+                                currentDraft!.createdAt,
+                              ).toLocaleDateString()}
+                            </div>
+                          </button>
+                        )}
+                        {drafts.map((draft) => (
+                          <button
+                            key={draft.id}
+                            type="button"
+                            onClick={() => openDraft(draft)}
+                            className="w-full rounded-md bg-muted p-2 text-left transition-colors hover:bg-muted/80"
+                          >
+                            <div className="truncate text-sm font-medium text-foreground">
+                              {draft.title || "Untitled Draft"}
+                              {currentDraft?.id === draft.id ? (
+                                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                                  (active)
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(draft.createdAt).toLocaleDateString()}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={startNewDraft}
+                        className="shrink-0 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                      >
+                        New draft
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm leading-snug text-muted-foreground">
+                        No drafts yet. Use the quote icon on a result to add
+                        passages, or start a new draft.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={startNewDraft}
+                        className="shrink-0 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                      >
+                        New draft
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-                <div>
-                  <span className="font-medium">Type:</span>{" "}
-                  {selectedDocument.fileType}
-                </div>
-                <div>
-                  <span className="font-medium">Category:</span>{" "}
-                  {selectedDocument.category}
-                </div>
-                <div>
-                  <span className="font-medium">Status:</span>{" "}
-                  {selectedDocument.status}
-                </div>
-                <div>
-                  <span className="font-medium">Uploaded:</span>{" "}
-                  {new Date(selectedDocument.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <h4 className="font-medium text-foreground mb-2">
-                  Content Preview
-                </h4>
-                <div className="bg-muted p-4 rounded-lg max-h-96 overflow-y-auto">
-                  <pre className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
-                    {documentContent || "Loading content..."}
-                  </pre>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Drafts Sidebar */}
-      {canManageDrafts && drafts.length > 0 && (
-        <div className="fixed right-4 top-20 w-64 bg-card rounded-lg shadow-lg border border-border p-4">
-          <h4 className="font-medium text-foreground mb-3">Drafts</h4>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {drafts.map((draft) => (
-              <div
-                key={draft.id}
-                className="p-2 bg-muted rounded cursor-pointer hover:bg-muted/80"
-                onClick={() => openDraft(draft)}
-              >
-                <div className="text-sm font-medium text-foreground truncate">
-                  {draft.title || "Untitled Draft"}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {new Date(draft.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-            ))}
+            <button
+              type="button"
+              onClick={toggleDraftDrawer}
+              aria-expanded={draftDrawerOpen}
+              aria-controls="draft-drawer-panel"
+              aria-label={
+                draftDrawerOpen
+                  ? "Drafts — close panel"
+                  : "Drafts — open passage workspace"
+              }
+              title={
+                draftDrawerOpen
+                  ? "Drafts — Click to hide the drafts list"
+                  : "Drafts — Click to open your drafts and passages"
+              }
+              className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-l-full rounded-r-none bg-teal-500/22 px-0 text-teal-900 shadow-md shadow-teal-900/15 transition-[background-color,box-shadow,color] duration-300 ease-out hover:bg-teal-500/32 hover:shadow-lg dark:bg-teal-600/26 dark:text-teal-50 dark:shadow-teal-950/50 dark:hover:bg-teal-600/38 motion-reduce:transition-none"
+            >
+              {draftDrawerOpen ? (
+                <ChevronLeft
+                  className="h-4 w-4 shrink-0"
+                  aria-hidden
+                  strokeWidth={2.25}
+                />
+              ) : (
+                <FileStack
+                  className="h-4 w-4 shrink-0"
+                  aria-hidden
+                  strokeWidth={2}
+                />
+              )}
+            </button>
           </div>
         </div>
       )}

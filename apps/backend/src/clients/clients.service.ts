@@ -29,7 +29,7 @@ export class ClientsService {
       throw new ForbiddenException('User not found');
     }
 
-    let where: Record<string, unknown> = { isActive: true };
+    const where: Record<string, unknown> = { isActive: true };
 
     // SUPER_ADMIN can see all clients
     if (user.role === 'SUPER_ADMIN') {

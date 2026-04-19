@@ -623,7 +623,7 @@ export function PermissionBasedNavigation() {
 
             {/* Theme Toggle */}
             <div className="mt-4">
-              <ThemeToggle />
+              <ThemeToggle menuPlacement="above" />
             </div>
           </div>
         </div>

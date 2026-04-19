@@ -85,12 +85,12 @@ export default function CourtDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center min-h-[400px]">
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="flex min-h-[400px] items-center justify-center">
             <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">
+              <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">
                 Loading court details...
               </p>
             </div>
@@ -102,19 +102,19 @@ export default function CourtDetailsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6">
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mb-4"
+              className="mb-4 flex items-center gap-2 text-primary hover:text-primary/80"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
           </div>
 
-          <div className="border border-red-200 text-red-800 bg-red-50 dark:border-red-800 dark:text-red-200 dark:bg-red-900/20 rounded-lg p-4 flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive">
             <AlertCircle className="h-4 w-4" />
             <span>{error}</span>
           </div>
@@ -125,24 +125,24 @@ export default function CourtDetailsPage() {
 
   if (!courtData) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6">
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mb-4"
+              className="mb-4 flex items-center gap-2 text-primary hover:text-primary/80"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
           </div>
 
-          <div className="text-center py-12">
-            <AlertCircle className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <div className="py-12 text-center">
+            <AlertCircle className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="mb-2 text-lg font-medium text-foreground">
               Court Not Found
             </h3>
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-muted-foreground">
               The requested court could not be found or you don't have
               permission to view it.
             </p>
@@ -153,13 +153,13 @@ export default function CourtDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Back Button */}
         <div className="mb-6">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+            className="flex items-center gap-2 text-primary hover:text-primary/80"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Search
@@ -167,10 +167,10 @@ export default function CourtDetailsPage() {
         </div>
 
         {/* Court Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+        <div className="rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm mb-6">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              <h1 className="text-3xl font-bold text-foreground mb-2">
                 {courtData.name}
               </h1>
               <div className="flex items-center gap-3 mb-4">
@@ -179,7 +179,7 @@ export default function CourtDetailsPage() {
                 >
                   {courtData.type.replace("_", " ")}
                 </span>
-                <span className="text-gray-600 dark:text-gray-400">
+                <span className="text-muted-foreground">
                   {courtData.district}, {courtData.state}
                 </span>
               </div>
@@ -189,38 +189,38 @@ export default function CourtDetailsPage() {
           {/* Court Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-center gap-3">
-              <MapPin className="w-5 h-5 text-gray-400" />
+              <MapPin className="w-5 h-5 text-muted-foreground" />
               <div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="text-sm text-muted-foreground">
                   Location
                 </div>
-                <div className="font-medium text-gray-900 dark:text-white">
+                <div className="font-medium text-foreground">
                   {courtData.district}, {courtData.state}
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <Building2 className="w-5 h-5 text-gray-400" />
+              <Building2 className="w-5 h-5 text-muted-foreground" />
               <div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="text-sm text-muted-foreground">
                   Court Type
                 </div>
-                <div className="font-medium text-gray-900 dark:text-white">
+                <div className="font-medium text-foreground">
                   {courtData.type.replace("_", " ")}
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="w-5 h-5 text-gray-400">
-                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+              <div className="w-5 h-5 text-muted-foreground">
+                <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
               </div>
               <div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="text-sm text-muted-foreground">
                   Court ID
                 </div>
-                <div className="font-medium text-gray-900 dark:text-white">
+                <div className="font-medium text-foreground">
                   {courtData.id}
                 </div>
               </div>
@@ -231,20 +231,20 @@ export default function CourtDetailsPage() {
         {/* Court Details */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Contact Information */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground mb-4">
               Contact Information
             </h3>
 
             <div className="space-y-4">
               {courtData.phone && (
                 <div className="flex items-center gap-3">
-                  <Phone className="w-5 h-5 text-gray-400" />
+                  <Phone className="w-5 h-5 text-muted-foreground" />
                   <div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-muted-foreground">
                       Phone
                     </div>
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="font-medium text-foreground">
                       {courtData.phone}
                     </div>
                   </div>
@@ -253,12 +253,12 @@ export default function CourtDetailsPage() {
 
               {courtData.email && (
                 <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-gray-400" />
+                  <Mail className="w-5 h-5 text-muted-foreground" />
                   <div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-muted-foreground">
                       Email
                     </div>
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="font-medium text-foreground">
                       {courtData.email}
                     </div>
                   </div>
@@ -267,16 +267,16 @@ export default function CourtDetailsPage() {
 
               {courtData.website && (
                 <div className="flex items-center gap-3">
-                  <Globe className="w-5 h-5 text-gray-400" />
+                  <Globe className="w-5 h-5 text-muted-foreground" />
                   <div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-muted-foreground">
                       Website
                     </div>
                     <a
                       href={courtData.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                      className="font-medium text-primary hover:text-primary/80"
                     >
                       {courtData.website}
                     </a>
@@ -287,21 +287,21 @@ export default function CourtDetailsPage() {
           </div>
 
           {/* Address Information */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground mb-4">
               Address
             </h3>
 
             <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-gray-400 mt-1" />
+              <MapPin className="w-5 h-5 text-muted-foreground mt-1" />
               <div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <div className="text-sm text-muted-foreground mb-2">
                   Full Address
                 </div>
-                <div className="font-medium text-gray-900 dark:text-white">
+                <div className="font-medium text-foreground">
                   {courtData.address}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                <div className="text-sm text-muted-foreground mt-2">
                   {courtData.district}, {courtData.state}
                 </div>
               </div>
@@ -310,52 +310,52 @@ export default function CourtDetailsPage() {
         </div>
 
         {/* Additional Information */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm mt-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4">
             Court Information
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
               <div>
-                <span className="font-medium text-gray-600 dark:text-gray-400">
+                <span className="font-medium text-muted-foreground">
                   Court ID:
                 </span>
-                <span className="ml-2 text-gray-900 dark:text-white">
+                <span className="ml-2 text-foreground">
                   {courtData.id}
                 </span>
               </div>
               <div>
-                <span className="font-medium text-gray-600 dark:text-gray-400">
+                <span className="font-medium text-muted-foreground">
                   Name:
                 </span>
-                <span className="ml-2 text-gray-900 dark:text-white">
+                <span className="ml-2 text-foreground">
                   {courtData.name}
                 </span>
               </div>
               <div>
-                <span className="font-medium text-gray-600 dark:text-gray-400">
+                <span className="font-medium text-muted-foreground">
                   Type:
                 </span>
-                <span className="ml-2 text-gray-900 dark:text-white">
+                <span className="ml-2 text-foreground">
                   {courtData.type.replace("_", " ")}
                 </span>
               </div>
             </div>
             <div className="space-y-3">
               <div>
-                <span className="font-medium text-gray-600 dark:text-gray-400">
+                <span className="font-medium text-muted-foreground">
                   District:
                 </span>
-                <span className="ml-2 text-gray-900 dark:text-white">
+                <span className="ml-2 text-foreground">
                   {courtData.district}
                 </span>
               </div>
               <div>
-                <span className="font-medium text-gray-600 dark:text-gray-400">
+                <span className="font-medium text-muted-foreground">
                   State:
                 </span>
-                <span className="ml-2 text-gray-900 dark:text-white">
+                <span className="ml-2 text-foreground">
                   {courtData.state}
                 </span>
               </div>

@@ -17,6 +17,17 @@ interface Case {
   };
 }
 
+const BILL_TYPE_OPTIONS = [
+  { value: "CONSULTATION", label: "Consultation" },
+  { value: "COURT_FILING", label: "Court Filing" },
+  {
+    value: "DOCUMENT_PREPARATION",
+    label: "Document Preparation",
+  },
+  { value: "REPRESENTATION", label: "Representation" },
+  { value: "OTHER", label: "Other" },
+] as const;
+
 interface CreateBillModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -146,9 +157,9 @@ export default function CreateBillModal({
       <form
         id="create-bill-form"
         onSubmit={handleCreateBill}
-        className="space-y-4"
+        className="space-y-5"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
               Amount *
@@ -176,21 +187,14 @@ export default function CreateBillModal({
           </div>
           <div>
             <CustomSelect
-              label="Bill Type"
+              label="Bill type"
               required
-              options={[
-                { value: "CONSULTATION", label: "Consultation" },
-                { value: "COURT_FILING", label: "Court Filing" },
-                {
-                  value: "DOCUMENT_PREPARATION",
-                  label: "Document Preparation",
-                },
-                { value: "REPRESENTATION", label: "Representation" },
-                { value: "OTHER", label: "Other" },
-              ]}
+              options={[...BILL_TYPE_OPTIONS]}
               value={{
                 value: formData.billType,
-                label: formData.billType,
+                label:
+                  BILL_TYPE_OPTIONS.find((o) => o.value === formData.billType)
+                    ?.label ?? formData.billType,
               }}
               onChange={(option) =>
                 setFormData({
@@ -215,7 +219,7 @@ export default function CreateBillModal({
                   dueDate: e.target.value,
                 })
               }
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground min-h-[42px]"
             />
           </div>
           <div>
@@ -250,9 +254,9 @@ export default function CreateBillModal({
               placeholder="Select a client"
             />
           </div>
-          <div>
+          <div className="md:col-span-2">
             <CustomSelect
-              label="Related Case"
+              label="Related case"
               options={[
                 { value: "", label: "Select case (optional)" },
                 ...cases.map((caseItem) => ({

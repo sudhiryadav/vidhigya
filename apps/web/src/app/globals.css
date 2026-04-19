@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Manual theme (data-theme / .dark) must win over OS preference; default v4 dark: uses prefers-color-scheme only. */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *, .dark, .dark *));
+
 /* Base theme variables - Light theme (default) */
 :root {
   --background-transparency: 0.9;
@@ -9,9 +12,9 @@
   
   --color-background: hsla(0,0%,100%,var(--background-transparency));
   --color-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
-  --color-card: hsla(0,0%,100%,var(--background-transparency))
+  --color-card: hsla(0,0%,100%,var(--background-transparency));
   --color-card-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
-  --color-popover: hsla(0,0%,100%,var(--background-transparency))
+  --color-popover: hsla(0,0%,100%,var(--background-transparency));
   --color-popover-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-primary: 221.2 83.2% 53.3%;
   --color-primary-foreground: 210 40% 98%;
@@ -646,11 +649,11 @@ html {
   --color-toast-color: #374151;
   --color-toast-border: #e5e7eb;
   
-  --color-background: hsla(0,0%,100%,var(--background-transparency))
+  --color-background: hsla(0,0%,100%,var(--background-transparency));
   --color-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
-  --color-card: hsla(0,0%,100%,var(--background-transparency))
+  --color-card: hsla(0,0%,100%,var(--background-transparency));
   --color-card-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
-  --color-popover: hsla(0,0%,100%,var(--background-transparency))
+  --color-popover: hsla(0,0%,100%,var(--background-transparency));
   --color-popover-foreground: hsla(222.2,84%,4.9%,var(--background-transparency));
   --color-primary: 221.2 83.2% 53.3%;
   --color-primary-foreground: 210 40% 98%;
@@ -692,6 +695,27 @@ html {
   --color-border: 217.2 32.6% 17.5%;
   --color-input: 217.2 32.6% 17.5%;
   --color-ring: 224.3 76.3% 94.1%;
+}
+
+/*
+ * react-hot-toast: use opaque theme tokens (page surfaces use translucent hsla).
+ * Keeps toasts readable on busy backgrounds in light and dark mode.
+ */
+div.react-hot-toast {
+  background: var(--color-toast-bg) !important;
+  color: var(--color-toast-color) !important;
+  border: 1px solid var(--color-toast-border) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.08),
+    0 4px 6px -4px rgb(0 0 0 / 0.06);
+}
+
+[data-theme="dark"] div.react-hot-toast {
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.45),
+    0 4px 6px -4px rgb(0 0 0 / 0.35);
 }
 
 /* Tailwind v4 theme support - using data-theme attribute */

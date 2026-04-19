@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsDateString,
+  IsUUID,
+} from 'class-validator';
 import { TaskStatus, TaskPriority } from '@prisma/client';
 
 export class CreateTaskDto {
@@ -75,4 +81,3 @@ export class AssignTaskDto {
   @IsUUID()
   assignedToId: string;
 }
-

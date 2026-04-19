@@ -9,6 +9,9 @@ interface CourtSearchFormProps {
   isLoading?: boolean;
 }
 
+const inputClass =
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
 export function CourtSearchForm({
   onSearch,
   isLoading = false,
@@ -51,16 +54,16 @@ export function CourtSearchForm({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div className="rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
           <Building2 className="w-5 h-5" />
           Search Courts
         </h2>
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1"
+          className="flex items-center gap-1 text-sm text-primary hover:text-primary/80"
         >
           <Filter className="w-4 h-4" />
           {showAdvanced ? "Hide Filters" : "Show Filters"}
@@ -73,7 +76,7 @@ export function CourtSearchForm({
           <div>
             <label
               htmlFor="name"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="mb-1 block text-sm font-medium text-foreground"
             >
               Court Name
             </label>
@@ -82,7 +85,7 @@ export function CourtSearchForm({
               id="name"
               value={formData.name || ""}
               onChange={(e) => handleInputChange("name", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              className={inputClass}
               placeholder="Enter court name"
             />
           </div>
@@ -90,7 +93,7 @@ export function CourtSearchForm({
           <div>
             <label
               htmlFor="state"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="mb-1 block text-sm font-medium text-foreground"
             >
               State
             </label>
@@ -99,7 +102,7 @@ export function CourtSearchForm({
               id="state"
               value={formData.state || ""}
               onChange={(e) => handleInputChange("state", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              className={inputClass}
               placeholder="Enter state name"
             />
           </div>
@@ -107,12 +110,12 @@ export function CourtSearchForm({
 
         {/* Advanced Search Fields */}
         {showAdvanced && (
-          <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+          <div className="space-y-4 border-t border-border pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label
                   htmlFor="district"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   District
                 </label>
@@ -123,7 +126,7 @@ export function CourtSearchForm({
                   onChange={(e) =>
                     handleInputChange("district", e.target.value)
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className={inputClass}
                   placeholder="Enter district name"
                 />
               </div>
@@ -131,7 +134,7 @@ export function CourtSearchForm({
               <div>
                 <label
                   htmlFor="courtType"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   Court Type
                 </label>
@@ -144,7 +147,7 @@ export function CourtSearchForm({
                       (e.target.value as CourtType) || undefined
                     )
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className={inputClass}
                 >
                   <option value="">Select court type</option>
                   <option value={CourtType.SUPREME_COURT}>Supreme Court</option>
@@ -174,7 +177,7 @@ export function CourtSearchForm({
           <button
             type="button"
             onClick={resetForm}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Reset
           </button>
@@ -182,11 +185,11 @@ export function CourtSearchForm({
           <button
             type="submit"
             disabled={isLoading}
-            className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="flex items-center gap-2 rounded-md border border-transparent bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
                 Searching...
               </>
             ) : (

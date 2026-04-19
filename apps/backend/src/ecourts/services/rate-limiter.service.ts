@@ -97,14 +97,14 @@ export class RateLimiterService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      const result = await this.rateLimiter!.consume(identifier);
+      const result = await this.rateLimiter.consume(identifier);
       return {
         allowed: true,
         remainingPoints: result.remainingPoints,
         msBeforeNext: result.msBeforeNext,
       };
     } catch (rejRes) {
-      const result = rejRes as any;
+      const result = rejRes;
       return {
         allowed: false,
         remainingPoints: 0,
@@ -119,7 +119,7 @@ export class RateLimiterService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      const result = await this.rateLimiter!.get(identifier);
+      const result = await this.rateLimiter.get(identifier);
       const maxRequests = this.configService.get<number>(
         'RATE_LIMIT_MAX_REQUESTS',
         100,
@@ -141,7 +141,7 @@ export class RateLimiterService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      await this.rateLimiter!.delete(identifier);
+      await this.rateLimiter.delete(identifier);
     } catch (error) {
       console.error('Failed to reset rate limit:', error);
     }

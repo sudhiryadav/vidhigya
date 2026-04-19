@@ -506,9 +506,7 @@ export class CasesService {
     // Validate enum fields
     if (
       cleanedData.category &&
-      !Object.values(CaseCategory).includes(
-        cleanedData.category as CaseCategory,
-      )
+      !Object.values(CaseCategory).includes(cleanedData.category)
     ) {
       console.warn(`Invalid category received: ${cleanedData.category}`);
       throw new BadRequestException(
@@ -517,9 +515,7 @@ export class CasesService {
     }
     if (
       cleanedData.priority &&
-      !Object.values(CasePriority).includes(
-        cleanedData.priority as CasePriority,
-      )
+      !Object.values(CasePriority).includes(cleanedData.priority)
     ) {
       console.warn(`Invalid priority received: ${cleanedData.priority}`);
       throw new BadRequestException(
@@ -528,7 +524,7 @@ export class CasesService {
     }
     if (
       cleanedData.status &&
-      !Object.values(CaseStatus).includes(cleanedData.status as CaseStatus)
+      !Object.values(CaseStatus).includes(cleanedData.status)
     ) {
       console.warn(`Invalid status received: ${cleanedData.status}`);
       throw new BadRequestException(`Invalid status: ${cleanedData.status}`);

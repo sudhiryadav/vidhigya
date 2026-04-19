@@ -39,9 +39,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         toastOptions={{
                           duration: 4000,
                           style: {
-                            background: "var(--background)",
-                            color: "var(--foreground)",
-                            border: "1px solid var(--border)",
+                            background: "var(--color-toast-bg)",
+                            color: "var(--color-toast-color)",
+                            border: "1px solid var(--color-toast-border)",
+                            backdropFilter: "none",
+                            WebkitBackdropFilter: "none",
+                            boxShadow:
+                              "0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06)",
+                          },
+                          success: {
+                            iconTheme: {
+                              primary: "#ffffff",
+                              secondary: "rgb(22 163 74)",
+                            },
+                          },
+                          error: {
+                            iconTheme: {
+                              primary: "#ffffff",
+                              secondary: "rgb(220 38 38)",
+                            },
                           },
                         }}
                       />

@@ -59,16 +59,16 @@ export function CaseSearchForm({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div className="rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
           <Search className="w-5 h-5" />
           Search Cases
         </h2>
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+          className="text-sm text-primary hover:text-primary/80"
         >
           {showAdvanced ? "Hide Advanced" : "Show Advanced"}
         </button>
@@ -80,7 +80,7 @@ export function CaseSearchForm({
           <div>
             <label
               htmlFor="caseNumber"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="mb-1 block text-sm font-medium text-foreground"
             >
               Case Number
             </label>
@@ -89,7 +89,7 @@ export function CaseSearchForm({
               id="caseNumber"
               value={formData.caseNumber || ""}
               onChange={(e) => handleInputChange("caseNumber", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               placeholder="Enter case number"
             />
           </div>
@@ -97,7 +97,7 @@ export function CaseSearchForm({
           <div>
             <label
               htmlFor="partyName"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="mb-1 block text-sm font-medium text-foreground"
             >
               Party Name
             </label>
@@ -106,7 +106,7 @@ export function CaseSearchForm({
               id="partyName"
               value={formData.partyName || ""}
               onChange={(e) => handleInputChange("partyName", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               placeholder="Enter party name"
             />
           </div>
@@ -114,12 +114,12 @@ export function CaseSearchForm({
 
         {/* Advanced Search Fields */}
         {showAdvanced && (
-          <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+          <div className="space-y-4 border-t border-border pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label
                   htmlFor="advocateName"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   Advocate Name
                 </label>
@@ -130,7 +130,7 @@ export function CaseSearchForm({
                   onChange={(e) =>
                     handleInputChange("advocateName", e.target.value)
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder="Enter advocate name"
                 />
               </div>
@@ -138,7 +138,7 @@ export function CaseSearchForm({
               <div>
                 <label
                   htmlFor="courtId"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   Court ID
                 </label>
@@ -147,7 +147,7 @@ export function CaseSearchForm({
                   id="courtId"
                   value={formData.courtId || ""}
                   onChange={(e) => handleInputChange("courtId", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder="Enter court ID"
                 />
               </div>
@@ -157,7 +157,7 @@ export function CaseSearchForm({
               <div>
                 <label
                   htmlFor="caseType"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   Case Type
                 </label>
@@ -168,7 +168,7 @@ export function CaseSearchForm({
                   onChange={(e) =>
                     handleInputChange("caseType", e.target.value)
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder="Enter case type"
                 />
               </div>
@@ -176,7 +176,7 @@ export function CaseSearchForm({
               <div>
                 <label
                   htmlFor="status"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   Case Status
                 </label>
@@ -189,7 +189,7 @@ export function CaseSearchForm({
                       (e.target.value as CaseStatus) || undefined
                     )
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">Select status</option>
                   <option value={CaseStatus.PENDING}>Pending</option>
@@ -206,7 +206,7 @@ export function CaseSearchForm({
               <div>
                 <label
                   htmlFor="filingDateFrom"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   Filing Date From
                 </label>
@@ -217,14 +217,14 @@ export function CaseSearchForm({
                   onChange={(e) =>
                     handleInputChange("filingDateFrom", e.target.value)
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="filingDateTo"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   Filing Date To
                 </label>
@@ -235,7 +235,7 @@ export function CaseSearchForm({
                   onChange={(e) =>
                     handleInputChange("filingDateTo", e.target.value)
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
             </div>
@@ -247,7 +247,7 @@ export function CaseSearchForm({
           <button
             type="button"
             onClick={resetForm}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Reset
           </button>
@@ -255,11 +255,11 @@ export function CaseSearchForm({
           <button
             type="submit"
             disabled={isLoading}
-            className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="flex items-center gap-2 rounded-md border border-transparent bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
                 Searching...
               </>
             ) : (

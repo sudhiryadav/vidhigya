@@ -15,7 +15,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { DocumentCategory, DocumentStatus } from '@prisma/client';
+import {
+  DocumentCategory,
+  DocumentStatus,
+  QueryType as DocumentQueryKind,
+} from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { Response } from 'express';
 import { memoryStorage } from 'multer';
@@ -58,6 +62,7 @@ interface QueryRequest {
 interface AuthenticatedRequest extends Request {
   user: {
     sub: string;
+    primaryPracticeId?: string;
     [key: string]: any;
   };
 }
@@ -96,6 +101,34 @@ export class DocumentsController {
     return parseInt(
       this.configService.get<string>('MAX_DOCUMENT_SIZE') || '20971520',
     );
+  }
+
+  /** Trim and strip wrapping quotes from .env values (avoids Modal 401 vs API_KEY mismatch). */
+  private normalizeEnvSecret(value: string | undefined): string | undefined {
+    if (value == null) return undefined;
+    let s = String(value).trim();
+    if (
+      (s.startsWith('"') && s.endsWith('"')) ||
+      (s.startsWith("'") && s.endsWith("'"))
+    ) {
+      s = s.slice(1, -1).trim();
+    }
+    return s || undefined;
+  }
+
+  /**
+   * Modal secret `QURIEUS_KEY` supplies `API_KEY` on the GPU deployment — typically the same
+   * value as `AI_SERVICE_API_KEY` (FastAPI ai-service). Prefer that to avoid `.env` drift;
+   * set `MODAL_API_KEY` only when Modal intentionally uses a different key.
+   */
+  private getModalApiKey(): string | undefined {
+    const sharedWithAiService = this.normalizeEnvSecret(
+      this.configService.get<string>('AI_SERVICE_API_KEY'),
+    );
+    const modalOnly = this.normalizeEnvSecret(
+      this.configService.get<string>('MODAL_API_KEY'),
+    );
+    return sharedWithAiService ?? modalOnly;
   }
 
   @Post('upload')
@@ -138,6 +171,11 @@ export class DocumentsController {
         `File size ${file.size} bytes exceeds maximum allowed size of ${maxSize} bytes (${Math.round(maxSize / 1024 / 1024)}MB)`,
       );
     }
+
+    const practiceId =
+      await this.documentsService.resolvePracticeIdForDocumentUpload(
+        req.user.sub,
+      );
 
     let uploadedFileUrl: string | null = null;
     let createdDocument: {
@@ -186,7 +224,7 @@ export class DocumentsController {
         caseId: body.caseId || undefined,
         uploadedById: req.user.sub,
         aiDocumentId: randomUUID(),
-        practiceId: req.user.primaryPracticeId || 'temp-practice-id', // TODO: Get actual practiceId from user context
+        practiceId,
       };
 
       createdDocument = await this.documentsService.create(createDocumentDto);
@@ -198,104 +236,15 @@ export class DocumentsController {
 
       // Process document using FastAPI service
       try {
-        const formData = new FormData();
-        // Create a proper File object from the buffer and append as array
-        const fileBlob = new Blob([file.buffer], { type: file.mimetype });
-        formData.append('files', fileBlob, file.originalname);
-        formData.append('userId', req.user.sub);
-        // Add document IDs to form data as JSON array
-        formData.append(
-          'documentIds',
-          JSON.stringify([createdDocument.aiDocumentId]),
-        );
-        if (body.description) {
-          formData.append('description', body.description);
-        }
-
-        const response = await fetch(
-          `${this.configService.get('AI_SERVICE_URL')}/api/v1/admin/documents/upload`,
-          {
-            method: 'POST',
-            headers: {
-              'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
-            },
-            body: formData,
-          },
-        );
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('FastAPI service error:', response.status, errorText);
-          throw new Error(
-            `FastAPI service error: ${response.status} - ${errorText}`,
-          );
-        }
-
-        const result = (await response.json()) as {
-          processing_status: string;
-          documents: Array<{
-            document_id: string;
-            status: string;
-            chunks?: number;
-            content?: string;
-          }>;
-        };
-
-        // Check if processing is in background
-        if (result.processing_status === 'BACKGROUND') {
-          const documentInfo = result.documents[0]; // Get first document info
-
-          console.log(
-            'Document uploaded and processing started in background:',
-            {
-              documentId: documentInfo.document_id,
-              status: documentInfo.status,
-            },
-          );
-
-          // Update the document with processing status
-          await this.prisma.legalDocument.update({
-            where: { id: createdDocument.id },
-            data: {
-              aiDocumentId: documentInfo.document_id,
-              status: 'PROCESSING', // Set status to processing
-            },
-          });
-
-          console.log(
-            'Document uploaded successfully, processing in background:',
-            {
-              documentId: createdDocument.id,
-              aiDocumentId: documentInfo.document_id,
-            },
-          );
-        } else {
-          // Handle synchronous processing (fallback)
-          const documentInfo = result.documents[0];
-
-          console.log('Document processed synchronously by FastAPI:', {
-            documentId: documentInfo.document_id,
-            chunks: documentInfo.chunks,
-            contentLength: documentInfo.content?.length || 0,
-          });
-
-          // Update the document with processing information
-          await this.prisma.legalDocument.update({
-            where: { id: createdDocument.id },
-            data: {
-              aiDocumentId: documentInfo.document_id,
-              aiChunks: documentInfo.chunks,
-              content: documentInfo.content,
-              status: 'PROCESSED',
-            },
-          });
-
-          console.log('Document processing completed successfully:', {
-            documentId: createdDocument.id,
-            chunks: documentInfo.chunks,
-            contentLength: documentInfo.content?.length || 0,
-          });
-        }
+        await this.ingestWithAiAndUpdateLegalDocument({
+          legalDocumentId: createdDocument.id,
+          fileBuffer: file.buffer,
+          mimeType: file.mimetype,
+          originalFilename: file.originalname,
+          userId: req.user.sub,
+          aiDocumentId: createdDocument.aiDocumentId,
+          description: body.description,
+        });
       } catch (error) {
         console.error('Error processing document with FastAPI:', error);
         // Don't fail the upload if processing fails, but log it
@@ -403,33 +352,16 @@ export class DocumentsController {
         limit,
       );
 
-      // Map document IDs to actual document information for search results
-      const documentMap = new Map();
-      const documents = await this.prisma.legalDocument.findMany({
-        where: { uploadedById: req.user.sub },
-        select: { id: true, originalFilename: true, title: true },
-      });
-
-      documents.forEach((doc) => {
-        documentMap.set(doc.id, {
-          title: doc.title || doc.originalFilename,
-        });
-      });
-
-      const enhancedResults = searchResults.map((result) => {
-        const documentInfo = documentMap.get(result.document_id) as
-          | { title: string }
-          | undefined;
-        return {
-          ...result,
-          document_title: documentInfo?.title || 'Unknown Document',
-        };
-      });
+      const enhancedResults =
+        await this.documentsService.enrichVectorSearchHits(
+          searchResults,
+          req.user.sub,
+        );
 
       const result = {
         query,
         results: enhancedResults,
-        total_results: searchResults.length,
+        total_results: enhancedResults.length,
         generated_at: new Date().toISOString(),
       };
 
@@ -485,7 +417,7 @@ export class DocumentsController {
 
       // Check if Modal.com endpoint is configured
       const modalEndpointUrl = this.configService.get('MODAL_ENDPOINT_URL');
-      const modalApiKey = this.configService.get('MODAL_API_KEY');
+      const modalApiKey = this.getModalApiKey();
 
       if (!modalEndpointUrl || !modalApiKey) {
         throw new BadRequestException('Modal.com endpoint not configured');
@@ -558,6 +490,8 @@ export class DocumentsController {
         where: {
           userId,
           isDeleted: false, // Only get non-deleted queries
+          // Exclude vector search-only logs (same table as Q&A; those are not chat)
+          queryType: { not: DocumentQueryKind.DOCUMENT_ANALYSIS },
           // Optionally filter by case if needed
           // caseId: caseId,
         },
@@ -698,7 +632,7 @@ export class DocumentsController {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-API-Key': this.configService.get('MODAL_API_KEY'),
+            'X-API-Key': this.getModalApiKey() ?? '',
             'X-Collection': this.configService.get('QDRANT_COLLECTION'),
           },
           body: JSON.stringify({
@@ -712,12 +646,21 @@ export class DocumentsController {
         },
       );
 
-      if (!modalResponse.ok) {
-        throw new Error(`Modal.com error: ${modalResponse.status}`);
-      }
-
       // Modal.com returns streaming response, so we need to handle it differently
       const responseText = await modalResponse.text();
+
+      if (!modalResponse.ok) {
+        const detail = responseText?.slice(0, 500) || '';
+        if (modalResponse.status === 401) {
+          console.error(
+            'Modal.com 401: X-API-Key did not match Modal secret API_KEY (align AI_SERVICE_API_KEY or MODAL_API_KEY with QURIEUS_KEY).',
+            detail,
+          );
+        }
+        throw new Error(
+          `Modal.com error: ${modalResponse.status}${detail ? ` — ${detail}` : ''}`,
+        );
+      }
 
       console.log(
         'Modal.com response type:',
@@ -743,8 +686,17 @@ export class DocumentsController {
       };
 
       try {
-        // Try to parse as regular JSON first
-        result = JSON.parse(responseText);
+        // Try to parse as regular JSON first (Modal may rarely return a bare array of hits)
+        const parsed = JSON.parse(responseText) as unknown;
+        if (Array.isArray(parsed)) {
+          result = {
+            answer: JSON.stringify(parsed),
+            sources: [],
+            confidence: 0.8,
+          };
+        } else {
+          result = parsed as typeof result;
+        }
       } catch (parseError) {
         // If that fails, try to parse streaming response
         const lines = responseText.split('\n');
@@ -780,11 +732,22 @@ export class DocumentsController {
         };
       }
 
+      const formattedSources =
+        await this.documentsService.enrichVectorSearchHits(
+          searchResults,
+          userId,
+        );
+
+      const answer = this.documentsService.normalizeDocumentQueryAnswer(
+        result.answer,
+        formattedSources,
+      );
+
       // Log the Q&A query
       await this.documentsService.logDocumentQuery(
         userId,
         query,
-        result.answer,
+        answer,
         undefined, // caseId
         searchResults, // sources
         undefined, // responseTime
@@ -792,38 +755,9 @@ export class DocumentsController {
         QueryType.GENERAL,
       );
 
-      // Map document IDs to actual document information for search results
-      const documentMap = new Map();
-      const documents = await this.prisma.legalDocument.findMany({
-        where: { uploadedById: userId },
-        select: { id: true, originalFilename: true, title: true },
-      });
-
-      documents.forEach((doc) => {
-        documentMap.set(doc.id, {
-          title: doc.title || doc.originalFilename,
-        });
-      });
-
-      // Convert Qdrant search results to the expected format for frontend
-      const formattedSources = searchResults.map((result) => {
-        const documentInfo = documentMap.get(result.document_id) as
-          | { title: string }
-          | undefined;
-        return {
-          document_id: result.document_id,
-          document_title: documentInfo?.title || 'Unknown Document',
-          page_number: result.page_number,
-          content: result.content,
-          score: result.score,
-          start_char: result.start_char,
-          end_char: result.end_char,
-        };
-      });
-
       return {
         question: query,
-        answer: result.answer,
+        answer,
         sources: formattedSources, // Use Qdrant results instead of Modal.com sources
         confidence: result.confidence,
         generated_at: new Date().toISOString(),
@@ -854,6 +788,8 @@ export class DocumentsController {
       where: {
         userId: req.user.sub,
         isDeleted: false, // Only show non-deleted queries
+        // Document search logs share this table but are not AI assistant turns
+        queryType: { not: DocumentQueryKind.DOCUMENT_ANALYSIS },
       },
       orderBy: { createdAt: 'desc' },
       skip,
@@ -882,6 +818,73 @@ export class DocumentsController {
       message: 'Query history cleared successfully',
       deletedCount: result.count,
     };
+  }
+
+  @Post(':id/retry-processing')
+  @RequireCreate(PermissionResource.DOCUMENT)
+  async retryDocumentProcessing(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const document = await this.documentsService.findOne(id, req.user.sub);
+
+    if (document.status === 'PROCESSED') {
+      throw new BadRequestException('Document is already processed');
+    }
+
+    if (!document.fileUrl) {
+      throw new BadRequestException(
+        'No stored file is available for this document. Please upload the file again.',
+      );
+    }
+
+    const exists = await this.s3Service.checkDocumentExists(document.fileUrl);
+    if (!exists) {
+      throw new BadRequestException(
+        'The file is no longer available in storage. Please upload the document again.',
+      );
+    }
+
+    let fileBuffer: Buffer;
+    try {
+      fileBuffer = await this.s3Service.getDocumentAsBuffer(document.fileUrl);
+    } catch {
+      throw new BadRequestException(
+        'Could not read the stored file. Please upload the document again.',
+      );
+    }
+
+    if (fileBuffer.length === 0) {
+      throw new BadRequestException(
+        'Stored file is empty. Please upload the document again.',
+      );
+    }
+
+    const newAiDocumentId = randomUUID();
+    const safeTitle =
+      document.title.replace(/[/\\?%*:|"<>]/g, '').trim() || 'document';
+    const originalFilename =
+      document.originalFilename ||
+      `${safeTitle}${this.inferExtensionFromMime(document.fileType)}`;
+
+    try {
+      await this.ingestWithAiAndUpdateLegalDocument({
+        legalDocumentId: document.id,
+        fileBuffer,
+        mimeType: document.fileType,
+        originalFilename,
+        userId: document.uploadedById,
+        aiDocumentId: newAiDocumentId,
+        description: document.description,
+      });
+    } catch (error) {
+      console.error('Retry processing failed:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to restart processing';
+      throw new BadRequestException(message);
+    }
+
+    return this.documentsService.findOne(id, req.user.sub);
   }
 
   @Get(':id')
@@ -1054,6 +1057,139 @@ export class DocumentsController {
       }
 
       throw new BadRequestException('Error accessing document');
+    }
+  }
+
+  private inferExtensionFromMime(fileType: string): string {
+    const t = fileType.toLowerCase();
+    if (t.includes('pdf')) return '.pdf';
+    if (t.includes('wordprocessingml')) return '.docx';
+    if (t.includes('msword')) return '.doc';
+    if (t.includes('text/plain')) return '.txt';
+    if (t.includes('png')) return '.png';
+    if (t.includes('jpeg') || t.includes('jpg')) return '.jpg';
+    if (t.includes('gif')) return '.gif';
+    return '.bin';
+  }
+
+  /**
+   * Sends a stored file buffer to the AI service and updates the legal document row.
+   */
+  private async ingestWithAiAndUpdateLegalDocument(params: {
+    legalDocumentId: string;
+    fileBuffer: Buffer;
+    mimeType: string;
+    originalFilename: string;
+    userId: string;
+    aiDocumentId: string;
+    description?: string | null;
+  }): Promise<void> {
+    const {
+      legalDocumentId,
+      fileBuffer,
+      mimeType,
+      originalFilename,
+      userId,
+      aiDocumentId,
+      description,
+    } = params;
+
+    const formData = new FormData();
+    const fileBlob = new Blob([new Uint8Array(fileBuffer)], { type: mimeType });
+    formData.append('files', fileBlob, originalFilename);
+    formData.append('userId', userId);
+    formData.append('documentIds', JSON.stringify([aiDocumentId]));
+    if (description) {
+      formData.append('description', description);
+    }
+
+    const response = await fetch(
+      `${this.configService.get('AI_SERVICE_URL')}/api/v1/admin/documents/upload`,
+      {
+        method: 'POST',
+        headers: {
+          'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+        },
+        body: formData,
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let detail = errorText;
+      try {
+        const parsed = JSON.parse(errorText) as { detail?: unknown };
+        if (parsed?.detail != null) {
+          detail =
+            typeof parsed.detail === 'string'
+              ? parsed.detail
+              : JSON.stringify(parsed.detail);
+        }
+      } catch {
+        /* keep raw body */
+      }
+      console.error(
+        'FastAPI service error:',
+        response.status,
+        detail.slice(0, 2000),
+      );
+      throw new Error(`FastAPI service error: ${response.status} - ${detail}`);
+    }
+
+    const result = (await response.json()) as {
+      processing_status: string;
+      documents: Array<{
+        document_id: string;
+        status: string;
+        chunks?: number;
+        content?: string;
+      }>;
+    };
+
+    if (result.processing_status === 'BACKGROUND') {
+      const documentInfo = result.documents[0];
+
+      console.log('Document uploaded and processing started in background:', {
+        documentId: documentInfo.document_id,
+        status: documentInfo.status,
+      });
+
+      await this.prisma.legalDocument.update({
+        where: { id: legalDocumentId },
+        data: {
+          aiDocumentId: documentInfo.document_id,
+          status: 'PROCESSING',
+        },
+      });
+
+      console.log('Document uploaded successfully, processing in background:', {
+        documentId: legalDocumentId,
+        aiDocumentId: documentInfo.document_id,
+      });
+    } else {
+      const documentInfo = result.documents[0];
+
+      console.log('Document processed synchronously by FastAPI:', {
+        documentId: documentInfo.document_id,
+        chunks: documentInfo.chunks,
+        contentLength: documentInfo.content?.length || 0,
+      });
+
+      await this.prisma.legalDocument.update({
+        where: { id: legalDocumentId },
+        data: {
+          aiDocumentId: documentInfo.document_id,
+          aiChunks: documentInfo.chunks,
+          content: documentInfo.content,
+          status: 'PROCESSED',
+        },
+      });
+
+      console.log('Document processing completed successfully:', {
+        documentId: legalDocumentId,
+        chunks: documentInfo.chunks,
+        contentLength: documentInfo.content?.length || 0,
+      });
     }
   }
 }

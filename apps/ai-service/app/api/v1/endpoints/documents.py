@@ -113,60 +113,83 @@ def get_processing_status(document_id: str) -> Dict[str, Any]:
 
 
 def ensure_qdrant_collection_exists():
-    """Ensure Qdrant collection exists, create if it doesn't."""
+    """
+    Ensure Qdrant collection exists; create it if missing (Qdrant Cloud compatible).
+    Returns {"ok": bool, "detail": str | None} — detail is safe to return in HTTP responses (no secrets).
+    """
+    coll = qdrant_collection
+    ctx = f"Qdrant collection={coll!r}"
+
     if not qdrant_client:
-        print("Warning: Qdrant client not available")
-        return False
+        msg = (
+            f"{ctx}: client not initialized. Set QDRANT_URL (and QDRANT_API_KEY for Qdrant Cloud) "
+            "in the AI service environment."
+        )
+        print(f"❌ {msg}")
+        return {"ok": False, "detail": msg}
+
+    def _collection_exists(name: str) -> bool:
+        # Use get_collections() only — collection_exists() hits /collections/{name}/exists which
+        # can return 404 on some Qdrant Cloud versions even when the cluster URL is valid.
+        try:
+            names = [c.name for c in qdrant_client.get_collections().collections]
+            return name in names
+        except Exception as ex:
+            print(f"❌ {ctx}: failed to list collections: {ex}")
+            raise
 
     try:
-        print(f"Checking if Qdrant collection '{qdrant_collection}' exists...")
-        qdrant_client.get_collection(qdrant_collection)
-        print(f"✅ Collection '{qdrant_collection}' already exists")
-        return True
+        exists = _collection_exists(coll)
+        if exists:
+            print(f"✅ Collection '{coll}' already exists")
+            return {"ok": True, "detail": None}
+
+        print(f"❌ Collection '{coll}' not found; creating…")
+        # BAAI/bge-small-en-v1.5 → 384 dimensions, cosine distance
+        qdrant_client.create_collection(
+            collection_name=coll,
+            vectors_config=VectorParams(size=384, distance=Distance.COSINE),
+        )
+        print(f"✅ Created collection '{coll}'")
+
+        for field_name in ("user_id", "document_id"):
+            try:
+                qdrant_client.create_payload_index(
+                    collection_name=coll,
+                    field_name=field_name,
+                    field_schema="keyword",
+                )
+                print(f"✅ Payload index on {field_name!r} for {coll!r}")
+            except Exception as idx_ex:
+                print(f"⚠️  Could not create payload index {field_name!r}: {idx_ex}")
+
+        print(f"🎉 Collection '{coll}' setup completed successfully!")
+        return {"ok": True, "detail": None}
+
     except Exception as e:
-        print(f"❌ Collection '{qdrant_collection}' does not exist. Creating it now...")
-        try:
-            # Create collection if it doesn't exist
-            qdrant_client.create_collection(
-                collection_name=qdrant_collection,
-                vectors_config=VectorParams(
-                    size=384, distance=Distance.COSINE
-                ),  # all-MiniLM-L6-v2 has 384 dimensions
+        tb = traceback.format_exc()
+        print(f"❌ {ctx}: {type(e).__name__}: {e}\n{tb}")
+        err_s = f"{e}"
+        base = (
+            f"{ctx}: {type(e).__name__}: {e}. "
+            "Ensure QDRANT_COLLECTION matches the Nest backend. "
+        )
+        if (
+            "404" in err_s
+            or "404 page not found" in err_s.lower()
+            or ("not found" in err_s.lower() and "Unexpected Response" in err_s)
+        ):
+            base += (
+                "HTTP 404 usually means QDRANT_URL points at a deleted or wrong cluster — open "
+                "Qdrant Cloud → Clusters → your cluster → Connect, copy the HTTPS endpoint "
+                "(port 6333), and set QDRANT_URL + QDRANT_API_KEY identically in apps/ai-service/.env "
+                "and apps/backend/.env. Then restart the AI service."
             )
-            print(f"✅ Successfully created collection '{qdrant_collection}'")
-
-            # Create payload indexes for filtering
-            try:
-                qdrant_client.create_payload_index(
-                    collection_name=qdrant_collection,
-                    field_name="user_id",
-                    field_schema="keyword",
-                )
-                print(
-                    f"✅ Created payload index for user_id in collection {qdrant_collection}"
-                )
-            except Exception as e:
-                print(f"⚠️  Warning: Could not create payload index for user_id: {e}")
-
-            try:
-                qdrant_client.create_payload_index(
-                    collection_name=qdrant_collection,
-                    field_name="document_id",
-                    field_schema="keyword",
-                )
-                print(
-                    f"✅ Created payload index for document_id in collection {qdrant_collection}"
-                )
-            except Exception as e:
-                print(
-                    f"⚠️  Warning: Could not create payload index for document_id: {e}"
-                )
-
-            print(f"🎉 Collection '{qdrant_collection}' setup completed successfully!")
-            return True
-        except Exception as e:
-            print(f"❌ Failed to create collection: {e}")
-            return False
+        else:
+            base += (
+                "Verify QDRANT_URL, QDRANT_API_KEY, and network access to Qdrant Cloud."
+            )
+        return {"ok": False, "detail": base}
 
 
 # Cache for embeddings using lru_cache
@@ -1254,10 +1277,17 @@ async def upload_files(
 
         log_to_backend("info", f"Processing upload for user: {userId}")
 
-        # Ensure Qdrant collection exists before processing files
-        if not ensure_qdrant_collection_exists():
-            log_to_backend("error", "Failed to ensure Qdrant collection exists")
-            raise HTTPException(status_code=500, detail="Vector database setup failed")
+        # Ensure Qdrant collection exists before processing files (auto-create if allowed by API key)
+        qsetup = ensure_qdrant_collection_exists()
+        if not qsetup["ok"]:
+            log_to_backend(
+                "error",
+                f"Qdrant setup failed: {qsetup.get('detail', 'unknown')}",
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=qsetup.get("detail") or "Vector database setup failed",
+            )
 
         # Handle both single file and list of files
         file_list = files if isinstance(files, list) else [files]
