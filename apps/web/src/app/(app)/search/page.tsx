@@ -14,9 +14,9 @@ import {
 import {
   ChevronDown,
   ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Copy,
-  FileStack,
   FileText,
   Loader2,
   Quote,
@@ -917,19 +917,23 @@ export default function SearchPage() {
                   ? "Drafts — Click to hide the drafts list"
                   : "Drafts — Click to open your drafts and passages"
               }
-              className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-l-full rounded-r-none bg-teal-500/22 px-0 text-teal-900 shadow-md shadow-teal-900/15 transition-[background-color,box-shadow,color] duration-300 ease-out hover:bg-teal-500/32 hover:shadow-lg dark:bg-teal-600/26 dark:text-teal-50 dark:shadow-teal-950/50 dark:hover:bg-teal-600/38 motion-reduce:transition-none"
+              className={`flex h-10 min-w-[2.75rem] shrink-0 flex-col items-center justify-center bg-teal-500/22 px-1 text-teal-900 shadow-md shadow-teal-900/15 transition-[clip-path,background-color,box-shadow,color] duration-500 ease-[cubic-bezier(0.33,1,0.68,1)] hover:bg-teal-500/32 hover:shadow-lg motion-reduce:transition-none dark:bg-teal-600/26 dark:text-teal-50 dark:shadow-teal-950/50 dark:hover:bg-teal-600/38 ${
+                draftDrawerOpen
+                  ? "[clip-path:polygon(0_0,0_100%,68%_100%,100%_50%,68%_0)]"
+                  : "[clip-path:polygon(100%_0,100%_100%,32%_100%,0_50%,32%_0)]"
+              }`}
             >
               {draftDrawerOpen ? (
-                <ChevronLeft
+                <ChevronRight
                   className="h-4 w-4 shrink-0"
                   aria-hidden
                   strokeWidth={2.25}
                 />
               ) : (
-                <FileStack
+                <ChevronLeft
                   className="h-4 w-4 shrink-0"
                   aria-hidden
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 />
               )}
             </button>
