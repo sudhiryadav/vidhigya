@@ -1,20 +1,30 @@
+import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { RedactingLogger } from './common/logging';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  const bootstrapLogger = new RedactingLogger('Bootstrap');
+  Logger.overrideLogger(bootstrapLogger);
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+    logger: bootstrapLogger,
   });
+
+  const config = app.get(ConfigService);
+  const port = config.get<number>('PORT') ?? 3889;
+  const nodeEnv = config.get<string>('NODE_ENV') ?? 'development';
+  const frontendUrl = config.get<string>('FRONTEND_URL');
 
   // Set global prefix for all routes
   app.setGlobalPrefix('api');
 
   // Enable CORS
   app.enableCors({
-    origin:
-      process.env.NODE_ENV === 'production' ? [process.env.FRONTEND_URL] : true,
+    origin: nodeEnv === 'production' && frontendUrl ? [frontendUrl] : true,
     credentials: true,
   });
 
@@ -23,28 +33,27 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-  const port = process.env.PORT;
   const host = '0.0.0.0'; // Listen on all network interfaces
 
-  console.log('='.repeat(60));
-  console.log('🚀 VIDHIGYA BACKEND SERVER STARTING');
-  console.log('='.repeat(60));
-  console.log(`📍 Host: ${host}`);
-  console.log(`🔌 Port: ${port}`);
-  console.log(`🌐 URL: http://localhost:${port}`);
-  console.log(`📚 API URL: http://localhost:${port}/api`);
-  console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(
-    `🔑 JWT Secret configured: ${process.env.JWT_SECRET ? 'Yes' : 'No'}`,
+  bootstrapLogger.log('='.repeat(60));
+  bootstrapLogger.log('VIDHIGYA BACKEND SERVER STARTING');
+  bootstrapLogger.log('='.repeat(60));
+  bootstrapLogger.log(`Host: ${host}`);
+  bootstrapLogger.log(`Port: ${port}`);
+  bootstrapLogger.log(`URL: http://localhost:${port}`);
+  bootstrapLogger.log(`API URL: http://localhost:${port}/api`);
+  bootstrapLogger.log(`Environment: ${nodeEnv}`);
+  bootstrapLogger.log(
+    `JWT secret configured: ${config.get<string>('JWT_SECRET') ? 'yes' : 'no'}`,
   );
-  console.log(
-    `📊 Database: ${process.env.DATABASE_URL ? 'Configured' : 'Not configured'}`,
+  bootstrapLogger.log(
+    `Database URL configured: ${config.get<string>('DATABASE_URL') ? 'yes' : 'no'}`,
   );
-  console.log('='.repeat(60));
+  bootstrapLogger.log('='.repeat(60));
 
   // Start the application
-  await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`📚 API Documentation: http://localhost:${port}/api`);
+  await app.listen(port, host);
+  bootstrapLogger.log(`Application is running on: http://localhost:${port}`);
+  bootstrapLogger.log(`API: http://localhost:${port}/api`);
 }
-bootstrap();
+void bootstrap();

@@ -15,8 +15,34 @@ import { UserRole } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { AuthenticatedRequest } from '../auth/types/authenticated-request.interface';
 import { DocumentProcessingMonitorService } from '../documents/document-processing-monitor.service';
 import { AdminService } from './admin.service';
+
+interface DateRangeFilter {
+  start: Date;
+  end: Date;
+}
+
+interface DocumentFilters {
+  search?: string;
+  status?: string;
+  type?: string;
+  dateRange?: DateRangeFilter;
+}
+
+interface BillingFilters {
+  search?: string;
+  status?: string;
+  dateRange?: DateRangeFilter;
+}
+
+interface UserFilters {
+  search?: string;
+  role?: string;
+  isActive?: boolean;
+  practiceId?: string;
+}
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -64,7 +90,7 @@ export class AdminController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    const filters: any = { search, status, type };
+    const filters: DocumentFilters = { search, status, type };
 
     if (startDate && endDate) {
       filters.dateRange = {
@@ -83,7 +109,7 @@ export class AdminController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    const filters: any = { search, status };
+    const filters: BillingFilters = { search, status };
 
     if (startDate && endDate) {
       filters.dateRange = {
@@ -101,7 +127,7 @@ export class AdminController {
   }
 
   @Get('reports')
-  async getReports() {
+  getReports() {
     return this.adminService.getReports();
   }
 
@@ -116,7 +142,7 @@ export class AdminController {
     @Query('isActive') isActive?: string,
     @Query('practiceId') practiceId?: string,
   ) {
-    const filters: any = { search, role, practiceId };
+    const filters: UserFilters = { search, role, practiceId };
 
     if (isActive !== undefined) {
       filters.isActive = isActive === 'true';
@@ -130,12 +156,12 @@ export class AdminController {
    */
   @Get('practice-users')
   async getPracticeUsers(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Query('search') search?: string,
     @Query('role') role?: string,
     @Query('isActive') isActive?: string,
   ) {
-    const filters: any = { search, role };
+    const filters: UserFilters = { search, role };
 
     if (isActive !== undefined) {
       filters.isActive = isActive === 'true';
@@ -173,7 +199,7 @@ export class AdminController {
       role?: UserRole;
       password?: string;
     },
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     const currentUser = await this.adminService.getCurrentUserPractice(
       req.user.sub,
@@ -195,7 +221,7 @@ export class AdminController {
   async resetUserPassword(
     @Param('id') id: string,
     @Body() data: { newPassword: string },
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     const currentUser = await this.adminService.getCurrentUserPractice(
       req.user.sub,
@@ -214,7 +240,10 @@ export class AdminController {
    * Deactivate user
    */
   @Patch('users/:id/deactivate')
-  async deactivateUser(@Param('id') id: string, @Req() req: any) {
+  async deactivateUser(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
     const currentUser = await this.adminService.getCurrentUserPractice(
       req.user.sub,
     );
@@ -231,7 +260,10 @@ export class AdminController {
    * Reactivate user
    */
   @Patch('users/:id/reactivate')
-  async reactivateUser(@Param('id') id: string, @Req() req: any) {
+  async reactivateUser(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
     const currentUser = await this.adminService.getCurrentUserPractice(
       req.user.sub,
     );
@@ -257,7 +289,7 @@ export class AdminController {
       role: string;
       phone?: string;
     },
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     const currentUser = await this.adminService.getCurrentUserPractice(
       req.user.sub,

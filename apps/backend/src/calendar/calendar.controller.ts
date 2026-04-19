@@ -5,6 +5,7 @@ import {
   Delete,
   ForbiddenException,
   Get,
+  InternalServerErrorException,
   Param,
   Patch,
   Post,
@@ -32,15 +33,7 @@ import {
   UpdateParticipantStatusDto,
 } from './calendar.service';
 import { GoogleCalendarService } from './google-calendar.service';
-
-interface AuthenticatedRequest extends Request {
-  user: {
-    sub: string;
-    email: string;
-    name: string;
-    role: string;
-  };
-}
+import { AuthenticatedRequest } from '../auth/types/authenticated-request.interface';
 
 interface CalendarQuery {
   startDate?: string;
@@ -210,7 +203,7 @@ export class CalendarController {
   @Post('google/connect')
   async connectGoogleCalendar(
     @Body() body: { code: string },
-    @Request() req: AuthenticatedRequest,
+    @Request() _req: AuthenticatedRequest,
   ) {
     try {
       const tokens = await this.googleCalendarService.exchangeCodeForToken(
@@ -224,21 +217,20 @@ export class CalendarController {
         refreshToken: tokens.refresh_token,
       };
     } catch (error) {
-      throw new Error('Failed to connect Google Calendar: ' + error.message);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new InternalServerErrorException(
+        `Failed to connect Google Calendar: ${message}`,
+      );
     }
   }
 
   @Post('google/sync')
-  async syncWithGoogleCalendar(@Request() req: AuthenticatedRequest) {
-    try {
-      // This would require storing the user's access token
-      // For now, return a message indicating the feature is available
-      return {
-        message:
-          'Google Calendar sync available. Please connect your account first.',
-      };
-    } catch (error) {
-      throw new Error('Failed to sync with Google Calendar: ' + error.message);
-    }
+  syncWithGoogleCalendar(@Request() _req: AuthenticatedRequest) {
+    // This would require storing the user's access token
+    // For now, return a message indicating the feature is available
+    return {
+      message:
+        'Google Calendar sync available. Please connect your account first.',
+    };
   }
 }

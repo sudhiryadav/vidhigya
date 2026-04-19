@@ -17,6 +17,25 @@ def _strip_env_quotes(value: Optional[str]) -> Optional[str]:
     return s if s else None
 
 
+def _env_str(name: str, default: Optional[str] = None) -> Optional[str]:
+    value = _strip_env_quotes(os.getenv(name))
+    return value if value is not None else default
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = _env_str(name)
+    if value is None:
+      return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(name: str, default: int) -> int:
+    value = _env_str(name)
+    if value is None:
+        return default
+    return int(value)
+
+
 def default_qdrant_collection() -> str:
     """
     Collection name when QDRANT_COLLECTION is unset.
@@ -35,37 +54,37 @@ def default_qdrant_collection() -> str:
 
 class Settings(BaseSettings):
     # Environment
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
-    DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
+    ENVIRONMENT: str = _env_str("ENVIRONMENT", "development")
+    DEBUG: bool = _env_bool("DEBUG", True)
 
     # API Settings
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "Qurieus API"
     VERSION: str = "1.0.0"
-    HOST: str = os.getenv("HOST")
-    PORT: int = int(os.getenv("PORT"))
+    HOST: str = _env_str("HOST", "0.0.0.0")
+    PORT: int = _env_int("PORT", 8000)
 
     # Database Settings
-    DATABASE_URL: str = os.getenv("DATABASE_URL")
+    DATABASE_URL: str = _env_str("DATABASE_URL", "")
 
     # Frontend URL for CORS
-    BACKEND_URL: str = os.getenv("BACKEND_URL")
+    BACKEND_URL: str = _env_str("BACKEND_URL", "http://localhost:3888")
 
     # CORS settings
-    CORS_ORIGINS: List[str] = [os.getenv("BACKEND_URL")]
+    CORS_ORIGINS: List[str] = [_env_str("BACKEND_URL", "http://localhost:3888")]
 
     # NextAuth Secret for token verification
     # IMPORTANT: This must match the NEXTAUTH_SECRET in the Next.js frontend
-    NEXTAUTH_SECRET: str = os.getenv("NEXTAUTH_SECRET", "")
+    NEXTAUTH_SECRET: str = _env_str("NEXTAUTH_SECRET", "")
 
     # Postman Settings
-    POSTMAN_API_KEY: Optional[str] = os.getenv("POSTMAN_API_KEY")
-    POSTMAN_COLLECTION_ID: Optional[str] = os.getenv("POSTMAN_COLLECTION_ID")
+    POSTMAN_API_KEY: Optional[str] = _env_str("POSTMAN_API_KEY")
+    POSTMAN_COLLECTION_ID: Optional[str] = _env_str("POSTMAN_COLLECTION_ID")
 
     # Qdrant settings (QDRANT_COLLECTION defaults by ENVIRONMENT if unset — see default_qdrant_collection)
-    QDRANT_URL: Optional[str] = os.getenv("QDRANT_URL")
+    QDRANT_URL: Optional[str] = _env_str("QDRANT_URL")
     QDRANT_COLLECTION: str = Field(default_factory=default_qdrant_collection)
-    QDRANT_API_KEY: Optional[str] = os.getenv("QDRANT_API_KEY")
+    QDRANT_API_KEY: Optional[str] = _env_str("QDRANT_API_KEY")
 
     @field_validator("QDRANT_URL", "QDRANT_API_KEY", mode="before")
     @classmethod
@@ -78,13 +97,13 @@ class Settings(BaseSettings):
         return v.rstrip("/") if v else v
 
     # Backend API Key for authentication
-    AI_SERVICE_API_KEY: str = os.getenv("AI_SERVICE_API_KEY", "")
+    AI_SERVICE_API_KEY: str = _env_str("AI_SERVICE_API_KEY", "")
 
     # OCR Settings
-    OCR_ENABLED: bool = os.getenv("OCR_ENABLED").lower() == "true"
-    OCR_LANGUAGE: str = os.getenv("OCR_LANGUAGE")
-    OCR_DPI: int = int(os.getenv("OCR_DPI"))
-    OCR_CONFIG: str = os.getenv("OCR_CONFIG")
+    OCR_ENABLED: bool = _env_bool("OCR_ENABLED", False)
+    OCR_LANGUAGE: str = _env_str("OCR_LANGUAGE", "eng")
+    OCR_DPI: int = _env_int("OCR_DPI", 300)
+    OCR_CONFIG: str = _env_str("OCR_CONFIG", "")
 
     class Config:
         case_sensitive = True

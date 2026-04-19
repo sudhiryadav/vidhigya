@@ -12,53 +12,56 @@ export class PermissionCacheService {
   /**
    * Get user permissions from cache
    */
-  async get(userId: string): Promise<UserPermissions | null> {
+  get(userId: string): Promise<UserPermissions | null> {
     const cacheKey = `permissions:${userId}`;
     const cached = this.cache.get(cacheKey);
 
     if (!cached) {
-      return null;
+      return Promise.resolve(null);
     }
 
     // Check if cache has expired
     if (Date.now() - cached.timestamp > this.TTL) {
       this.cache.delete(cacheKey);
-      return null;
+      return Promise.resolve(null);
     }
 
-    return cached.data;
+    return Promise.resolve(cached.data);
   }
 
   /**
    * Set user permissions in cache
    */
-  async set(userId: string, permissions: UserPermissions): Promise<void> {
+  set(userId: string, permissions: UserPermissions): Promise<void> {
     const cacheKey = `permissions:${userId}`;
     this.cache.set(cacheKey, {
       data: permissions,
       timestamp: Date.now(),
     });
+    return Promise.resolve();
   }
 
   /**
    * Remove user permissions from cache
    */
-  async delete(userId: string): Promise<void> {
+  delete(userId: string): Promise<void> {
     const cacheKey = `permissions:${userId}`;
     this.cache.delete(cacheKey);
+    return Promise.resolve();
   }
 
   /**
    * Clear all permissions cache
    */
-  async clear(): Promise<void> {
+  clear(): Promise<void> {
     this.cache.clear();
+    return Promise.resolve();
   }
 
   /**
    * Invalidate cache for users in a specific practice
    */
-  async invalidatePracticeUsers(practiceId: string): Promise<void> {
+  invalidatePracticeUsers(_practiceId: string): Promise<void> {
     // Get all cache keys and check which users belong to this practice
     const keysToDelete: string[] = [];
 
@@ -79,6 +82,7 @@ export class PermissionCacheService {
     }
 
     keysToDelete.forEach((key) => this.cache.delete(key));
+    return Promise.resolve();
   }
 
   /**

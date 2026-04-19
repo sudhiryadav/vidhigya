@@ -24,6 +24,7 @@ import {
   UpdatePracticeDto,
 } from './dto/practice.dto';
 import { PracticesService } from './practices.service';
+import { AuthenticatedRequest } from '../auth/types/authenticated-request.interface';
 
 @Controller('practices')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionGuard)
@@ -33,7 +34,7 @@ export class PracticesController {
   @Post()
   @RequireCreate(PermissionResource.PRACTICE)
   async createPractice(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() createPracticeDto: CreatePracticeDto,
   ) {
     return this.practicesService.createPractice(
@@ -43,12 +44,15 @@ export class PracticesController {
   }
 
   @Get()
-  async getUserPractices(@Request() req) {
+  async getUserPractices(@Request() req: AuthenticatedRequest) {
     return this.practicesService.getUserPractices(req.user.sub);
   }
 
   @Get(':id')
-  async getPracticeById(@Param('id') id: string, @Request() req) {
+  async getPracticeById(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.practicesService.getPracticeById(id, req.user.sub);
   }
 
@@ -56,7 +60,7 @@ export class PracticesController {
   @RequireUpdate(PermissionResource.PRACTICE)
   async updatePractice(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() updatePracticeDto: UpdatePracticeDto,
   ) {
     return this.practicesService.updatePractice(
@@ -70,7 +74,7 @@ export class PracticesController {
   @RequireCreate(PermissionResource.USER)
   async addMember(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() addMemberDto: AddMemberDto,
   ) {
     return this.practicesService.addMember(id, req.user.sub, addMemberDto);
@@ -81,13 +85,16 @@ export class PracticesController {
   async removeMember(
     @Param('id') id: string,
     @Param('memberId') memberId: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.practicesService.removeMember(id, req.user.sub, memberId);
   }
 
   @Get(':id/stats')
-  async getPracticeStats(@Param('id') id: string, @Request() req) {
+  async getPracticeStats(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.practicesService.getPracticeStats(id, req.user.sub);
   }
 }

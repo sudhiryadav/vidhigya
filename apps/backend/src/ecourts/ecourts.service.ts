@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { RedactingLogger } from '../common/logging';
 import {
   APIResponse,
   GetCaseDetailsRequest,
@@ -15,6 +16,8 @@ import { RateLimiterService } from './services/rate-limiter.service';
 
 @Injectable()
 export class EcourtsService {
+  private readonly logger = new RedactingLogger(EcourtsService.name);
+
   constructor(
     private caseScraperService: CaseScraperService,
     private courtScraperService: CourtScraperService,
@@ -61,9 +64,9 @@ export class EcourtsService {
           request.courtId,
         );
         results.push(result.data);
-      } catch (error) {
+      } catch (_error) {
         // If specific case not found, continue with empty results
-        console.warn('Case not found:', request.caseNumber);
+        this.logger.warn('Case not found:', request.caseNumber);
       }
     } else {
       // For other search criteria, we would need to implement a different scraping approach

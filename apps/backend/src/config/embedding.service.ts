@@ -10,7 +10,7 @@ export class EmbeddingService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async initialize() {
+  initialize() {
     try {
       // For now, we'll use a simple approach without loading a pre-trained model
       // This is a fallback when FastAPI service is not available
@@ -20,7 +20,7 @@ export class EmbeddingService {
     }
   }
 
-  async generateEmbedding(text: string): Promise<number[]> {
+  generateEmbedding(text: string): number[] {
     try {
       // Simple fallback embedding generation
       // This creates a deterministic embedding based on text content
@@ -58,13 +58,8 @@ export class EmbeddingService {
     return embedding;
   }
 
-  async generateEmbeddings(texts: string[]): Promise<number[][]> {
-    const embeddings: number[][] = [];
-    for (const text of texts) {
-      const embedding = await this.generateEmbedding(text);
-      embeddings.push(embedding);
-    }
-    return embeddings;
+  generateEmbeddings(texts: string[]): Promise<number[][]> {
+    return Promise.resolve(texts.map((text) => this.generateEmbedding(text)));
   }
 
   calculateSimilarity(embedding1: number[], embedding2: number[]): number {

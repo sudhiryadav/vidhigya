@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Server } from 'socket.io';
+import { RedactingLogger } from '../common/logging';
 
 @Injectable()
 export class NotificationEmitterService {
   private static instance: NotificationEmitterService;
+  private readonly logger = new RedactingLogger(
+    NotificationEmitterService.name,
+  );
   private socketServer: Server | null = null;
 
   constructor() {
@@ -23,7 +27,7 @@ export class NotificationEmitterService {
         .to(`user_${userId}`)
         .emit('video_call_notification', notificationData);
     } else {
-      console.log('Socket server not available, notification data:', {
+      this.logger.log('Socket server not available, notification data:', {
         userId,
         notificationData,
       });

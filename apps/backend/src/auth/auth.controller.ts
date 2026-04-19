@@ -21,6 +21,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { UserRole } from '@prisma/client';
 import { Response } from 'express';
 import sharp from 'sharp';
+import { RedactingLogger } from '../common/logging';
 import { MaxFileSizeValidator } from '../common/validators/max-file-size.validator';
 import { S3Service } from '../config/s3.config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -28,17 +29,12 @@ import { AuthService } from './auth.service';
 import { Roles } from './decorators/roles.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
-
-interface AuthenticatedRequest extends Request {
-  user: {
-    sub: string;
-    email: string;
-    role: UserRole;
-  };
-}
+import { AuthenticatedRequest } from './types/authenticated-request.interface';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new RedactingLogger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly prisma: PrismaService,
@@ -73,6 +69,16 @@ export class AuthController {
   @Post('reset-password')
   async resetPassword(@Body() data: { token: string; newPassword: string }) {
     return this.authService.resetPassword(data.token, data.newPassword);
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Body() data: { refreshToken: string }) {
+    if (!data?.refreshToken) {
+      throw new BadRequestException('Refresh token is required');
+    }
+
+    return this.authService.refreshAccessToken(data.refreshToken);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -202,29 +208,21 @@ export class AuthController {
   @Get('avatar/:userId')
   async getAvatar(@Param('userId') userId: string, @Res() res: Response) {
     try {
-      console.log(`Fetching avatar for user: ${userId}`);
-
-      // Check if user exists
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
         select: { id: true },
       });
 
       if (!user) {
-        console.log(`User not found: ${userId}`);
         return res.status(404).json({ message: 'User not found' });
       }
 
-      console.log(`User found: ${userId}`);
-
-      // Get the S3 key from the database
       const userWithAvatar = await this.prisma.user.findUnique({
         where: { id: userId },
         select: { id: true, avatarS3Key: true },
       });
 
       if (!userWithAvatar?.avatarS3Key) {
-        console.log(`No avatar S3 key found for user ${userId}`);
         return res.status(404).json({
           message: 'Avatar not found',
           error: 'NO_AVATAR',
@@ -233,18 +231,10 @@ export class AuthController {
       }
 
       const s3Key = userWithAvatar.avatarS3Key;
-      console.log(`Found S3 key in database: ${s3Key}`);
 
       try {
-        // Get avatar as buffer using the stored S3 key
-        console.log(`Fetching avatar from S3 with key: ${s3Key}`);
         const avatarBuffer = await this.s3Service.getAvatarAsBuffer(s3Key);
 
-        console.log(
-          `Retrieved avatar buffer, size: ${avatarBuffer.length} bytes`,
-        );
-
-        // Determine content type from file extension
         const extension = s3Key.split('.').pop()?.toLowerCase();
         const contentType =
           extension === 'png'
@@ -253,35 +243,31 @@ export class AuthController {
               ? 'image/gif'
               : 'image/jpeg';
 
-        // Set appropriate headers for image response
         res.set({
           'Content-Type': contentType,
           'Content-Length': avatarBuffer.length.toString(),
-          'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+          'Cache-Control': 'public, max-age=3600',
         });
 
-        // Send the buffer as response
         return res.send(avatarBuffer);
       } catch (error) {
-        console.log(`S3 Error for user ${userId}:`, error);
         if (
           error &&
           typeof error === 'object' &&
           'name' in error &&
           (error as { name: string }).name === 'NoSuchKey'
         ) {
-          console.log(`Avatar file not found in S3 for user ${userId}`);
           return res.status(404).json({
             message: 'Avatar not found',
             error: 'NO_AVATAR',
             userId: userId,
           });
         }
-        console.error(`Unexpected S3 error for user ${userId}:`, error);
+        this.logger.error('Unexpected avatar storage error', error);
         return res.status(500).json({ message: 'Error accessing avatar' });
       }
     } catch (error) {
-      console.error('Error fetching avatar:', error);
+      this.logger.error('Error fetching avatar:', error);
       return res.status(500).json({ message: 'Error accessing avatar' });
     }
   }
@@ -335,9 +321,6 @@ export class AuthController {
     }
 
     try {
-      console.log(`Starting avatar upload for user: ${req.user.sub}`);
-
-      // Check if user exists
       const currentUser = await this.prisma.user.findUnique({
         where: { id: req.user.sub },
         select: { id: true },
@@ -347,7 +330,6 @@ export class AuthController {
         throw new BadRequestException('User not found');
       }
 
-      // Optimize and resize the image
       const optimizedImageBuffer = await sharp(file.buffer)
         .resize(200, 200, {
           fit: 'cover',
@@ -359,51 +341,34 @@ export class AuthController {
         })
         .toBuffer();
 
-      console.log(
-        `Image optimized, size: ${optimizedImageBuffer.length} bytes`,
-      );
-
-      // Get the old avatar S3 key from database before updating
       const currentUserWithAvatar = await this.prisma.user.findUnique({
         where: { id: req.user.sub },
         select: { id: true, avatarS3Key: true },
       });
 
-      // Generate S3 key based on user ID with original extension
       const originalExtension =
         file.originalname.split('.').pop()?.toLowerCase() || 'jpg';
       const s3Key = `avatars/${req.user.sub}.${originalExtension}`;
 
-      // Upload new avatar to S3
       await this.s3Service.uploadAvatar(
         optimizedImageBuffer,
         s3Key,
         'image/jpeg',
       );
 
-      console.log(`Uploaded to S3, avatar key: ${s3Key}`);
-
-      // Store the S3 key in the database
       await this.prisma.user.update({
         where: { id: req.user.sub },
         data: { avatarS3Key: s3Key },
       });
 
-      console.log(`Stored S3 key in database: ${s3Key}`);
-
-      // Delete old avatar from S3 if it exists and is different from the new one
       if (
         currentUserWithAvatar?.avatarS3Key &&
         currentUserWithAvatar.avatarS3Key !== s3Key
       ) {
         try {
           await this.s3Service.deleteAvatar(currentUserWithAvatar.avatarS3Key);
-          console.log(
-            `Deleted old avatar: ${currentUserWithAvatar.avatarS3Key}`,
-          );
         } catch {
-          // Ignore error if old avatar doesn't exist
-          console.log('No old avatar to delete');
+          // Ignore error if old avatar doesn't exist.
         }
       }
 
@@ -414,7 +379,7 @@ export class AuthController {
         originalSize: file.size,
       };
     } catch (error) {
-      console.error('Error processing avatar:', error);
+      this.logger.error('Error processing avatar:', error);
       throw new BadRequestException('Failed to process avatar image');
     }
   }
@@ -423,9 +388,6 @@ export class AuthController {
   @Delete('avatar')
   async removeAvatar(@Request() req: AuthenticatedRequest) {
     try {
-      console.log(`Removing avatar for user: ${req.user.sub}`);
-
-      // Get current user with avatar S3 key
       const currentUser = await this.prisma.user.findUnique({
         where: { id: req.user.sub },
         select: { id: true, avatarS3Key: true },
@@ -439,28 +401,20 @@ export class AuthController {
         return { message: 'No avatar to remove' };
       }
 
-      // Delete avatar from S3
       try {
         await this.s3Service.deleteAvatar(currentUser.avatarS3Key);
-        console.log(`Deleted avatar from S3: ${currentUser.avatarS3Key}`);
       } catch {
-        console.log(`Avatar not found in S3: ${currentUser.avatarS3Key}`);
-        // Continue even if S3 deletion fails
+        // Continue even if S3 deletion fails.
       }
 
-      // Remove S3 key from database
       await this.prisma.user.update({
         where: { id: req.user.sub },
         data: { avatarS3Key: null },
       });
 
-      console.log(
-        `Removed avatar S3 key from database for user: ${req.user.sub}`,
-      );
-
       return { message: 'Avatar removed successfully' };
     } catch {
-      console.error('Error removing avatar');
+      this.logger.error('Error removing avatar');
       throw new BadRequestException('Failed to remove avatar');
     }
   }

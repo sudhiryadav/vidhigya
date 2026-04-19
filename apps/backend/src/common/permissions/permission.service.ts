@@ -28,7 +28,7 @@ export class PermissionService {
    */
   async checkPermission(
     permissionCheck: PermissionCheck,
-    auditData?: { ipAddress?: string; userAgent?: string },
+    _auditData?: { ipAddress?: string; userAgent?: string },
   ): Promise<boolean> {
     const { action, resource, resourceId, userId, practiceId } =
       permissionCheck;
@@ -147,7 +147,7 @@ export class PermissionService {
     if (!resourceId) return false;
 
     switch (resource) {
-      case PermissionResource.CASE:
+      case PermissionResource.CASE: {
         const legalCase = await this.prisma.legalCase.findFirst({
           where: {
             id: resourceId,
@@ -155,8 +155,9 @@ export class PermissionService {
           },
         });
         return !!legalCase;
+      }
 
-      case PermissionResource.DOCUMENT:
+      case PermissionResource.DOCUMENT: {
         const document = await this.prisma.legalDocument.findFirst({
           where: {
             id: resourceId,
@@ -168,8 +169,9 @@ export class PermissionService {
           },
         });
         return !!document;
+      }
 
-      case PermissionResource.BILLING:
+      case PermissionResource.BILLING: {
         const billing = await this.prisma.billingRecord.findFirst({
           where: {
             id: resourceId,
@@ -181,8 +183,9 @@ export class PermissionService {
           },
         });
         return !!billing;
+      }
 
-      case PermissionResource.CALENDAR:
+      case PermissionResource.CALENDAR: {
         const calendarEvent = await this.prisma.calendarEvent.findFirst({
           where: {
             id: resourceId,
@@ -193,8 +196,9 @@ export class PermissionService {
           },
         });
         return !!calendarEvent;
+      }
 
-      case PermissionResource.TASK:
+      case PermissionResource.TASK: {
         const task = await this.prisma.task.findFirst({
           where: {
             id: resourceId,
@@ -202,6 +206,7 @@ export class PermissionService {
           },
         });
         return !!task;
+      }
 
       default:
         return false;
@@ -408,7 +413,7 @@ export class PermissionService {
   /**
    * Get audit logs (temporarily disabled)
    */
-  async getAuditLogs(filter: any = {}) {
+  getAuditLogs(_filter: unknown = {}) {
     // Temporarily disabled
     return [];
   }
@@ -416,7 +421,7 @@ export class PermissionService {
   /**
    * Get permission statistics (temporarily disabled)
    */
-  async getPermissionStats(filter: any = {}) {
+  getPermissionStats(_filter: unknown = {}) {
     // Temporarily disabled
     return {
       totalChecks: 0,
@@ -429,7 +434,7 @@ export class PermissionService {
   /**
    * Get failed permission attempts (temporarily disabled)
    */
-  async getFailedAttempts(userId?: string, limit = 50) {
+  getFailedAttempts(_userId?: string, _limit = 50) {
     // Temporarily disabled
     return [];
   }
@@ -437,7 +442,7 @@ export class PermissionService {
   /**
    * Clean up old audit logs (temporarily disabled)
    */
-  async cleanupOldLogs(daysToKeep = 90) {
+  cleanupOldLogs(_daysToKeep = 90) {
     // Temporarily disabled
     return;
   }

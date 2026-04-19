@@ -37,7 +37,7 @@ export class CaseScraperService extends BaseScraperService<Case> {
         // Navigate to the new eCourts v6 website
         const searchUrl = 'https://services.ecourts.gov.in/ecourtindia_v6/';
         await this.navigateToPage(page, searchUrl);
-        console.log(`Successfully navigated to: ${searchUrl}`);
+        this.logger.log(`Successfully navigated to: ${searchUrl}`);
 
         // Fill case number and search
         await this.searchCase(page, caseNumber, courtId);
@@ -91,9 +91,9 @@ export class CaseScraperService extends BaseScraperService<Case> {
           await this.waitForElement(page, selector, 2000);
           await page.type(selector, caseNumber);
           caseInputFound = true;
-          console.log(`Found case input with selector: ${selector}`);
+          this.logger.log(`Found case input with selector: ${selector}`);
           break;
-        } catch (e) {
+        } catch (_e) {
           // Continue to next selector
           continue;
         }
@@ -102,7 +102,7 @@ export class CaseScraperService extends BaseScraperService<Case> {
       if (!caseInputFound) {
         // Log page content for debugging
         const pageContent = await page.content();
-        console.log(
+        this.logger.log(
           'Page content (first 1000 chars):',
           pageContent.substring(0, 1000),
         );
@@ -113,9 +113,9 @@ export class CaseScraperService extends BaseScraperService<Case> {
             path: '/tmp/ecourts-debug.png',
             fullPage: true,
           });
-          console.log('Debug screenshot saved to /tmp/ecourts-debug.png');
-        } catch (e) {
-          console.log('Could not save debug screenshot:', e);
+          this.logger.log('Debug screenshot saved to /tmp/ecourts-debug.png');
+        } catch (_e) {
+          this.logger.log('Could not save debug screenshot:', _e);
         }
 
         throw new Error(
@@ -137,9 +137,9 @@ export class CaseScraperService extends BaseScraperService<Case> {
         for (const selector of courtSelectors) {
           try {
             await page.select(selector, courtId);
-            console.log(`Selected court with selector: ${selector}`);
+            this.logger.log(`Selected court with selector: ${selector}`);
             break;
-          } catch (e) {
+          } catch (_e) {
             // Continue to next selector
             continue;
           }
@@ -165,9 +165,9 @@ export class CaseScraperService extends BaseScraperService<Case> {
         try {
           await page.click(selector);
           searchButtonFound = true;
-          console.log(`Clicked search button with selector: ${selector}`);
+          this.logger.log(`Clicked search button with selector: ${selector}`);
           break;
-        } catch (e) {
+        } catch (_e) {
           // Continue to next selector
           continue;
         }
@@ -176,7 +176,7 @@ export class CaseScraperService extends BaseScraperService<Case> {
       if (!searchButtonFound) {
         // Try pressing Enter as fallback
         await page.keyboard.press('Enter');
-        console.log('Used Enter key as fallback for search');
+        this.logger.log('Used Enter key as fallback for search');
       }
 
       // Wait for results to load with multiple possible result selectors
@@ -196,9 +196,9 @@ export class CaseScraperService extends BaseScraperService<Case> {
         try {
           await this.waitForElement(page, selector, 5000);
           resultFound = true;
-          console.log(`Found results with selector: ${selector}`);
+          this.logger.log(`Found results with selector: ${selector}`);
           break;
-        } catch (e) {
+        } catch (_e) {
           // Continue to next selector
           continue;
         }
@@ -208,7 +208,7 @@ export class CaseScraperService extends BaseScraperService<Case> {
         // Wait a bit more and check if page has changed
         await page.waitForTimeout(5000);
         const currentUrl = page.url();
-        console.log(`Search completed, current URL: ${currentUrl}`);
+        this.logger.log(`Search completed, current URL: ${currentUrl}`);
       }
     } catch (error) {
       throw new Error(`Failed to search case: ${error}`);
@@ -236,16 +236,16 @@ export class CaseScraperService extends BaseScraperService<Case> {
           const captchaElement = await page.$(selector);
           if (captchaElement) {
             captchaFound = true;
-            console.log(`Found CAPTCHA with selector: ${selector}`);
+            this.logger.log(`Found CAPTCHA with selector: ${selector}`);
             break;
           }
-        } catch (e) {
+        } catch (_e) {
           continue;
         }
       }
 
       if (captchaFound) {
-        console.log('CAPTCHA detected, attempting to solve...');
+        this.logger.log('CAPTCHA detected, attempting to solve...');
 
         // Try to solve CAPTCHA using OCR or other methods
         // For now, we'll try to refresh the CAPTCHA and wait
@@ -263,10 +263,12 @@ export class CaseScraperService extends BaseScraperService<Case> {
           for (const selector of refreshSelectors) {
             try {
               await page.click(selector);
-              console.log(`Clicked refresh button with selector: ${selector}`);
+              this.logger.log(
+                `Clicked refresh button with selector: ${selector}`,
+              );
               await page.waitForTimeout(2000);
               break;
-            } catch (e) {
+            } catch (_e) {
               continue;
             }
           }
@@ -274,18 +276,20 @@ export class CaseScraperService extends BaseScraperService<Case> {
           // Try to solve CAPTCHA automatically
           const captchaSolved = await this.solveCaptcha(page);
           if (!captchaSolved) {
-            console.log('CAPTCHA solving failed, waiting for manual input...');
+            this.logger.log(
+              'CAPTCHA solving failed, waiting for manual input...',
+            );
             await page.waitForTimeout(15000); // Wait 15 seconds for manual solving
           }
         } catch (error) {
-          console.log('Could not handle CAPTCHA automatically:', error);
+          this.logger.log('Could not handle CAPTCHA automatically:', error);
           // Continue anyway - maybe CAPTCHA is not required
         }
       } else {
-        console.log('No CAPTCHA detected');
+        this.logger.log('No CAPTCHA detected');
       }
     } catch (error) {
-      console.log('Error handling CAPTCHA:', error);
+      this.logger.log('Error handling CAPTCHA:', error);
       // Continue anyway
     }
   }
@@ -298,13 +302,13 @@ export class CaseScraperService extends BaseScraperService<Case> {
       );
 
       if (!captchaImage) {
-        console.log('No CAPTCHA image found');
+        this.logger.log('No CAPTCHA image found');
         return false;
       }
 
-      // Take screenshot of CAPTCHA
-      const captchaScreenshot = await captchaImage.screenshot();
-      console.log('CAPTCHA image captured');
+      // Take screenshot of CAPTCHA (side effect for future OCR / debugging)
+      await captchaImage.screenshot();
+      this.logger.log('CAPTCHA image captured');
 
       // For now, we'll use a simple approach
       // In production, you would:
@@ -327,19 +331,19 @@ export class CaseScraperService extends BaseScraperService<Case> {
         try {
           const input = await page.$(selector);
           if (input) {
-            console.log(`Found CAPTCHA input with selector: ${selector}`);
+            this.logger.log(`Found CAPTCHA input with selector: ${selector}`);
             // In production, you would fill this with the solved CAPTCHA
             // For now, we'll just wait for manual input
             return false;
           }
-        } catch (e) {
+        } catch (_e) {
           continue;
         }
       }
 
       return false;
     } catch (error) {
-      console.log('Error solving CAPTCHA:', error);
+      this.logger.log('Error solving CAPTCHA:', error);
       return false;
     }
   }
@@ -365,7 +369,7 @@ export class CaseScraperService extends BaseScraperService<Case> {
             noResultsFound = true;
             break;
           }
-        } catch (e) {
+        } catch (_e) {
           // Continue checking other selectors
           continue;
         }
@@ -514,7 +518,7 @@ export class CaseScraperService extends BaseScraperService<Case> {
 
       return parties;
     } catch (error) {
-      console.warn('Failed to parse parties:', error);
+      this.logger.warn('Failed to parse parties:', error);
       return [];
     }
   }
@@ -564,7 +568,7 @@ export class CaseScraperService extends BaseScraperService<Case> {
 
       return advocates;
     } catch (error) {
-      console.warn('Failed to parse advocates:', error);
+      this.logger.warn('Failed to parse advocates:', error);
       return [];
     }
   }
@@ -592,7 +596,7 @@ export class CaseScraperService extends BaseScraperService<Case> {
         caseSection: section ? this.cleanText(section) : undefined,
       };
     } catch (error) {
-      console.warn('Failed to parse case details:', error);
+      this.logger.warn('Failed to parse case details:', error);
       return {};
     }
   }

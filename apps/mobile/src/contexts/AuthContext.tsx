@@ -34,6 +34,9 @@ interface RegisterData {
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
+const TOKEN_KEY = "@Vidhigya:token";
+const REFRESH_TOKEN_KEY = "@Vidhigya:refreshToken";
+const USER_KEY = "@Vidhigya:user";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -48,8 +51,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const loadStoredAuth = async () => {
     try {
-      const storedToken = await AsyncStorage.getItem("@Vidhigya:token");
-      const storedUser = await AsyncStorage.getItem("@Vidhigya:user");
+      const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
+      const storedUser = await AsyncStorage.getItem(USER_KEY);
 
       if (storedToken && storedUser) {
         api.defaults.headers.authorization = `Bearer ${storedToken}`;
@@ -68,12 +71,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoading(true);
       const response = await api.post("/auth/login", { email, password });
 
-      const { token: newToken, user: userData } = response.data;
+      const {
+        token: newToken,
+        refreshToken: newRefreshToken,
+        user: userData,
+      } = response.data as {
+        token: string;
+        refreshToken: string;
+        user: User;
+      };
 
       api.defaults.headers.authorization = `Bearer ${newToken}`;
 
-      await AsyncStorage.setItem("@Vidhigya:token", newToken);
-      await AsyncStorage.setItem("@Vidhigya:user", JSON.stringify(userData));
+      await AsyncStorage.setItem(TOKEN_KEY, newToken);
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(userData));
 
       setToken(newToken);
       setUser(userData);
@@ -90,12 +102,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoading(true);
       const response = await api.post("/auth/register", userData);
 
-      const { token: newToken, user: newUser } = response.data;
+      const {
+        token: newToken,
+        refreshToken: newRefreshToken,
+        user: newUser,
+      } = response.data as {
+        token: string;
+        refreshToken: string;
+        user: User;
+      };
 
       api.defaults.headers.authorization = `Bearer ${newToken}`;
 
-      await AsyncStorage.setItem("@Vidhigya:token", newToken);
-      await AsyncStorage.setItem("@Vidhigya:user", JSON.stringify(newUser));
+      await AsyncStorage.setItem(TOKEN_KEY, newToken);
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(newUser));
 
       setToken(newToken);
       setUser(newUser);
@@ -109,8 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem("@Vidhigya:token");
-      await AsyncStorage.removeItem("@Vidhigya:user");
+      await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
 
       setToken(null);
       setUser(null);
@@ -123,11 +143,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refreshToken = async () => {
     try {
-      const response = await api.post("/auth/refresh");
-      const { token: newToken } = response.data;
+      const storedRefreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+
+      if (!storedRefreshToken) {
+        await logout();
+        return;
+      }
+
+      const response = await api.post("/auth/refresh", {
+        refreshToken: storedRefreshToken,
+      });
+      const { token: newToken, refreshToken: newRefreshToken } = response.data as {
+        token: string;
+        refreshToken: string;
+      };
 
       api.defaults.headers.authorization = `Bearer ${newToken}`;
-      await AsyncStorage.setItem("@Vidhigya:token", newToken);
+      await AsyncStorage.setItem(TOKEN_KEY, newToken);
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
 
       setToken(newToken);
     } catch (error) {

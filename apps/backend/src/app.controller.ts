@@ -1,21 +1,29 @@
 import { Controller, Get } from '@nestjs/common';
+import { RedactingLogger } from './common/logging';
 import { AppService } from './app.service';
 import { PrismaService } from './prisma/prisma.service';
 
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : 'Unknown error';
+
 @Controller()
 export class AppController {
+  private readonly logger = new RedactingLogger(AppController.name);
+
   constructor(
     private readonly appService: AppService,
     private readonly prismaService: PrismaService,
   ) {
-    console.log(
+    this.logger.log(
       'AppController initialized with PrismaService:',
       !!this.prismaService,
     );
 
     // Check if PrismaService is properly injected
     if (!this.prismaService) {
-      console.warn('WARNING: PrismaService not injected into AppController');
+      this.logger.warn(
+        'WARNING: PrismaService not injected into AppController',
+      );
     }
   }
 
@@ -34,16 +42,18 @@ export class AppController {
 
   @Get('health')
   async getHealth() {
-    console.log('Health check requested');
+    this.logger.log('Health check requested');
 
     try {
       // Check database connectivity
       if (this.prismaService) {
-        console.log('PrismaService available, checking database connection...');
+        this.logger.log(
+          'PrismaService available, checking database connection...',
+        );
 
         try {
           await this.prismaService.$queryRaw`SELECT 1`;
-          console.log('Database connection successful');
+          this.logger.log('Database connection successful');
 
           return {
             status: 'healthy',
@@ -58,7 +68,7 @@ export class AppController {
             },
           };
         } catch (dbError) {
-          console.error('Database connection failed:', dbError);
+          this.logger.error('Database connection failed:', dbError);
           return {
             status: 'unhealthy',
             timestamp: new Date().toISOString(),
@@ -66,7 +76,7 @@ export class AppController {
             environment: process.env.NODE_ENV || 'development',
             version: process.env.npm_package_version || '1.0.0',
             database: 'disconnected',
-            error: dbError.message,
+            error: getErrorMessage(dbError),
             services: {
               prisma: 'unhealthy',
               api: 'healthy',
@@ -74,7 +84,7 @@ export class AppController {
           };
         }
       } else {
-        console.log('PrismaService not available');
+        this.logger.log('PrismaService not available');
         return {
           status: 'healthy',
           timestamp: new Date().toISOString(),
@@ -89,7 +99,7 @@ export class AppController {
         };
       }
     } catch (error) {
-      console.error('Health check failed:', error);
+      this.logger.error('Health check failed:', error);
       return {
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
@@ -97,7 +107,7 @@ export class AppController {
         environment: process.env.NODE_ENV || 'development',
         version: process.env.npm_package_version || '1.0.0',
         database: 'disconnected',
-        error: error.message,
+        error: getErrorMessage(error),
         services: {
           prisma: 'unhealthy',
           api: 'healthy',

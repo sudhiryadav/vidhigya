@@ -232,7 +232,10 @@ def optimize_chunk_size(text: str, target_size: int = 800) -> List[str]:
 
 
 def optimize_chunk_size_with_pages(
-    text: str, file_extension: str, file_content: bytes
+    text: str,
+    file_extension: str,
+    file_content: bytes,
+    document_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Optimize text into chunks with page tracking for better search results."""
     print(f"🔧 optimize_chunk_size_with_pages called:")
@@ -254,8 +257,20 @@ def optimize_chunk_size_with_pages(
             doc = fitz.open(stream=file_content, filetype="pdf")
             print(f"  📄 PDF opened successfully, {len(doc)} pages")
             current_pos = 0
+            num_pages = len(doc)
 
-            for page_num in range(len(doc)):
+            for page_num in range(num_pages):
+                if document_id and num_pages > 0:
+                    # Map chunking phase to 80–89% (embedding uses 90–99%)
+                    pct = 80 + int(((page_num + 1) / num_pages) * 9)
+                    update_processing_status(
+                        document_id,
+                        "PROCESSING",
+                        f"Chunking PDF page {page_num + 1}/{num_pages}…",
+                        None,
+                        min(pct, 89),
+                    )
+
                 page = doc[page_num]
                 page_text = page.get_text()
                 print(
@@ -387,6 +402,14 @@ def optimize_chunk_size_with_pages(
                 )
     else:
         # For non-PDF files, use simple chunking
+        if document_id:
+            update_processing_status(
+                document_id,
+                "PROCESSING",
+                "Chunking document text…",
+                None,
+                85,
+            )
         simple_chunks = optimize_chunk_size(text, 800)
         for chunk in simple_chunks:
             chunks.append(
@@ -745,7 +768,7 @@ def process_file_with_progress(
 
         # Optimize chunks with page tracking
         chunks_with_pages = optimize_chunk_size_with_pages(
-            cleaned_text_content, file_extension, file_content
+            cleaned_text_content, file_extension, file_content, document_id
         )
         total_chunks = len(chunks_with_pages)
 
@@ -766,7 +789,22 @@ def process_file_with_progress(
         if qdrant_client:
             try:
                 points = []
+                embed_total = len(chunks_with_pages)
+                report_every = max(1, min(50, embed_total // 25 or 1))
                 for idx, chunk_data in enumerate(chunks_with_pages):
+                    if embed_total and (
+                        idx == 0
+                        or idx == embed_total - 1
+                        or (idx + 1) % report_every == 0
+                    ):
+                        pct = 90 + int(((idx + 1) / embed_total) * 9)
+                        update_processing_status(
+                            document_id,
+                            "PROCESSING",
+                            f"Embedding chunk {idx + 1}/{embed_total}…",
+                            None,
+                            min(pct, 99),
+                        )
                     # Debug: Check chunk data
                     print(f"Processing chunk {idx + 1}/{len(chunks_with_pages)}")
                     print(f"  Text length: {len(chunk_data['text'])}")
@@ -1054,7 +1092,7 @@ def process_file(
 
         # Optimize chunks with page tracking
         chunks_with_pages = optimize_chunk_size_with_pages(
-            cleaned_text_content, file_extension, file_content
+            cleaned_text_content, file_extension, file_content, document_id
         )
         total_chunks = len(chunks_with_pages)
 
@@ -1421,23 +1459,39 @@ async def restart_document_processing(
                 status_code=400, detail="Document is not stuck in processing"
             )
 
-        # Reset processing status to start fresh
+        # Refresh timestamp for monitors without clobbering live progress/details.
+        # The background worker may still be running; resetting to 0 and "Restarting…"
+        # made the UI look frozen. Preserve progress; normalize stale restart copy.
+        raw_details = current_status.get("details")
+        prev_details = raw_details.strip() if isinstance(raw_details, str) else ""
+        if not prev_details or prev_details.startswith(
+            "Restarting processing for document"
+        ):
+            prev_details = "Processing document…"
+
+        prev_progress = current_status.get("progress")
+        try:
+            prev_p = int(prev_progress) if prev_progress is not None else 0
+        except (TypeError, ValueError):
+            prev_p = 0
+        prev_p = max(0, min(99, prev_p))
+
         update_processing_status(
             document_id,
             "PROCESSING",
-            f"Restarting processing for document {document_id}",
+            prev_details,
             None,
-            0,
+            prev_p,
         )
 
         # Log the restart
         log_to_backend(
             "info",
-            f"Document processing restarted for {document_id}",
+            f"Document processing checkpoint acknowledged for {document_id} (monitor ping, progress preserved)",
         )
 
         return {
-            "message": f"Processing restarted for document {document_id}",
+            "message": f"Processing checkpoint refreshed for document {document_id}",
             "document_id": document_id,
             "status": "RESTARTED",
             "timestamp": datetime.datetime.now().isoformat(),

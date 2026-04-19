@@ -1,7 +1,12 @@
 import axios from "axios";
 
+const rawBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3888/api";
+const normalizedBaseUrl = rawBaseUrl.endsWith("/api")
+  ? rawBaseUrl
+  : `${rawBaseUrl.replace(/\/$/, "")}/api`;
+
 export const api = axios.create({
-  baseURL: "http://localhost:3888",
+  baseURL: normalizedBaseUrl,
   timeout: 10000,
 });
 

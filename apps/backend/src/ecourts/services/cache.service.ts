@@ -1,9 +1,12 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RedactingLogger } from '../../common/logging';
 import { createClient, RedisClientType } from 'redis';
 
 @Injectable()
 export class CacheService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new RedactingLogger(CacheService.name);
+
   private client: RedisClientType | null = null;
   private memoryCache: Map<string, { data: any; expires: number }> = new Map();
   private isConnected = false;
@@ -30,22 +33,22 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         });
 
         this.client.on('error', (err) => {
-          console.error('Redis Client Error:', err);
+          this.logger.error('Redis Client Error:', err);
           this.isConnected = false;
         });
 
         this.client.on('connect', () => {
-          console.log('Connected to Redis');
+          this.logger.log('Connected to Redis');
           this.isConnected = true;
         });
 
         await this.client.connect();
       } else {
-        console.log('Redis not configured, using memory cache');
+        this.logger.log('Redis not configured, using memory cache');
         this.isConnected = true;
       }
     } catch (error) {
-      console.error('Failed to connect to Redis:', error);
+      this.logger.error('Failed to connect to Redis:', error);
       this.isConnected = true; // Fallback to memory cache
     }
   }
@@ -84,7 +87,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         return null;
       }
     } catch (error) {
-      console.error('Cache get error:', error);
+      this.logger.error('Cache get error:', error);
       return null;
     }
   }
@@ -108,7 +111,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         }
       }
     } catch (error) {
-      console.error('Cache set error:', error);
+      this.logger.error('Cache set error:', error);
     }
   }
 
@@ -120,7 +123,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         this.memoryCache.delete(key);
       }
     } catch (error) {
-      console.error('Cache delete error:', error);
+      this.logger.error('Cache delete error:', error);
     }
   }
 
@@ -134,7 +137,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         return cached ? !this.isExpired(cached.expires) : false;
       }
     } catch (error) {
-      console.error('Cache exists error:', error);
+      this.logger.error('Cache exists error:', error);
       return false;
     }
   }
@@ -147,12 +150,11 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         this.memoryCache.clear();
       }
     } catch (error) {
-      console.error('Cache clear error:', error);
+      this.logger.error('Cache clear error:', error);
     }
   }
 
   private cleanupMemoryCache(): void {
-    const now = Date.now();
     for (const [key, value] of this.memoryCache.entries()) {
       if (this.isExpired(value.expires)) {
         this.memoryCache.delete(key);

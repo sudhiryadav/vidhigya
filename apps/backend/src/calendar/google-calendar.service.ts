@@ -26,7 +26,7 @@ export class GoogleCalendarService {
   private readonly clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   private readonly redirectUri = process.env.GOOGLE_REDIRECT_URI;
 
-  async getAuthUrl(): Promise<string> {
+  getAuthUrl(): string {
     const scopes = [
       'https://www.googleapis.com/auth/calendar',
       'https://www.googleapis.com/auth/calendar.events',

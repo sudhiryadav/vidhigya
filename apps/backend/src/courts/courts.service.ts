@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CourtType } from '@prisma/client';
+import { RedactingLogger } from '../common/logging';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface CreateCourtDto {
@@ -33,6 +34,8 @@ export interface UpdateCourtDto {
 
 @Injectable()
 export class CourtsService {
+  private readonly logger = new RedactingLogger(CourtsService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(createCourtDto: CreateCourtDto) {
@@ -159,7 +162,7 @@ export class CourtsService {
         const created = await this.create(court);
         createdCourts.push(created);
       } catch (error) {
-        console.error(`Failed to import court ${court.name}:`, error);
+        this.logger.error(`Failed to import court ${court.name}:`, error);
       }
     }
     return createdCourts;

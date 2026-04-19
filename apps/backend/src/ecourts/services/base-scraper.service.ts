@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { RedactingLogger } from '../../common/logging';
 import {
   ScrapingConfig,
   ScrapingResult,
@@ -8,10 +9,15 @@ import {
 
 @Injectable()
 export abstract class BaseScraperService<T> {
+  protected readonly logger: RedactingLogger;
+
   protected browser: Browser | null = null;
   protected config: ScrapingConfig;
 
   constructor(protected configService: ConfigService) {
+    this.logger = new RedactingLogger(
+      new.target?.name ?? BaseScraperService.name,
+    );
     this.config = {
       baseUrl: this.configService.get<string>(
         'ECOURTS_BASE_URL',
@@ -109,7 +115,7 @@ export abstract class BaseScraperService<T> {
       await page.waitForSelector(selector, {
         timeout: timeout || this.config.timeout,
       });
-    } catch (error) {
+    } catch (_error) {
       throw new Error(`Element not found: ${selector}`);
     }
   }
@@ -125,7 +131,7 @@ export abstract class BaseScraperService<T> {
         return await operation();
       } catch (error) {
         lastError = error as Error;
-        console.warn(`Attempt ${attempt} failed:`, error);
+        this.logger.warn(`Attempt ${attempt} failed:`, error);
 
         if (attempt < maxAttempts) {
           // Exponential backoff
@@ -181,7 +187,7 @@ export abstract class BaseScraperService<T> {
       );
       return text;
     } catch (error) {
-      console.warn(`Failed to extract text from ${selector}:`, error);
+      this.logger.warn(`Failed to extract text from ${selector}:`, error);
       return '';
     }
   }
@@ -202,7 +208,7 @@ export abstract class BaseScraperService<T> {
       );
       return value;
     } catch (error) {
-      console.warn(
+      this.logger.warn(
         `Failed to extract attribute ${attribute} from ${selector}:`,
         error,
       );
@@ -228,7 +234,10 @@ export abstract class BaseScraperService<T> {
 
       return texts;
     } catch (error) {
-      console.warn(`Failed to extract multiple text from ${selector}:`, error);
+      this.logger.warn(
+        `Failed to extract multiple text from ${selector}:`,
+        error,
+      );
       return [];
     }
   }
@@ -243,7 +252,7 @@ export abstract class BaseScraperService<T> {
         if (text && text.trim()) {
           return text.trim();
         }
-      } catch (error) {
+      } catch (_error) {
         // Continue to next selector
         continue;
       }
@@ -280,7 +289,7 @@ export abstract class BaseScraperService<T> {
 
       return tableData;
     } catch (error) {
-      console.warn(
+      this.logger.warn(
         `Failed to extract table data from ${tableSelector}:`,
         error,
       );
@@ -296,7 +305,7 @@ export abstract class BaseScraperService<T> {
         return dateString; // Return original if parsing fails
       }
       return date.toISOString().split('T')[0];
-    } catch (error) {
+    } catch (_error) {
       return dateString;
     }
   }

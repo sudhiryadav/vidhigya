@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Put,
   Request,
@@ -13,6 +14,7 @@ import { UserRole } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { AuthenticatedRequest } from '../auth/types/authenticated-request.interface';
 import {
   SystemSettings,
   SystemSettingsService,
@@ -37,7 +39,7 @@ export class SystemSettingsController {
    */
   @Get('category/:category')
   @Roles(UserRole.SUPER_ADMIN)
-  async getSettingsByCategory(@Body('category') category: string) {
+  async getSettingsByCategory(@Param('category') category: string) {
     return this.systemSettingsService.getSettingsByCategory(category);
   }
 
@@ -55,7 +57,7 @@ export class SystemSettingsController {
    */
   @Get(':key')
   @Roles(UserRole.SUPER_ADMIN)
-  async getSetting(@Body('key') key: string) {
+  async getSetting(@Param('key') key: string) {
     return this.systemSettingsService.getSetting(key);
   }
 
@@ -66,11 +68,11 @@ export class SystemSettingsController {
   @HttpCode(HttpStatus.OK)
   @Roles(UserRole.SUPER_ADMIN)
   async updateSetting(
-    @Body('key') key: string,
+    @Param('key') key: string,
     @Body('value') value: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
-    const userId = req.user?.id;
+    const userId = req.user.sub;
     return this.systemSettingsService.updateSetting(key, value, userId);
   }
 
@@ -82,9 +84,9 @@ export class SystemSettingsController {
   @Roles(UserRole.SUPER_ADMIN)
   async updateMultipleSettings(
     @Body() updates: Array<{ key: string; value: string }>,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
-    const userId = req.user?.id;
+    const userId = req.user.sub;
     return this.systemSettingsService.updateMultipleSettings(updates, userId);
   }
 

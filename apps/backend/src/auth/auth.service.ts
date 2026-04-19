@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { PracticeType } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -55,13 +56,41 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
+  private createAccessToken(user: {
+    id: string;
+    email: string;
+    role: string;
+  }): string {
+    return this.jwtService.sign({
+      email: user.email,
+      sub: user.id,
+      role: user.role,
+      type: 'access',
+    });
+  }
+
+  private createRefreshToken(user: {
+    id: string;
+    email: string;
+    role: string;
+  }): string {
+    return this.jwtService.sign(
+      {
+        email: user.email,
+        sub: user.id,
+        role: user.role,
+        type: 'refresh',
+      },
+      { expiresIn: '30d' },
+    );
+  }
+
   async validateUser(email: string, password: string) {
     const user = await this.prisma.user.findUnique({
       where: { email },
     });
 
     if (user && (await bcrypt.compare(password, user.password))) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: _, ...result } = user;
       return result;
     }
@@ -85,9 +114,8 @@ export class AuthService {
     // For now, return basic user info without practice details
     // Practice information will be fetched separately when needed
 
-    const payload = { email: user.email, sub: user.id, role: user.role };
-    const token = this.jwtService.sign(payload);
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '30d' });
+    const token = this.createAccessToken(user);
+    const refreshToken = this.createRefreshToken(user);
 
     return {
       user: {
@@ -141,7 +169,7 @@ export class AuthService {
         data: {
           name: practiceName,
           description: `${practiceType.toLowerCase()} practice for ${user.name}`,
-          practiceType: practiceType as any, // Cast to PracticeType enum
+          practiceType: practiceType as PracticeType,
           isActive: true,
           members: {
             create: {
@@ -159,9 +187,8 @@ export class AuthService {
       });
     }
 
-    const payload = { email: user.email, sub: user.id, role: user.role };
-    const token = this.jwtService.sign(payload);
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '30d' });
+    const token = this.createAccessToken(user);
+    const refreshToken = this.createRefreshToken(user);
 
     return {
       user: {
@@ -179,19 +206,32 @@ export class AuthService {
     };
   }
 
-  async refreshToken(userId: string): Promise<{ token: string }> {
+  async refreshAccessToken(
+    refreshToken: string,
+  ): Promise<{ token: string; refreshToken: string }> {
+    const payload = this.jwtService.verify<{
+      sub: string;
+      type?: string;
+      email: string;
+      role: string;
+    }>(refreshToken);
+
+    if (payload.type !== 'refresh') {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: payload.sub },
     });
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid user');
     }
 
-    const payload = { email: user.email, sub: user.id, role: user.role };
-    const token = this.jwtService.sign(payload);
-
-    return { token };
+    return {
+      token: this.createAccessToken(user),
+      refreshToken: this.createRefreshToken(user),
+    };
   }
 
   async forgotPassword(email: string) {
@@ -227,24 +267,28 @@ export class AuthService {
       },
     });
 
-    // TODO: Send email with reset link
-    // For now, we'll just return the token
-    // In production, you'd integrate with an email service like SendGrid, AWS SES, etc.
-
     const resetLink = `${this.configService.get('FRONTEND_URL', 'http://localhost:3000')}/reset-password?token=${resetToken}`;
-
-    console.log(`Password reset link for ${user.email}: ${resetLink}`);
-
-    return {
+    const response: {
+      message: 'If an account with that email exists, a password reset link has been sent.';
+      resetLink?: string;
+    } = {
       message:
         'If an account with that email exists, a password reset link has been sent.',
-      resetLink, // Remove this in production
     };
+
+    if (this.configService.get('EXPOSE_PASSWORD_RESET_LINKS') === 'true') {
+      response.resetLink = resetLink;
+    }
+
+    return response;
   }
 
   async resetPassword(token: string, newPassword: string) {
     try {
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify<{
+        sub: string;
+        type?: string;
+      }>(token);
 
       if (payload.type !== 'password_reset') {
         throw new BadRequestException('Invalid reset token');
@@ -273,10 +317,10 @@ export class AuthService {
 
       return { message: 'Password reset successfully' };
     } catch (error) {
-      if (error.name === 'TokenExpiredError') {
+      if (error instanceof Error && error.name === 'TokenExpiredError') {
         throw new BadRequestException('Reset token has expired');
       }
-      if (error.name === 'JsonWebTokenError') {
+      if (error instanceof Error && error.name === 'JsonWebTokenError') {
         throw new BadRequestException('Invalid reset token');
       }
       throw error;

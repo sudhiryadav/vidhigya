@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { RedactingLogger } from '../logging';
 
 export interface ConversationItem {
   question: string;
@@ -14,6 +15,10 @@ export interface TokenizedConversationItem extends ConversationItem {
 
 @Injectable()
 export class ConversationContextService {
+  private readonly logger = new RedactingLogger(
+    ConversationContextService.name,
+  );
+
   // Rough token estimation (1 token ≈ 4 characters for English text)
   private readonly CHARS_PER_TOKEN = 4;
 
@@ -30,11 +35,11 @@ export class ConversationContextService {
    * Intelligently truncate conversation history to fit within token limits
    * Uses a sliding window approach to keep the most recent and relevant messages
    */
-  async truncateConversationHistory(
+  truncateConversationHistory(
     conversationHistory: ConversationItem[],
     currentQuery: string,
     documentContext?: string,
-  ): Promise<{
+  ): {
     truncatedHistory: ConversationItem[];
     totalTokens: number;
     historyTokens: number;
@@ -46,7 +51,7 @@ export class ConversationContextService {
       removedCount: number;
       reason: string;
     };
-  }> {
+  } {
     if (!conversationHistory || conversationHistory.length === 0) {
       return {
         truncatedHistory: [],
@@ -85,7 +90,7 @@ export class ConversationContextService {
     );
     const totalTokens = totalHistoryTokens + queryTokens + contextTokens;
 
-    console.log('Token calculation:', {
+    this.logger.log('Token calculation:', {
       totalHistoryTokens,
       queryTokens,
       contextTokens,
@@ -132,7 +137,7 @@ export class ConversationContextService {
 
     // Final safety check - if we still exceed limits, truncate more aggressively
     if (finalTotalTokens > this.MAX_TOTAL_TOKENS) {
-      console.log(
+      this.logger.log(
         'Final safety check: Still exceeding total token limit, truncating more aggressively',
       );
       const safetyTruncatedHistory = this.emergencyTruncation(
@@ -202,7 +207,7 @@ export class ConversationContextService {
     let currentTokens = 0;
     const selectedItems: TokenizedConversationItem[] = [];
 
-    console.log('Starting sliding window truncation:', {
+    this.logger.log('Starting sliding window truncation:', {
       totalItems: tokenizedHistory.length,
       availableTokens,
       queryTokens,
@@ -217,7 +222,7 @@ export class ConversationContextService {
       if (currentTokens + item.totalTokens <= availableTokens) {
         selectedItems.unshift(item); // Add to beginning to maintain chronological order
         currentTokens += item.totalTokens;
-        console.log(
+        this.logger.log(
           `Added full item: ${item.question.substring(0, 50)}... (${item.totalTokens} tokens, total: ${currentTokens})`,
         );
       } else {
@@ -236,11 +241,11 @@ export class ConversationContextService {
           };
           selectedItems.unshift(truncatedItem);
           currentTokens += truncatedItem.totalTokens;
-          console.log(
+          this.logger.log(
             `Added truncated item: ${item.question.substring(0, 50)}... (${truncatedItem.totalTokens} tokens, total: ${currentTokens})`,
           );
         } else {
-          console.log(
+          this.logger.log(
             `Skipped item: ${item.question.substring(0, 50)}... (${item.totalTokens} tokens, would exceed limit)`,
           );
         }
@@ -248,7 +253,7 @@ export class ConversationContextService {
       }
     }
 
-    console.log('Sliding window truncation completed:', {
+    this.logger.log('Sliding window truncation completed:', {
       selectedItemsCount: selectedItems.length,
       finalTokens: currentTokens,
       availableTokens,
@@ -265,7 +270,7 @@ export class ConversationContextService {
     queryTokens: number,
     contextTokens: number,
   ): TokenizedConversationItem[] {
-    console.log('Emergency truncation activated');
+    this.logger.log('Emergency truncation activated');
 
     // Calculate how many tokens we can afford for history
     const availableForHistory = Math.max(
@@ -274,7 +279,7 @@ export class ConversationContextService {
     ); // Leave 500 token buffer
 
     if (availableForHistory <= 0) {
-      console.log('No tokens available for history in emergency mode');
+      this.logger.log('No tokens available for history in emergency mode');
       return [];
     }
 
@@ -305,7 +310,7 @@ export class ConversationContextService {
       }
     }
 
-    console.log('Emergency truncation completed:', {
+    this.logger.log('Emergency truncation completed:', {
       selectedItemsCount: selectedItems.length,
       finalTokens: currentTokens,
       availableForHistory,
@@ -396,7 +401,7 @@ export class ConversationContextService {
     const finalTokens = this.estimateTokens(contextToSend);
     const maxAllowed = 4096 - this.SAFETY_BUFFER; // 4096 - 1000 = 3096 tokens max
 
-    console.log('Pre-validation check:', {
+    this.logger.log('Pre-validation check:', {
       finalTokens,
       maxAllowed,
       exceedsLimit: finalTokens > maxAllowed,
@@ -416,7 +421,7 @@ export class ConversationContextService {
     }
 
     // If we still exceed, apply emergency truncation
-    console.log('Pre-validation failed: Applying emergency truncation');
+    this.logger.log('Pre-validation failed: Applying emergency truncation');
     const emergencyHistory = this.emergencyTruncationForValidation(
       truncatedHistory,
       currentQuery,
@@ -433,7 +438,7 @@ export class ConversationContextService {
 
     // If emergency truncation still fails, disable history completely
     if (finalTokenCount > maxAllowed) {
-      console.log(
+      this.logger.log(
         'Emergency truncation failed: Disabling conversation history completely',
       );
       return {
@@ -497,7 +502,7 @@ export class ConversationContextService {
     documentContext?: string,
     maxAllowed: number = 3000,
   ): ConversationItem[] {
-    console.log('Emergency validation truncation activated');
+    this.logger.log('Emergency validation truncation activated');
 
     // Start with no history and add what we can
     const availableForHistory = Math.max(
@@ -509,7 +514,7 @@ export class ConversationContextService {
     );
 
     if (availableForHistory <= 0) {
-      console.log('No tokens available for history in validation mode');
+      this.logger.log('No tokens available for history in validation mode');
       return [];
     }
 
@@ -541,7 +546,7 @@ export class ConversationContextService {
       }
     }
 
-    console.log('Emergency validation truncation completed:', {
+    this.logger.log('Emergency validation truncation completed:', {
       selectedItemsCount: selectedItems.length,
       finalTokens: currentTokens,
       availableForHistory,

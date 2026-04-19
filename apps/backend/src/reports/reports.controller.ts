@@ -10,6 +10,7 @@ import { UserRole } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { AuthenticatedRequest } from '../auth/types/authenticated-request.interface';
 import { ReportsService } from './reports.service';
 
 @Controller('reports')
@@ -19,7 +20,7 @@ export class ReportsController {
 
   @Get('dashboard')
   async getDashboardReport(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('period') period: 'week' | 'month' | 'quarter' = 'month',
   ) {
     return this.reportsService.getDashboardReport(req.user.sub, period);
@@ -27,7 +28,7 @@ export class ReportsController {
 
   @Get('ai-usage')
   async getAIUsageAnalytics(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
@@ -38,7 +39,7 @@ export class ReportsController {
 
   @Get('feedback')
   async getFeedbackAnalytics(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
@@ -49,7 +50,7 @@ export class ReportsController {
 
   @Get('productivity')
   async getProductivityMetrics(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
@@ -60,7 +61,7 @@ export class ReportsController {
 
   @Get('case/:caseId')
   async getCaseSpecificAnalytics(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Param('caseId') caseId: string,
   ) {
     return this.reportsService.getCaseSpecificAnalytics(req.user.sub, caseId);
@@ -68,10 +69,10 @@ export class ReportsController {
 
   @Get('recent-activity')
   async getRecentActivity(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('limit') limit: string = '10',
   ) {
-    return this.reportsService.getRecentActivity(req.user.sub, parseInt(limit));
+    return this.reportsService.getRecentActivity(req.user.sub, Number(limit));
   }
 
   // Admin endpoints for team-wide analytics

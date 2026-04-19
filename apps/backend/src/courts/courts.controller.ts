@@ -44,7 +44,7 @@ export class CourtsController {
   @Post()
   create(
     @Body() createCourtDto: CreateCourtDto,
-    @Request() req: AuthenticatedRequest,
+    @Request() _req: AuthenticatedRequest,
   ) {
     return this.courtsService.create(createCourtDto);
   }

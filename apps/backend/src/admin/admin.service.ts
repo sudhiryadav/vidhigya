@@ -287,7 +287,7 @@ export class AdminService {
     };
   }
 
-  async getReports() {
+  getReports() {
     const reportTemplates = [
       {
         id: 'user-activity',
@@ -368,7 +368,7 @@ export class AdminService {
             },
           });
           break;
-        case 'revenue':
+        case 'revenue': {
           const records = await this.prisma.billingRecord.findMany({
             where: {
               status: 'PAID',
@@ -384,6 +384,7 @@ export class AdminService {
             0,
           );
           break;
+        }
       }
 
       months.push({
@@ -867,7 +868,13 @@ export class AdminService {
         email: createData.email,
         password: hashedPassword,
         name: createData.name,
-        role: createData.role as any,
+        role: createData.role as
+          | 'SUPER_ADMIN'
+          | 'ADMIN'
+          | 'LAWYER'
+          | 'CLIENT'
+          | 'ASSOCIATE'
+          | 'PARALEGAL',
         phone: createData.phone,
         isActive: true,
       },

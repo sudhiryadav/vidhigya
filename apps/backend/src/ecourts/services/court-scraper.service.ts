@@ -107,7 +107,7 @@ export class CourtScraperService extends BaseScraperService<Court[]> {
             courts.push(court);
           }
         } catch (error) {
-          console.warn('Failed to parse court element:', error);
+          this.logger.warn('Failed to parse court element:', error);
         }
       }
 
@@ -173,7 +173,7 @@ export class CourtScraperService extends BaseScraperService<Court[]> {
         website: website ? this.cleanText(website) : undefined,
       };
     } catch (error) {
-      console.warn('Failed to parse court element:', error);
+      this.logger.warn('Failed to parse court element:', error);
       return null;
     }
   }

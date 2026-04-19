@@ -1,19 +1,25 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class LogsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createLogDto: Record<string, unknown>) {
-    const logData: any = {
-      level: createLogDto.level as string,
-      message: createLogDto.message as string,
-      meta: (createLogDto.meta as Record<string, unknown>) || {},
+  async create(createLogDto: {
+    level: string;
+    message: string;
+    meta?: Record<string, unknown>;
+    userId?: string;
+  }) {
+    const logData: Prisma.LogUncheckedCreateInput = {
+      level: createLogDto.level,
+      message: createLogDto.message,
+      meta: (createLogDto.meta || {}) as Prisma.InputJsonValue,
     };
 
     if (createLogDto.userId) {
-      logData.userId = createLogDto.userId as string;
+      logData.userId = createLogDto.userId;
     }
 
     const log = await this.prisma.log.create({

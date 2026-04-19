@@ -32,12 +32,14 @@ import {
   RequireDelete,
   RequireRead,
 } from '../common/permissions';
+import { RedactingLogger } from '../common/logging';
 import { ConversationContextService } from '../common/services/conversation-context.service';
 import { QdrantService } from '../config/qdrant.service';
 import { S3Service } from '../config/s3.config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDocumentDto, DocumentsService } from './documents.service';
 import { QueryType } from './dto/create-document-query.dto';
+import { AuthenticatedRequest } from '../auth/types/authenticated-request.interface';
 
 // Import DocumentQuery interface
 interface DocumentQuery {
@@ -58,15 +60,6 @@ interface QueryRequest {
   }>;
 }
 
-// Define proper types for request objects
-interface AuthenticatedRequest extends Request {
-  user: {
-    sub: string;
-    primaryPracticeId?: string;
-    [key: string]: any;
-  };
-}
-
 // Define proper types for body objects
 interface UploadDocumentBody {
   title?: string;
@@ -78,6 +71,8 @@ interface UploadDocumentBody {
 @Controller('documents')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionGuard)
 export class DocumentsController {
+  private readonly logger = new RedactingLogger(DocumentsController.name);
+
   constructor(
     private readonly documentsService: DocumentsService,
     private readonly s3Service: S3Service,
@@ -206,12 +201,6 @@ export class DocumentsController {
         file.mimetype,
       );
 
-      console.log('File uploaded to S3:', {
-        fileName,
-        fileUrl: uploadedFileUrl,
-        size: file.size,
-      });
-
       // Create document record
       const createDocumentDto: CreateDocumentDto = {
         title: body.title || '',
@@ -229,11 +218,6 @@ export class DocumentsController {
 
       createdDocument = await this.documentsService.create(createDocumentDto);
 
-      console.log('Document record created:', {
-        documentId: createdDocument.id,
-        title: createdDocument.title,
-      });
-
       // Process document using FastAPI service
       try {
         await this.ingestWithAiAndUpdateLegalDocument({
@@ -246,31 +230,32 @@ export class DocumentsController {
           description: body.description,
         });
       } catch (error) {
-        console.error('Error processing document with FastAPI:', error);
+        this.logger.error('Error processing document with FastAPI:', error);
         // Don't fail the upload if processing fails, but log it
         // The document will still be available for download
       }
 
       return createdDocument;
     } catch (error) {
-      console.error('Error uploading document:', error);
+      this.logger.error('Error uploading document:', error);
 
       // Rollback: Clean up any created resources
       if (createdDocument) {
         try {
-          console.log('Rolling back: Deleting document record');
           await this.documentsService.remove(createdDocument.id, req.user.sub);
         } catch (rollbackError) {
-          console.error('Failed to rollback document record:', rollbackError);
+          this.logger.error(
+            'Failed to rollback document record:',
+            rollbackError,
+          );
         }
       }
 
       if (uploadedFileUrl) {
         try {
-          console.log('Rolling back: Deleting file from S3');
           await this.s3Service.deleteDocument(uploadedFileUrl);
         } catch (rollbackError) {
-          console.error('Failed to rollback S3 file:', rollbackError);
+          this.logger.error('Failed to rollback S3 file:', rollbackError);
         }
       }
 
@@ -285,10 +270,6 @@ export class DocumentsController {
     @Request() req: AuthenticatedRequest,
   ) {
     try {
-      console.log('Checking processing status for document:', aiDocumentId);
-      console.log('AI Service URL:', this.configService.get('AI_SERVICE_URL'));
-      console.log('API Key:', this.configService.get('AI_SERVICE_API_KEY'));
-
       const response = await fetch(
         `${this.configService.get('AI_SERVICE_URL')}/api/v1/admin/documents/status/${aiDocumentId}`,
         {
@@ -322,7 +303,7 @@ export class DocumentsController {
 
       return result;
     } catch (error) {
-      console.error('Error checking document status:', error);
+      this.logger.error('Error checking document status:', error);
       throw new BadRequestException('Failed to check document status');
     }
   }
@@ -335,12 +316,6 @@ export class DocumentsController {
   ) {
     try {
       const { query, limit = 10 } = searchDto;
-
-      console.log('Document search request:', {
-        query,
-        limit,
-        userId: req.user.sub,
-      });
 
       if (!this.qdrantService) {
         throw new BadRequestException('Vector database not available');
@@ -379,7 +354,7 @@ export class DocumentsController {
 
       return result;
     } catch (error) {
-      console.error('Error processing document search:', error);
+      this.logger.error('Error processing document search:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -402,7 +377,7 @@ export class DocumentsController {
         conversationHistory = [],
       } = queryDto;
 
-      console.log('Document query request:', {
+      this.logger.log('Document query request:', {
         query,
         mode,
         context,
@@ -431,7 +406,7 @@ export class DocumentsController {
 
       // Use conversation context service to intelligently truncate history
       const { truncatedHistory, truncationInfo } =
-        await this.conversationContextService.truncateConversationHistory(
+        this.conversationContextService.truncateConversationHistory(
           backendHistory,
           query,
           context,
@@ -445,7 +420,7 @@ export class DocumentsController {
           context,
         );
 
-      console.log('Conversation context processing:', {
+      this.logger.log('Conversation context processing:', {
         originalHistoryCount: conversationHistory.length,
         backendHistoryCount: backendHistory.length,
         truncatedHistoryCount: truncatedHistory.length,
@@ -458,7 +433,7 @@ export class DocumentsController {
       // Use the validated history
       const finalHistory = validation.finalHistory;
 
-      console.log(
+      this.logger.log(
         'Using direct Modal.com integration with optimized conversation context',
       );
       return await this.queryDocumentsDirect(
@@ -469,7 +444,7 @@ export class DocumentsController {
         finalHistory, // Use validated history that's guaranteed to fit within token limits
       );
     } catch (error) {
-      console.error('Error processing document query:', error);
+      this.logger.error('Error processing document query:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -482,7 +457,7 @@ export class DocumentsController {
    */
   private async getConversationHistory(
     userId: string,
-    currentQuery: string,
+    _currentQuery: string,
   ): Promise<Array<{ question: string; answer: string; timestamp?: string }>> {
     try {
       // Get recent document queries for this user (more conservative limit)
@@ -513,7 +488,7 @@ export class DocumentsController {
         timestamp: query.createdAt.toISOString(),
       }));
     } catch (error) {
-      console.error('Error fetching conversation history:', error);
+      this.logger.error('Error fetching conversation history:', error);
       // Return empty array if there's an error - don't fail the entire request
       return [];
     }
@@ -602,9 +577,9 @@ export class DocumentsController {
         .map((result, index) => `Source ${index + 1}:\n${result.content}`)
         .join('\n\n');
 
-      console.log('Document context length:', documentContext.length);
+      this.logger.log('Document context length:', documentContext.length);
       if (conversationHistory && conversationHistory.length > 0) {
-        console.log(
+        this.logger.log(
           `Sending ${conversationHistory.length} previous Q&A pairs as separate history`,
         );
       }
@@ -616,7 +591,7 @@ export class DocumentsController {
         query,
       );
 
-      console.log('Sending to Modal.com:', {
+      this.logger.log('Sending to Modal.com:', {
         queryLength: query.length,
         contextLength: documentContext.length,
         historyCount: conversationHistory.length,
@@ -652,7 +627,7 @@ export class DocumentsController {
       if (!modalResponse.ok) {
         const detail = responseText?.slice(0, 500) || '';
         if (modalResponse.status === 401) {
-          console.error(
+          this.logger.error(
             'Modal.com 401: X-API-Key did not match Modal secret API_KEY (align AI_SERVICE_API_KEY or MODAL_API_KEY with QURIEUS_KEY).',
             detail,
           );
@@ -662,11 +637,11 @@ export class DocumentsController {
         );
       }
 
-      console.log(
+      this.logger.log(
         'Modal.com response type:',
         modalResponse.headers.get('content-type'),
       );
-      console.log(
+      this.logger.log(
         'Modal.com response preview:',
         responseText.substring(0, 200),
       );
@@ -697,7 +672,7 @@ export class DocumentsController {
         } else {
           result = parsed as typeof result;
         }
-      } catch (parseError) {
+      } catch (_parseError) {
         // If that fails, try to parse streaming response
         const lines = responseText.split('\n');
         let finalResponse = '';
@@ -717,7 +692,7 @@ export class DocumentsController {
               if (data.confidence) {
                 confidence = data.confidence;
               }
-            } catch (e) {
+            } catch (_e) {
               // Skip invalid JSON lines
             }
           }
@@ -763,7 +738,7 @@ export class DocumentsController {
         generated_at: new Date().toISOString(),
       };
     } catch (error) {
-      console.error('Direct Modal.com error:', error);
+      this.logger.error('Direct Modal.com error:', error);
       throw new BadRequestException('Failed to process document query');
     }
   }
@@ -841,7 +816,7 @@ export class DocumentsController {
     const exists = await this.s3Service.checkDocumentExists(document.fileUrl);
     if (!exists) {
       throw new BadRequestException(
-        'The file is no longer available in storage. Please upload the document again.',
+        'The file is no longer in storage (it may have been removed when processing was reset, or deleted). Please upload the document again.',
       );
     }
 
@@ -878,7 +853,7 @@ export class DocumentsController {
         description: document.description,
       });
     } catch (error) {
-      console.error('Retry processing failed:', error);
+      this.logger.error('Retry processing failed:', error);
       const message =
         error instanceof Error ? error.message : 'Failed to restart processing';
       throw new BadRequestException(message);
@@ -896,12 +871,12 @@ export class DocumentsController {
   @Delete(':id')
   @RequireDelete(PermissionResource.DOCUMENT)
   async remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    console.log(
+    this.logger.log(
       `Starting document deletion for ID: ${id} by user: ${req.user.sub}`,
     );
 
     const document = await this.documentsService.findOne(id, req.user.sub);
-    console.log('Document found for deletion:', {
+    this.logger.log('Document found for deletion:', {
       id: document.id,
       title: document.title,
       fileUrl: document.fileUrl,
@@ -909,34 +884,36 @@ export class DocumentsController {
 
     try {
       // First, delete from database and Qdrant (this is the critical operation)
-      console.log(
+      this.logger.log(
         'Calling documentsService.remove to delete from DB and Qdrant...',
       );
       const deletedDocument = await this.documentsService.remove(
         id,
         req.user.sub,
       );
-      console.log('Successfully deleted from database and Qdrant');
+      this.logger.log('Successfully deleted from database and Qdrant');
 
       // Then, clean up S3 files (this is less critical, can fail without breaking the operation)
-      console.log('Starting S3 cleanup...');
+      this.logger.log('Starting S3 cleanup...');
 
       // Delete main document file from S3
       if (document.fileUrl) {
         try {
-          console.log(`Deleting main document from S3: ${document.fileUrl}`);
+          this.logger.log(
+            `Deleting main document from S3: ${document.fileUrl}`,
+          );
           await this.s3Service.deleteDocument(document.fileUrl);
-          console.log('Main document deleted from S3 successfully');
+          this.logger.log('Main document deleted from S3 successfully');
         } catch (error) {
-          console.error('Failed to delete main document from S3:', error);
+          this.logger.error('Failed to delete main document from S3:', error);
           // Continue with deletion even if S3 cleanup fails
         }
       }
 
-      console.log('Document deletion completed successfully');
+      this.logger.log('Document deletion completed successfully');
       return deletedDocument;
     } catch (error) {
-      console.error('Error during document deletion:', error);
+      this.logger.error('Error during document deletion:', error);
       throw error;
     }
   }
@@ -948,12 +925,12 @@ export class DocumentsController {
     @Res() res: Response,
   ) {
     try {
-      console.log(
+      this.logger.log(
         `Download request for document ID: ${id} by user: ${req.user.sub}`,
       );
 
       const document = await this.documentsService.findOne(id, req.user.sub);
-      console.log('Document found:', {
+      this.logger.log('Document found:', {
         id: document.id,
         title: document.title,
         fileUrl: document.fileUrl,
@@ -962,22 +939,22 @@ export class DocumentsController {
       const fileUrl = document.fileUrl;
 
       if (!fileUrl) {
-        console.error(`No fileUrl found for document ${id}`);
+        this.logger.error(`No fileUrl found for document ${id}`);
         throw new BadRequestException(
           'File not found - document has no associated file',
         );
       }
 
-      console.log(`Fetching file from S3: ${fileUrl}`);
+      this.logger.log(`Fetching file from S3: ${fileUrl}`);
 
       // Get the file buffer from S3
-      console.log(`About to fetch file from S3 with key: ${fileUrl}`);
+      this.logger.log(`About to fetch file from S3 with key: ${fileUrl}`);
       const fileBuffer = await this.s3Service.getDocumentAsBuffer(fileUrl);
-      console.log(`File buffer received, size: ${fileBuffer.length} bytes`);
+      this.logger.log(`File buffer received, size: ${fileBuffer.length} bytes`);
 
       // Check if the file is empty
       if (fileBuffer.length === 0) {
-        console.error(`File is empty: ${fileUrl}`);
+        this.logger.error(`File is empty: ${fileUrl}`);
         throw new BadRequestException('File is empty or corrupted');
       }
 
@@ -1019,7 +996,7 @@ export class DocumentsController {
       const filename =
         originalFilename || `${document.title || 'document'}.${fileExtension}`;
 
-      console.log('Download filename details:', {
+      this.logger.log('Download filename details:', {
         fileUrl,
         originalFilename,
         documentTitle: document.title,
@@ -1036,13 +1013,13 @@ export class DocumentsController {
       res.setHeader('Content-Length', fileBuffer.length);
       res.setHeader('Cache-Control', 'no-cache');
 
-      console.log(
+      this.logger.log(
         `Sending file with content type: ${contentType}, size: ${fileBuffer.length} bytes`,
       );
 
       return res.send(fileBuffer);
     } catch (error) {
-      console.error('Error in downloadDocument:', error);
+      this.logger.error('Error in downloadDocument:', error);
 
       if (error instanceof BadRequestException) {
         throw error;
@@ -1128,7 +1105,7 @@ export class DocumentsController {
       } catch {
         /* keep raw body */
       }
-      console.error(
+      this.logger.error(
         'FastAPI service error:',
         response.status,
         detail.slice(0, 2000),
@@ -1149,10 +1126,13 @@ export class DocumentsController {
     if (result.processing_status === 'BACKGROUND') {
       const documentInfo = result.documents[0];
 
-      console.log('Document uploaded and processing started in background:', {
-        documentId: documentInfo.document_id,
-        status: documentInfo.status,
-      });
+      this.logger.log(
+        'Document uploaded and processing started in background:',
+        {
+          documentId: documentInfo.document_id,
+          status: documentInfo.status,
+        },
+      );
 
       await this.prisma.legalDocument.update({
         where: { id: legalDocumentId },
@@ -1162,14 +1142,17 @@ export class DocumentsController {
         },
       });
 
-      console.log('Document uploaded successfully, processing in background:', {
-        documentId: legalDocumentId,
-        aiDocumentId: documentInfo.document_id,
-      });
+      this.logger.log(
+        'Document uploaded successfully, processing in background:',
+        {
+          documentId: legalDocumentId,
+          aiDocumentId: documentInfo.document_id,
+        },
+      );
     } else {
       const documentInfo = result.documents[0];
 
-      console.log('Document processed synchronously by FastAPI:', {
+      this.logger.log('Document processed synchronously by FastAPI:', {
         documentId: documentInfo.document_id,
         chunks: documentInfo.chunks,
         contentLength: documentInfo.content?.length || 0,
@@ -1185,7 +1168,7 @@ export class DocumentsController {
         },
       });
 
-      console.log('Document processing completed successfully:', {
+      this.logger.log('Document processing completed successfully:', {
         documentId: legalDocumentId,
         chunks: documentInfo.chunks,
         contentLength: documentInfo.content?.length || 0,

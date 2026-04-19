@@ -12,6 +12,7 @@ import {
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { RedactingLogger } from '../common/logging';
 import { ChatService } from './chat.service';
 import { ChatDto, ChatParticipantDto, ChatResponseDto } from './dto/chat.dto';
 
@@ -26,6 +27,8 @@ interface AuthenticatedRequest {
 @Controller('chats')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ChatController {
+  private readonly logger = new RedactingLogger(ChatController.name);
+
   constructor(private readonly chatService: ChatService) {}
 
   @Get('associated-users')
@@ -89,7 +92,7 @@ export class ChatController {
       await this.chatService.markChatAsRead(chatId, req.user.sub);
       return { success: true, message: 'Chat marked as read successfully' };
     } catch (error) {
-      console.error(`Error marking chat ${chatId} as read:`, error);
+      this.logger.error(`Error marking chat ${chatId} as read:`, error);
       throw error;
     }
   }

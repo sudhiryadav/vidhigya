@@ -2,10 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { v4 as uuidv4 } from 'uuid';
+import { RedactingLogger } from '../common/logging';
 import { EmbeddingService } from './embedding.service';
 
 @Injectable()
 export class QdrantService {
+  private readonly logger = new RedactingLogger(QdrantService.name);
+
   private qdrantClient: QdrantClient;
   private qdrantUrl: string;
   private qdrantApiKey: string;
@@ -26,10 +29,10 @@ export class QdrantService {
     this.embeddingService.initialize();
 
     // Log configuration on startup
-    console.log('QdrantService initialized with:');
-    console.log(`- Qdrant URL: ${this.qdrantUrl}`);
-    console.log(`- Qdrant API Key configured: ${!!this.qdrantApiKey}`);
-    console.log(`- Qdrant Collection: ${this.qdrantCollection}`);
+    this.logger.log('QdrantService initialized with:');
+    this.logger.log(`- Qdrant URL: ${this.qdrantUrl}`);
+    this.logger.log(`- Qdrant API Key configured: ${!!this.qdrantApiKey}`);
+    this.logger.log(`- Qdrant Collection: ${this.qdrantCollection}`);
   }
 
   async initialize() {
@@ -39,7 +42,7 @@ export class QdrantService {
 
   private initializeQdrantClient() {
     if (!this.qdrantUrl) {
-      console.error('QDRANT_URL not configured');
+      this.logger.error('QDRANT_URL not configured');
       return;
     }
 
@@ -48,15 +51,15 @@ export class QdrantService {
         url: this.qdrantUrl,
         apiKey: this.qdrantApiKey,
       });
-      console.log('Qdrant client initialized successfully');
+      this.logger.log('Qdrant client initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize Qdrant client:', error);
+      this.logger.error('Failed to initialize Qdrant client:', error);
     }
   }
 
   private async ensureCollectionExists(): Promise<void> {
     if (!this.qdrantClient || !this.qdrantCollection) {
-      console.error('Qdrant client or collection not configured');
+      this.logger.error('Qdrant client or collection not configured');
       return;
     }
 
@@ -68,7 +71,7 @@ export class QdrantService {
       );
 
       if (!collectionExists) {
-        console.log(`Creating Qdrant collection: ${this.qdrantCollection}`);
+        this.logger.log(`Creating Qdrant collection: ${this.qdrantCollection}`);
 
         // Create collection with proper configuration for embeddings
         await this.qdrantClient.createCollection(this.qdrantCollection, {
@@ -89,11 +92,11 @@ export class QdrantService {
           field_schema: 'keyword',
         });
 
-        console.log(
+        this.logger.log(
           `Successfully created Qdrant collection: ${this.qdrantCollection}`,
         );
       } else {
-        console.log(
+        this.logger.log(
           `Qdrant collection already exists: ${this.qdrantCollection}`,
         );
 
@@ -101,7 +104,7 @@ export class QdrantService {
         await this.ensureIndexesExist();
       }
     } catch (error) {
-      console.error(`Error ensuring collection exists: ${error}`);
+      this.logger.error(`Error ensuring collection exists: ${error}`);
       // Don't throw error, just log it
     }
   }
@@ -118,10 +121,10 @@ export class QdrantService {
           field_name: 'document_id',
           field_schema: 'keyword',
         });
-        console.log('Created document_id index for existing collection');
+        this.logger.log('Created document_id index for existing collection');
       } catch {
         // Index might already exist, which is fine
-        console.log('document_id index already exists or creation failed');
+        this.logger.log('document_id index already exists or creation failed');
       }
 
       // Try to create user_id index (will fail silently if it already exists)
@@ -130,36 +133,36 @@ export class QdrantService {
           field_name: 'user_id',
           field_schema: 'keyword',
         });
-        console.log('Created user_id index for existing collection');
+        this.logger.log('Created user_id index for existing collection');
       } catch {
         // Index might already exist, which is fine
-        console.log('user_id index already exists or creation failed');
+        this.logger.log('user_id index already exists or creation failed');
       }
     } catch (error) {
-      console.error('Error ensuring indexes exist:', error);
+      this.logger.error('Error ensuring indexes exist:', error);
       // Don't throw error, just log it
     }
   }
 
   async deleteDocumentEmbeddings(documentId: string): Promise<boolean> {
     try {
-      console.log(
+      this.logger.log(
         `Attempting to delete embeddings for document: ${documentId}`,
       );
-      console.log(`Qdrant URL: ${this.qdrantUrl}`);
-      console.log(`Qdrant Collection: ${this.qdrantCollection}`);
+      this.logger.log(`Qdrant URL: ${this.qdrantUrl}`);
+      this.logger.log(`Qdrant Collection: ${this.qdrantCollection}`);
 
       if (!this.qdrantClient) {
-        console.error('Qdrant client not initialized');
+        this.logger.error('Qdrant client not initialized');
         return false;
       }
 
       if (!this.qdrantCollection) {
-        console.error('Qdrant collection not configured');
+        this.logger.error('Qdrant collection not configured');
         return false;
       }
 
-      console.log(
+      this.logger.log(
         `Deleting embeddings from Qdrant collection: ${this.qdrantCollection}`,
       );
 
@@ -180,12 +183,12 @@ export class QdrantService {
         },
       );
 
-      console.log(
+      this.logger.log(
         `Successfully deleted embeddings for document ${documentId}: ${JSON.stringify(deleteResult)}`,
       );
       return true;
     } catch (error) {
-      console.error(
+      this.logger.error(
         `Error deleting embeddings for document ${documentId}:`,
         error,
       );
@@ -209,12 +212,12 @@ export class QdrantService {
   > {
     try {
       if (!this.qdrantClient) {
-        console.error('Qdrant client not available');
+        this.logger.error('Qdrant client not available');
         return [];
       }
 
       // Generate embedding for the query using the same model as FastAPI
-      const queryEmbedding = await this.generateEmbedding(query);
+      const queryEmbedding = this.generateEmbedding(query);
 
       // Search in Qdrant directly
       const searchResults = await this.qdrantClient.search(
@@ -244,17 +247,17 @@ export class QdrantService {
         end_char: result.payload?.end_char as number | undefined,
       }));
     } catch (error) {
-      console.error('Error searching documents:', error);
+      this.logger.error('Error searching documents:', error);
       return [];
     }
   }
 
-  private async generateEmbedding(text: string): Promise<number[]> {
+  private generateEmbedding(text: string): number[] {
     try {
       // Use local embedding service directly
-      return await this.embeddingService.generateEmbedding(text);
+      return this.embeddingService.generateEmbedding(text);
     } catch (error) {
-      console.error('Error generating embedding:', error);
+      this.logger.error('Error generating embedding:', error);
       // Fallback: return a zero vector
       return new Array(384).fill(0) as number[];
     }
@@ -309,7 +312,7 @@ export class QdrantService {
         confidence,
       };
     } catch (error) {
-      console.error('Error querying documents:', error);
+      this.logger.error('Error querying documents:', error);
       return {
         question,
         answer: 'An error occurred while processing your question',
@@ -373,7 +376,7 @@ export class QdrantService {
   ): Promise<boolean> {
     try {
       if (!this.qdrantClient) {
-        console.error('Qdrant client not available');
+        this.logger.error('Qdrant client not available');
         return false;
       }
 
@@ -399,7 +402,7 @@ export class QdrantService {
         const chunk = chunks[i];
 
         // Generate embedding for the chunk
-        const embedding = await this.generateEmbedding(chunk.text);
+        const embedding = this.generateEmbedding(chunk.text);
 
         points.push({
           id: uuidv4(),
@@ -423,10 +426,12 @@ export class QdrantService {
         points: points,
       });
 
-      console.log(`Stored ${points.length} chunks for document ${documentId}`);
+      this.logger.log(
+        `Stored ${points.length} chunks for document ${documentId}`,
+      );
       return true;
     } catch (error) {
-      console.error('Error storing document chunks:', error);
+      this.logger.error('Error storing document chunks:', error);
       return false;
     }
   }
@@ -434,10 +439,10 @@ export class QdrantService {
   deleteUserEmbeddings(userId: string): Promise<boolean> {
     try {
       // This functionality is not implemented yet
-      console.warn('Delete user embeddings not implemented yet');
+      this.logger.warn('Delete user embeddings not implemented yet');
       return Promise.resolve(false);
     } catch (error) {
-      console.error(`Error deleting embeddings for user ${userId}:`, error);
+      this.logger.error(`Error deleting embeddings for user ${userId}:`, error);
       return Promise.resolve(false);
     }
   }

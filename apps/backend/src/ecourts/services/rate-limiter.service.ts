@@ -1,10 +1,13 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RedactingLogger } from '../../common/logging';
 import { RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible';
 import { createClient } from 'redis';
 
 @Injectable()
 export class RateLimiterService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new RedactingLogger(RateLimiterService.name);
+
   private rateLimiter: RateLimiterMemory | RateLimiterRedis | null = null;
   private redisClient: any = null;
 
@@ -67,7 +70,7 @@ export class RateLimiterService implements OnModuleInit, OnModuleDestroy {
         });
       }
     } catch (error) {
-      console.error('Failed to initialize rate limiter:', error);
+      this.logger.error('Failed to initialize rate limiter:', error);
       // Fallback to memory-based rate limiter
       const maxRequests = this.configService.get<number>(
         'RATE_LIMIT_MAX_REQUESTS',
@@ -126,7 +129,7 @@ export class RateLimiterService implements OnModuleInit, OnModuleDestroy {
       );
       return result ? result.remainingPoints : maxRequests;
     } catch (error) {
-      console.error('Failed to get remaining points:', error);
+      this.logger.error('Failed to get remaining points:', error);
       const maxRequests = this.configService.get<number>(
         'RATE_LIMIT_MAX_REQUESTS',
         100,
@@ -143,7 +146,7 @@ export class RateLimiterService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.rateLimiter.delete(identifier);
     } catch (error) {
-      console.error('Failed to reset rate limit:', error);
+      this.logger.error('Failed to reset rate limit:', error);
     }
   }
 

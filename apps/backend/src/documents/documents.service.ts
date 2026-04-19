@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DocumentCategory, DocumentStatus } from '@prisma/client';
+import { RedactingLogger } from '../common/logging';
 import { QdrantService } from '../config/qdrant.service';
 import { LogsService } from '../logs/logs.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -35,6 +36,8 @@ interface DocumentQuery {
 
 @Injectable()
 export class DocumentsService {
+  private readonly logger = new RedactingLogger(DocumentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly qdrantService: QdrantService,
@@ -285,11 +288,11 @@ export class DocumentsService {
         qdrantDeleted = await this.qdrantService.deleteDocumentEmbeddings(
           document.aiDocumentId,
         );
-        console.log(
+        this.logger.log(
           `Deleted embeddings for AI document ID: ${document.aiDocumentId}`,
         );
       } else {
-        console.log(`No AI document ID found for document: ${id}`);
+        this.logger.log(`No AI document ID found for document: ${id}`);
       }
 
       if (qdrantDeleted) {
@@ -359,7 +362,7 @@ export class DocumentsService {
       });
 
       if (!user?.primaryPracticeId) {
-        console.warn(
+        this.logger.warn(
           'User has no primary practice, skipping document query log',
         );
         return;
@@ -385,7 +388,7 @@ export class DocumentsService {
       });
     } catch (error) {
       // Log error but don't fail the main operation
-      console.error('Failed to log document query:', error);
+      this.logger.error('Failed to log document query:', error);
     }
   }
 

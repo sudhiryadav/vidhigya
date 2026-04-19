@@ -372,15 +372,21 @@ export class DocumentProcessingMonitorService {
    */
   private async markDocumentForReupload(document: DocumentInfo) {
     try {
+      const previousFileUrl = document.fileUrl;
       this.logger.warn(
         `Document ${document.id} marked for re-upload - implementing complete cleanup`,
       );
+
+      // After a successful S3 delete, clear the stored key so the API does not report a file
+      // that no longer exists (retry must prompt for a new upload, not "missing from storage").
+      let fileUrlAfterS3: string = previousFileUrl ?? '';
 
       // 1. Delete from S3 if fileUrl exists
       if (document.fileUrl) {
         try {
           this.logger.log(`Deleting document from S3: ${document.fileUrl}`);
           await this.s3Service.deleteDocument(document.fileUrl);
+          fileUrlAfterS3 = '';
           this.logger.log(
             `Successfully deleted document from S3: ${document.fileUrl}`,
           );
@@ -418,6 +424,7 @@ export class DocumentProcessingMonitorService {
         data: {
           status: 'DRAFT', // Change to DRAFT to indicate it needs re-upload
           aiDocumentId: null, // Clear the AI document ID
+          fileUrl: fileUrlAfterS3,
           updatedAt: new Date(),
         },
       });
@@ -431,7 +438,7 @@ export class DocumentProcessingMonitorService {
           aiDocumentId: document.aiDocumentId,
           action: 'mark_for_reupload',
           reason: 's3_data_not_found',
-          s3Key: document.fileUrl,
+          s3Key: previousFileUrl,
           cleanupCompleted: true,
         },
       });

@@ -1,4 +1,5 @@
 import { JwtService } from '@nestjs/jwt';
+import { RedactingLogger } from '../common/logging';
 import {
   ConnectedSocket,
   MessageBody,
@@ -21,6 +22,8 @@ interface AuthenticatedUser {
   },
 })
 export class ChatGateway {
+  private readonly logger = new RedactingLogger(ChatGateway.name);
+
   @WebSocketServer()
   server: Server;
 
@@ -63,9 +66,9 @@ export class ChatGateway {
       // Emit online status to all connected clients
       this.server.emit('userOnline', { userId: user.sub, isOnline: true });
 
-      console.log(`User ${user.sub} connected`);
+      this.logger.log(`User ${user.sub} connected`);
     } catch (error) {
-      console.error('Authentication failed:', error);
+      this.logger.error('Authentication failed:', error);
       void client.disconnect();
     }
   }
@@ -79,7 +82,7 @@ export class ChatGateway {
       // Emit offline status to all connected clients
       this.server.emit('userOffline', { userId: user.sub, isOnline: false });
 
-      console.log(`User ${user.sub} disconnected`);
+      this.logger.log(`User ${user.sub} disconnected`);
     }
   }
 
@@ -88,19 +91,19 @@ export class ChatGateway {
     @MessageBody() createMessageDto: { content: string; receiverId: string },
     @ConnectedSocket() client: Socket,
   ) {
-    console.log('=== BACKEND: sendMessage event received ===');
-    console.log('Socket client ID:', client.id);
-    console.log('Socket connected:', client.connected);
-    console.log('Message data:', createMessageDto);
+    this.logger.log('=== BACKEND: sendMessage event received ===');
+    this.logger.log('Socket client ID:', client.id);
+    this.logger.log('Socket connected:', client.connected);
+    this.logger.log('Message data:', createMessageDto);
 
     const user = (client.data as { user: AuthenticatedUser }).user;
     if (!user) {
-      console.error('ERROR: No user found in socket data');
-      console.error('Client data:', client.data);
+      this.logger.error('ERROR: No user found in socket data');
+      this.logger.error('Client data:', client.data);
       return { error: 'Unauthorized' };
     }
 
-    console.log('User authenticated successfully:', {
+    this.logger.log('User authenticated successfully:', {
       userId: user.sub,
       userRole: user.role,
       receiverId: createMessageDto.receiverId,
@@ -109,7 +112,7 @@ export class ChatGateway {
     });
 
     try {
-      console.log('Calling ChatService.sendMessage with:', {
+      this.logger.log('Calling ChatService.sendMessage with:', {
         chatId: `${user.sub}-${createMessageDto.receiverId}`,
         senderId: user.sub,
         content: createMessageDto.content,
@@ -125,11 +128,11 @@ export class ChatGateway {
           'TEXT',
         )
         .then((message) => {
-          console.log('=== BACKEND: Message created successfully ===');
-          console.log('Created message:', message);
+          this.logger.log('=== BACKEND: Message created successfully ===');
+          this.logger.log('Created message:', message);
 
           // Emit to sender
-          console.log(
+          this.logger.log(
             'Emitting messageSent to sender (client ID:',
             client.id,
             ')',
@@ -138,8 +141,11 @@ export class ChatGateway {
 
           // Emit to receiver with additional context
           const receiverRoom = `user_${createMessageDto.receiverId}`;
-          console.log('Emitting newMessage to receiver room:', receiverRoom);
-          console.log('Receiver ID:', createMessageDto.receiverId);
+          this.logger.log(
+            'Emitting newMessage to receiver room:',
+            receiverRoom,
+          );
+          this.logger.log('Receiver ID:', createMessageDto.receiverId);
 
           void this.server.to(receiverRoom).emit('newMessage', {
             ...message,
@@ -147,22 +153,24 @@ export class ChatGateway {
             chatId: `${user.sub}-${createMessageDto.receiverId}`,
           });
 
-          console.log('=== BACKEND: Message emission completed ===');
+          this.logger.log('=== BACKEND: Message emission completed ===');
         })
         .catch((error) => {
-          console.error('=== BACKEND: Error in ChatService.sendMessage ===');
-          console.error('Error details:', error);
-          console.error('Error message:', error.message);
-          console.error('Error stack:', error.stack);
+          this.logger.error(
+            '=== BACKEND: Error in ChatService.sendMessage ===',
+          );
+          this.logger.error('Error details:', error);
+          this.logger.error('Error message:', error.message);
+          this.logger.error('Error stack:', error.stack);
           void client.emit('messageError', { error: 'Failed to send message' });
         });
 
       return { success: true };
     } catch (error) {
-      console.error('=== BACKEND: Error in handleMessage ===');
-      console.error('Error details:', error);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
+      this.logger.error('=== BACKEND: Error in handleMessage ===');
+      this.logger.error('Error details:', error);
+      this.logger.error('Error message:', error.message);
+      this.logger.error('Error stack:', error.stack);
       return { error: 'Failed to send message' };
     }
   }
@@ -181,7 +189,7 @@ export class ChatGateway {
       await this.chatService.markAsRead(data.messageId, user.sub);
       return { success: true };
     } catch (error) {
-      console.error('Error marking message as read:', error);
+      this.logger.error('Error marking message as read:', error);
       return { error: 'Failed to mark message as read' };
     }
   }
@@ -207,7 +215,7 @@ export class ChatGateway {
 
       return { success: true };
     } catch (error) {
-      console.error('Error marking chat as read:', error);
+      this.logger.error('Error marking chat as read:', error);
       return { error: 'Failed to mark chat as read' };
     }
   }
@@ -226,7 +234,7 @@ export class ChatGateway {
       const messages = [];
       return { messages };
     } catch (error) {
-      console.error('Error getting conversation:', error);
+      this.logger.error('Error getting conversation:', error);
       return { error: 'Failed to get conversation' };
     }
   }
@@ -242,7 +250,7 @@ export class ChatGateway {
       const count = 0;
       return { count };
     } catch (error) {
-      console.error('Error getting unread count:', error);
+      this.logger.error('Error getting unread count:', error);
       return { error: 'Failed to get unread count' };
     }
   }
@@ -293,7 +301,7 @@ export class ChatGateway {
       const messages = [];
       return { messages };
     } catch (error) {
-      console.error('Error getting all messages:', error);
+      this.logger.error('Error getting all messages:', error);
       return { error: 'Failed to get messages' };
     }
   }
@@ -313,7 +321,7 @@ export class ChatGateway {
       this.server.emit('messageDeleted', { messageId: data.messageId });
       return { success: true };
     } catch (error) {
-      console.error('Error deleting message:', error);
+      this.logger.error('Error deleting message:', error);
       return { error: 'Failed to delete message' };
     }
   }
@@ -330,19 +338,19 @@ export class ChatGateway {
     @MessageBody() data: { userId: string },
     @ConnectedSocket() client: Socket,
   ) {
-    console.log('=== BACKEND: join_personal_room event received ===');
-    console.log('Client ID:', client.id);
-    console.log('User ID:', data.userId);
+    this.logger.log('=== BACKEND: join_personal_room event received ===');
+    this.logger.log('Client ID:', client.id);
+    this.logger.log('User ID:', data.userId);
 
     const user = (client.data as { user: AuthenticatedUser }).user;
     if (!user) {
-      console.error(
+      this.logger.error(
         'ERROR: No user found in socket data for join_personal_room',
       );
       return;
     }
 
-    console.log('User authenticated for join_personal_room:', {
+    this.logger.log('User authenticated for join_personal_room:', {
       userId: user.sub,
       userRole: user.role,
       requestedRoom: data.userId,
@@ -351,12 +359,12 @@ export class ChatGateway {
     // Join the user's personal room
     const roomName = `user_${data.userId}`;
     client.join(roomName);
-    console.log('User joined room:', roomName);
-    console.log('Client rooms:', client.rooms);
+    this.logger.log('User joined room:', roomName);
+    this.logger.log('Client rooms:', client.rooms);
 
     // Confirm to the client that they've joined the personal room
     client.emit('personal_room_joined', { userId: data.userId, roomName });
 
-    console.log('=== BACKEND: join_personal_room completed ===');
+    this.logger.log('=== BACKEND: join_personal_room completed ===');
   }
 }

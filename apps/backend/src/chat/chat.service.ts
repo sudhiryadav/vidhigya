@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { RedactingLogger } from '../common/logging';
 import { PrismaService } from '../prisma/prisma.service';
 
 interface ChatParticipant {
@@ -35,6 +36,8 @@ interface Chat {
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new RedactingLogger(ChatService.name);
+
   constructor(private prisma: PrismaService) {}
 
   // Method to set online status - will be called by ChatGateway
@@ -84,14 +87,6 @@ export class ChatService {
     userMessages.forEach((message) => {
       const otherUserId =
         message.senderId === userId ? message.receiverId : message.senderId;
-      const otherUserName =
-        message.senderId === userId
-          ? message.receiver.name
-          : message.sender.name;
-      const otherUserRole =
-        message.senderId === userId
-          ? message.receiver.role
-          : message.sender.role;
 
       if (!chatMap.has(otherUserId)) {
         chatMap.set(otherUserId, []);
@@ -101,7 +96,7 @@ export class ChatService {
 
     // Convert to chat objects
     const chats: Chat[] = [];
-    for (const [otherUserId, messages] of chatMap) {
+    for (const [, messages] of chatMap) {
       if (messages.length === 0) continue;
 
       const latestMessage = messages[0];
@@ -391,11 +386,11 @@ export class ChatService {
         data: { isRead: true },
       });
 
-      console.log(
+      this.logger.log(
         `Marked ${result.count} messages as read for chat ${chatId} and user ${userId}`,
       );
     } catch (error) {
-      console.error(
+      this.logger.error(
         `Error marking chat ${chatId} as read for user ${userId}:`,
         error,
       );

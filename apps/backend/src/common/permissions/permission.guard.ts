@@ -59,7 +59,7 @@ export class PermissionGuard implements CanActivate {
     request: any,
     resource: PermissionResource,
   ): string | undefined {
-    const { params, body } = request;
+    const { params, body: _body } = request;
 
     switch (resource) {
       case PermissionResource.CASE:

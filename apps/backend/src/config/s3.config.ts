@@ -8,9 +8,12 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RedactingLogger } from '../common/logging';
 
 @Injectable()
 export class S3Service {
+  private readonly logger = new RedactingLogger(S3Service.name);
+
   private s3Client: S3Client;
   private bucket: string;
   private region: string;
@@ -38,14 +41,6 @@ export class S3Service {
       'AWS_SECRET_ACCESS_KEY',
     );
 
-    console.log(
-      `S3 Configuration: region=${this.region}, bucket=${this.bucket}`,
-    );
-    console.log(`AWS Access Key ID: ${accessKeyId ? 'configured' : 'missing'}`);
-    console.log(
-      `AWS Secret Access Key: ${secretAccessKey ? 'configured' : 'missing'}`,
-    );
-
     if (!accessKeyId || !secretAccessKey) {
       throw new Error('AWS credentials not configured');
     }
@@ -61,8 +56,6 @@ export class S3Service {
         secretAccessKey,
       },
     });
-
-    console.log('S3 client initialized successfully');
   }
 
   async uploadDocument(
@@ -93,8 +86,6 @@ export class S3Service {
     // Use the fileName as-is since it already includes the avatars/ prefix
     const s3Key = fileName;
 
-    console.log(`Uploading avatar to S3: bucket=${this.bucket}, key=${s3Key}`);
-
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: s3Key,
@@ -104,9 +95,6 @@ export class S3Service {
     });
 
     await this.s3Client.send(command);
-    console.log(`Successfully uploaded avatar to S3: ${s3Key}`);
-
-    // Return the S3 key instead of public URL
     return s3Key;
   }
 
@@ -125,7 +113,6 @@ export class S3Service {
       throw new Error('Key parameter is required');
     }
 
-    console.log(`Creating GetObjectCommand for bucket: ${bucket}, key: ${key}`);
     const command = new GetObjectCommand({
       Bucket: bucket,
       Key: key,
@@ -144,9 +131,6 @@ export class S3Service {
       throw new Error('S3 bucket not configured');
     }
 
-    console.log(
-      `Generating signed URL for bucket: ${this.bucket}, key: ${s3Key}`,
-    );
     return this.getSignedUrl(this.bucket, s3Key, expiresIn);
   }
 
@@ -186,7 +170,7 @@ export class S3Service {
         stream.on('error', reject);
       });
     } catch (error) {
-      console.error(`Error getting avatar from S3: ${error}`);
+      this.logger.error('Error getting avatar from S3', error);
       throw error;
     }
   }
@@ -198,10 +182,6 @@ export class S3Service {
       throw new Error('S3 bucket not configured');
     }
 
-    console.log(
-      `Getting document from S3: bucket=${this.bucket}, key=${s3Key}`,
-    );
-
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: s3Key,
@@ -209,12 +189,6 @@ export class S3Service {
 
     try {
       const response = await this.s3Client.send(command);
-      console.log(`S3 response received:`, {
-        statusCode: response.$metadata?.httpStatusCode,
-        contentLength: response.ContentLength,
-        contentType: response.ContentType,
-        hasBody: !!response.Body,
-      });
 
       if (!response.Body) {
         throw new Error('No body in S3 response');
@@ -225,31 +199,27 @@ export class S3Service {
       const chunks: Uint8Array[] = [];
 
       return new Promise((resolve, reject) => {
-        let totalSize = 0;
-
         stream.on('data', (chunk: Uint8Array) => {
           chunks.push(chunk);
-          totalSize += chunk.length;
-          console.log(
-            `Received chunk: ${chunk.length} bytes, total: ${totalSize} bytes`,
-          );
         });
 
         stream.on('end', () => {
-          const buffer = Buffer.concat(chunks);
-          console.log(
-            `Stream ended, final buffer size: ${buffer.length} bytes`,
-          );
-          resolve(buffer);
+          resolve(Buffer.concat(chunks));
         });
 
-        stream.on('error', (error: any) => {
-          console.error('Stream error:', error);
-          reject(error);
+        stream.on('error', (error: unknown) => {
+          this.logger.error('Document stream error', error);
+          reject(
+            error instanceof Error
+              ? error
+              : new Error(
+                  typeof error === 'string' ? error : 'Document stream error',
+                ),
+          );
         });
       });
     } catch (error) {
-      console.error(`Error getting document from S3: ${error}`);
+      this.logger.error('Error getting document from S3', error);
       throw error;
     }
   }
@@ -265,7 +235,7 @@ export class S3Service {
       throw new Error('Key parameter is required for delete');
     }
 
-    console.log(
+    this.logger.log(
       `Creating DeleteObjectCommand for bucket: ${bucket}, key: ${key}`,
     );
     const command = new DeleteObjectCommand({
@@ -275,13 +245,13 @@ export class S3Service {
 
     try {
       const response = await this.s3Client.send(command);
-      console.log(`Delete response:`, {
+      this.logger.log(`Delete response:`, {
         statusCode: response.$metadata?.httpStatusCode,
         deleteMarker: response.DeleteMarker,
         versionId: response.VersionId,
       });
     } catch (error) {
-      console.error(`Error deleting file from S3: ${error}`);
+      this.logger.error(`Error deleting file from S3: ${error}`);
       throw error;
     }
   }
@@ -289,7 +259,7 @@ export class S3Service {
   async deleteDocument(s3Key: string): Promise<void> {
     this.ensureInitialized();
 
-    console.log(
+    this.logger.log(
       `Deleting document from S3: bucket=${this.bucket}, key=${s3Key}`,
     );
 
@@ -298,7 +268,7 @@ export class S3Service {
     }
 
     await this.deleteFile(this.bucket, s3Key);
-    console.log(`Document deleted from S3 successfully: ${s3Key}`);
+    this.logger.log(`Document deleted from S3 successfully: ${s3Key}`);
   }
 
   async deleteAvatar(s3Key: string): Promise<void> {
@@ -322,7 +292,7 @@ export class S3Service {
       throw new Error('Key parameter is required for checkObjectExists');
     }
 
-    console.log(
+    this.logger.log(
       `Checking if object exists in S3: bucket=${bucket}, key=${key}`,
     );
 
@@ -333,14 +303,22 @@ export class S3Service {
 
     try {
       await this.s3Client.send(command);
-      console.log(`Object exists: ${key}`);
+      this.logger.log(`Object exists: ${key}`);
       return true;
-    } catch (error: any) {
-      if (error.name === 'NotFound') {
-        console.log(`Object not found: ${key}`);
+    } catch (error: unknown) {
+      const name = error instanceof Error ? error.name : '';
+      const status = (error as { $metadata?: { httpStatusCode?: number } })
+        ?.$metadata?.httpStatusCode;
+      // AWS SDK v3 typically uses NoSuchKey; some paths surface NotFound or 404.
+      if (
+        name === 'NotFound' ||
+        name === 'NoSuchKey' ||
+        status === 404
+      ) {
+        this.logger.log(`Object not found: ${key}`);
         return false;
       }
-      console.error(`Error checking object existence: ${error}`);
+      this.logger.error(`Error checking object existence: ${error}`);
       throw error;
     }
   }

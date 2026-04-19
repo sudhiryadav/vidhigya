@@ -1,13 +1,18 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ReportsService {
   constructor(private prisma: PrismaService) {}
 
-  // AI Usage Analytics
-  async getAIUsageAnalytics(userId: string, startDate?: Date, endDate?: Date) {
-    const where = {
+  private buildDocumentQueryWhere(
+    userId: string,
+    startDate?: Date,
+    endDate?: Date,
+    caseId?: string,
+  ): Prisma.DocumentQueryWhereInput {
+    return {
       userId,
       ...(startDate &&
         endDate && {
@@ -16,7 +21,13 @@ export class ReportsService {
             lte: endDate,
           },
         }),
+      ...(caseId && { caseId }),
     };
+  }
+
+  // AI Usage Analytics
+  async getAIUsageAnalytics(userId: string, startDate?: Date, endDate?: Date) {
+    const where = this.buildDocumentQueryWhere(userId, startDate, endDate);
 
     const [totalQueries, queriesByType, dailyUsage, responseTimes] =
       await Promise.all([
@@ -106,10 +117,12 @@ export class ReportsService {
 
   // Case-Specific Analytics
   async getCaseSpecificAnalytics(userId: string, caseId?: string) {
-    const where = {
+    const where = this.buildDocumentQueryWhere(
       userId,
-      ...(caseId && { caseId }),
-    };
+      undefined,
+      undefined,
+      caseId,
+    );
 
     const [caseQueries, queryTypes, recentQueries] = await Promise.all([
       this.prisma.documentQuery.findMany({
@@ -162,16 +175,7 @@ export class ReportsService {
     startDate?: Date,
     endDate?: Date,
   ) {
-    const where = {
-      userId,
-      ...(startDate &&
-        endDate && {
-          createdAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        }),
-    };
+    const where = this.buildDocumentQueryWhere(userId, startDate, endDate);
 
     const [totalQueries, avgQueriesPerDay, peakUsageHour, mostUsedFeatures] =
       await Promise.all([
@@ -253,7 +257,9 @@ export class ReportsService {
   }
 
   // Helper methods
-  private async getAverageQueriesPerDay(where: any): Promise<number> {
+  private async getAverageQueriesPerDay(
+    where: Prisma.DocumentQueryWhereInput,
+  ): Promise<number> {
     const result = await this.prisma.documentQuery.groupBy({
       by: ['createdAt'],
       where: { ...where, isDeleted: false },
@@ -273,7 +279,9 @@ export class ReportsService {
     return totalQueries / uniqueDays;
   }
 
-  private async getPeakUsageHour(where: any): Promise<number> {
+  private async getPeakUsageHour(
+    where: Prisma.DocumentQueryWhereInput,
+  ): Promise<number> {
     const result = await this.prisma.documentQuery.findMany({
       where: { ...where, isDeleted: false },
       select: { createdAt: true },
@@ -281,7 +289,7 @@ export class ReportsService {
 
     if (result.length === 0) return 0;
 
-    const hourCounts = new Array(24).fill(0);
+    const hourCounts: number[] = new Array(24).fill(0);
     result.forEach((query) => {
       const hour = query.createdAt.getHours();
       hourCounts[hour]++;

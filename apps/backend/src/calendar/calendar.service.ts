@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ParticipantStatus } from '@prisma/client';
+import { RedactingLogger } from '../common/logging';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface CreateEventDto {
@@ -56,6 +57,8 @@ export interface UpdateParticipantStatusDto {
 
 @Injectable()
 export class CalendarService {
+  private readonly logger = new RedactingLogger(CalendarService.name);
+
   constructor(private prisma: PrismaService) {}
 
   // Helper method to validate practice access
@@ -93,7 +96,7 @@ export class CalendarService {
     // Filter out only the fields that are defined in the DTO interface
     const {
       participantIds,
-      practiceId,
+      practiceId: _practiceId,
       title,
       description,
       startTime: startTimeInput,
@@ -103,8 +106,8 @@ export class CalendarService {
       isAllDay,
       isRecurring,
       recurrenceRule,
-      caseId,
-      clientId,
+      caseId: _caseId,
+      clientId: _clientId,
     } = createEventDto;
 
     // Create clean event data with only valid fields (excluding relation IDs)
@@ -156,7 +159,7 @@ export class CalendarService {
 
     // Validate practiceId is provided
     if (!createEventDto.practiceId || createEventDto.practiceId.trim() === '') {
-      console.error('Practice ID validation failed:', {
+      this.logger.error('Practice ID validation failed:', {
         practiceId: createEventDto.practiceId,
         type: typeof createEventDto.practiceId,
         dtoKeys: Object.keys(createEventDto),
@@ -213,16 +216,16 @@ export class CalendarService {
     }
 
     // Log the cleaned data for debugging
-    console.log(
+    this.logger.log(
       'Creating calendar event with data:',
       JSON.stringify(eventDataToCreate, null, 2),
     );
-    console.log('Practice ID from DTO:', createEventDto.practiceId);
-    console.log('Event data keys:', Object.keys(eventDataToCreate));
-    console.log('Full DTO:', JSON.stringify(createEventDto, null, 2));
-    console.log('Filtered event data:', JSON.stringify(eventData, null, 2));
-    console.log('Case ID from DTO:', createEventDto.caseId);
-    console.log('Client ID from DTO:', createEventDto.clientId);
+    this.logger.log('Practice ID from DTO:', createEventDto.practiceId);
+    this.logger.log('Event data keys:', Object.keys(eventDataToCreate));
+    this.logger.log('Full DTO:', JSON.stringify(createEventDto, null, 2));
+    this.logger.log('Filtered event data:', JSON.stringify(eventData, null, 2));
+    this.logger.log('Case ID from DTO:', createEventDto.caseId);
+    this.logger.log('Client ID from DTO:', createEventDto.clientId);
 
     // Create the event
     const event = await this.prisma.calendarEvent.create({
@@ -575,12 +578,12 @@ export class CalendarService {
     }
 
     // Log the update data for debugging
-    console.log(
+    this.logger.log(
       'Updating calendar event with data:',
       JSON.stringify(updateData, null, 2),
     );
-    console.log('Case ID from update DTO:', caseId);
-    console.log('Client ID from update DTO:', clientId);
+    this.logger.log('Case ID from update DTO:', caseId);
+    this.logger.log('Client ID from update DTO:', clientId);
 
     return this.prisma.calendarEvent.update({
       where: { id },
@@ -657,7 +660,7 @@ export class CalendarService {
     }
 
     // Log the deletion for debugging
-    console.log(`Deleting calendar event ${id} by user ${userId}`);
+    this.logger.log(`Deleting calendar event ${id} by user ${userId}`);
 
     // Delete the event (Prisma will handle cascading deletes for participants)
     return this.prisma.calendarEvent.delete({

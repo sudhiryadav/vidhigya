@@ -10,6 +10,7 @@ import {
   CaseStatus,
   NoteType,
 } from '@prisma/client';
+import { RedactingLogger } from '../common/logging';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface CreateCaseDto {
@@ -61,6 +62,8 @@ export interface UpdateCaseNoteDto {
 
 @Injectable()
 export class CasesService {
+  private readonly logger = new RedactingLogger(CasesService.name);
+
   constructor(private prisma: PrismaService) {}
 
   // Helper method to validate practice access
@@ -128,7 +131,7 @@ export class CasesService {
         }
         const parsed = new Date(dateValue);
         if (isNaN(parsed.getTime())) {
-          console.warn(
+          this.logger.warn(
             `Invalid date string received: "${dateValue}" - converting to null`,
           );
           return null;
@@ -138,7 +141,7 @@ export class CasesService {
       if (dateValue instanceof Date) {
         return dateValue;
       }
-      console.warn(
+      this.logger.warn(
         `Unexpected date value type: ${typeof dateValue} - converting to null`,
       );
       return null;
@@ -176,13 +179,13 @@ export class CasesService {
 
     // Validate enum fields
     if (!Object.values(CaseCategory).includes(cleanedData.category)) {
-      console.warn(`Invalid category received: ${cleanedData.category}`);
+      this.logger.warn(`Invalid category received: ${cleanedData.category}`);
       throw new BadRequestException(
         `Invalid category: ${cleanedData.category}`,
       );
     }
     if (!Object.values(CasePriority).includes(cleanedData.priority)) {
-      console.warn(`Invalid priority received: ${cleanedData.priority}`);
+      this.logger.warn(`Invalid priority received: ${cleanedData.priority}`);
       throw new BadRequestException(
         `Invalid priority: ${cleanedData.priority}`,
       );
@@ -481,7 +484,7 @@ export class CasesService {
         }
         const parsed = new Date(dateValue);
         if (isNaN(parsed.getTime())) {
-          console.warn(
+          this.logger.warn(
             `Invalid date string received: "${dateValue}" - converting to null`,
           );
           return null;
@@ -491,7 +494,7 @@ export class CasesService {
       if (dateValue instanceof Date) {
         return dateValue;
       }
-      console.warn(
+      this.logger.warn(
         `Unexpected date value type: ${typeof dateValue} - converting to null`,
       );
       return null;
@@ -508,7 +511,7 @@ export class CasesService {
       cleanedData.category &&
       !Object.values(CaseCategory).includes(cleanedData.category)
     ) {
-      console.warn(`Invalid category received: ${cleanedData.category}`);
+      this.logger.warn(`Invalid category received: ${cleanedData.category}`);
       throw new BadRequestException(
         `Invalid category: ${cleanedData.category}`,
       );
@@ -517,7 +520,7 @@ export class CasesService {
       cleanedData.priority &&
       !Object.values(CasePriority).includes(cleanedData.priority)
     ) {
-      console.warn(`Invalid priority received: ${cleanedData.priority}`);
+      this.logger.warn(`Invalid priority received: ${cleanedData.priority}`);
       throw new BadRequestException(
         `Invalid priority: ${cleanedData.priority}`,
       );
@@ -526,7 +529,7 @@ export class CasesService {
       cleanedData.status &&
       !Object.values(CaseStatus).includes(cleanedData.status)
     ) {
-      console.warn(`Invalid status received: ${cleanedData.status}`);
+      this.logger.warn(`Invalid status received: ${cleanedData.status}`);
       throw new BadRequestException(`Invalid status: ${cleanedData.status}`);
     }
 

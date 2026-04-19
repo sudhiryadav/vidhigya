@@ -137,7 +137,7 @@ export class PermissionController {
    */
   @Get('audit/logs')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  async getAuditLogs(@Query() query: any) {
+  getAuditLogs(@Query() query: any) {
     const filter = {
       userId: query.userId,
       action: query.action,
@@ -159,7 +159,7 @@ export class PermissionController {
    */
   @Get('audit/stats')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  async getPermissionStats(@Query() query: any) {
+  getPermissionStats(@Query() query: any) {
     const filter = {
       userId: query.userId,
       practiceId: query.practiceId,
@@ -175,7 +175,7 @@ export class PermissionController {
    */
   @Get('audit/failures')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  async getFailedAttempts(
+  getFailedAttempts(
     @Query('userId') userId?: string,
     @Query('limit') limit?: string,
   ) {
@@ -227,13 +227,12 @@ export class PermissionController {
    */
   @Delete('audit/cleanup')
   @Roles(UserRole.SUPER_ADMIN)
-  async cleanupAuditLogs(@Query('days') days?: string) {
+  cleanupAuditLogs(@Query('days') days?: string) {
     const daysToKeep = days ? parseInt(days) : 90;
-    const deletedCount =
-      await this.permissionService.cleanupOldLogs(daysToKeep);
+    this.permissionService.cleanupOldLogs(daysToKeep);
     return {
       message: 'Audit logs cleaned up',
-      deletedCount,
+      deletedCount: 0,
       daysToKeep,
     };
   }
