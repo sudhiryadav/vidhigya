@@ -22,6 +22,7 @@
     "resolveJsonModule": true
   },
   "exclude": [
+    "dist/**/*",
     "src/client-portal/**/*",
     "src/tasks/**/*",
     "src/notifications/**/*",
