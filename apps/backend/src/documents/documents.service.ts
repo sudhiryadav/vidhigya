@@ -69,7 +69,9 @@ export class DocumentsService {
         signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) {
-        this.logger.warn(`AI cancel returned HTTP ${res.status} for ${aiDocumentId}`);
+        this.logger.warn(
+          `AI cancel returned HTTP ${res.status} for ${aiDocumentId}`,
+        );
       }
     } catch (e) {
       this.logger.warn(

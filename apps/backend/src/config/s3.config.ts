@@ -310,11 +310,7 @@ export class S3Service {
       const status = (error as { $metadata?: { httpStatusCode?: number } })
         ?.$metadata?.httpStatusCode;
       // AWS SDK v3 typically uses NoSuchKey; some paths surface NotFound or 404.
-      if (
-        name === 'NotFound' ||
-        name === 'NoSuchKey' ||
-        status === 404
-      ) {
+      if (name === 'NotFound' || name === 'NoSuchKey' || status === 404) {
         this.logger.log(`Object not found: ${key}`);
         return false;
       }

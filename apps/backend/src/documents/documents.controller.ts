@@ -565,9 +565,8 @@ export class DocumentsController {
     confidence: number;
     generated_at: string;
   }> {
-    let searchResults: Awaited<
-      ReturnType<QdrantService['searchDocuments']>
-    > = [];
+    let searchResults: Awaited<ReturnType<QdrantService['searchDocuments']>> =
+      [];
     try {
       // First, search Qdrant for relevant documents
       searchResults = await this.qdrantService.searchDocuments(
@@ -824,7 +823,9 @@ export class DocumentsController {
         }
 
         const sourceCandidates = rawSources.filter(
-          (s): s is {
+          (
+            s,
+          ): s is {
             document_id: string;
             content: string;
             score: number;
@@ -846,10 +847,11 @@ export class DocumentsController {
           return { ...query, sources: [] };
         }
 
-        const normalizedSources = await this.documentsService.enrichVectorSearchHits(
-          sourceCandidates,
-          req.user.sub,
-        );
+        const normalizedSources =
+          await this.documentsService.enrichVectorSearchHits(
+            sourceCandidates,
+            req.user.sub,
+          );
 
         return {
           ...query,

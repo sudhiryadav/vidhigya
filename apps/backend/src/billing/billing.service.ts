@@ -107,7 +107,8 @@ export class BillingService {
       },
     });
 
-    const practiceId = user?.primaryPracticeId ?? user?.practices[0]?.practiceId;
+    const practiceId =
+      user?.primaryPracticeId ?? user?.practices[0]?.practiceId;
     if (!practiceId) {
       throw new ForbiddenException('No practice access found for this user');
     }
@@ -133,10 +134,7 @@ export class BillingService {
         throw new NotFoundException('Case not found');
       }
 
-      if (
-        resolvedPracticeId &&
-        resolvedPracticeId !== legalCase.practiceId
-      ) {
+      if (resolvedPracticeId && resolvedPracticeId !== legalCase.practiceId) {
         throw new BadRequestException(
           'Selected case does not belong to the provided practice',
         );
