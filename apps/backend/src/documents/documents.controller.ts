@@ -3,7 +3,9 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
+  NotFoundException,
   Param,
   Post,
   Query,
@@ -737,7 +739,7 @@ export class DocumentsController {
         query,
         answer,
         undefined, // caseId
-        searchResults, // sources
+        formattedSources, // sources
         undefined, // responseTime
         undefined, // tokensUsed
         QueryType.GENERAL,
@@ -814,7 +816,49 @@ export class DocumentsController {
       take: limitNum,
     });
 
-    return queries;
+    const normalizedQueries = await Promise.all(
+      queries.map(async (query) => {
+        const rawSources = Array.isArray(query.sources) ? query.sources : [];
+        if (!rawSources.length) {
+          return query;
+        }
+
+        const sourceCandidates = rawSources.filter(
+          (s): s is {
+            document_id: string;
+            content: string;
+            score: number;
+            page_number?: number;
+            start_char?: number;
+            end_char?: number;
+          } => {
+            const candidate = s as Record<string, unknown> | null;
+            return (
+              candidate != null &&
+              typeof candidate.document_id === 'string' &&
+              typeof candidate.content === 'string' &&
+              typeof candidate.score === 'number'
+            );
+          },
+        );
+
+        if (!sourceCandidates.length) {
+          return { ...query, sources: [] };
+        }
+
+        const normalizedSources = await this.documentsService.enrichVectorSearchHits(
+          sourceCandidates,
+          req.user.sub,
+        );
+
+        return {
+          ...query,
+          sources: normalizedSources,
+        };
+      }),
+    );
+
+    return normalizedQueries;
   }
 
   @Delete('query-history')
@@ -1064,16 +1108,24 @@ export class DocumentsController {
     } catch (error) {
       this.logger.error('Error in downloadDocument:', error);
 
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+
       if (error instanceof BadRequestException) {
         throw error;
       }
 
       if (error instanceof Error && error.message?.includes('not found')) {
-        throw new BadRequestException('Document not found');
+        throw new NotFoundException('Document not found');
       }
 
       if (error instanceof Error && error.message?.includes('Access denied')) {
-        throw new BadRequestException('Access denied to this document');
+        throw new ForbiddenException('Access denied to this document');
       }
 
       throw new BadRequestException('Error accessing document');

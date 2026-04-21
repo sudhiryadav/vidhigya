@@ -1,12 +1,17 @@
 "use client";
 
 import ConfirmDialog from "@/components/ConfirmDialog";
+import FileDocumentViewer from "@/components/DocumentViewer";
 import ModalDialog from "@/components/ui/ModalDialog";
 import { apiClient } from "@/services/api";
 import {
+  AlignLeft,
   Bot,
+  ChevronDown,
+  ChevronRight,
   Cloud,
   Copy,
+  ExternalLink,
   FileText,
   Loader2,
   MessageSquare,
@@ -192,7 +197,7 @@ function WordCloudOverlay({
   );
 }
 
-interface DocumentViewerProps {
+interface SourceTextViewerProps {
   documentId: string;
   documentTitle: string;
   highlightedText?: string;
@@ -202,7 +207,7 @@ interface DocumentViewerProps {
   onClose: () => void;
 }
 
-function DocumentViewer({
+function SourceTextViewer({
   documentId,
   documentTitle,
   highlightedText,
@@ -210,7 +215,7 @@ function DocumentViewer({
   startChar,
   endChar,
   onClose,
-}: DocumentViewerProps) {
+}: SourceTextViewerProps) {
   const [documentContent, setDocumentContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -474,6 +479,12 @@ export default function DocumentQA() {
     startChar?: number;
     endChar?: number;
   } | null>(null);
+  const [selectedFileDocument, setSelectedFileDocument] = useState<{
+    documentId: string;
+    documentTitle: string;
+    fileType: string;
+    initialPage?: number;
+  } | null>(null);
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
@@ -488,6 +499,9 @@ export default function DocumentQA() {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [tempInput, setTempInput] = useState("");
   const [showClearChatDialog, setShowClearChatDialog] = useState(false);
+  const [expandedSourcesByMessage, setExpandedSourcesByMessage] = useState<
+    Record<string, boolean>
+  >({});
 
   // Load chat history from localStorage and backend
   useEffect(() => {
@@ -808,6 +822,39 @@ export default function DocumentQA() {
     });
   };
 
+  const openDocumentFileAtSource = async (
+    source: NonNullable<QAMessage["sources"]>[0]
+  ) => {
+    try {
+      const document = (await apiClient.getDocument(source.document_id)) as {
+        id: string;
+        title?: string;
+        fileType?: string;
+      };
+
+      setSelectedFileDocument({
+        documentId: document.id || source.document_id,
+        documentTitle:
+          document.title?.trim() || source.document_title || "Document",
+        fileType: document.fileType || "application/pdf",
+        initialPage:
+          source.page_number != null && source.page_number > 0
+            ? source.page_number
+            : undefined,
+      });
+    } catch (error) {
+      console.error("Error opening source document:", error);
+      toast.error("Failed to open source document");
+    }
+  };
+
+  const toggleSourcesVisibility = (messageId: string) => {
+    setExpandedSourcesByMessage((prev) => ({
+      ...prev,
+      [messageId]: !prev[messageId],
+    }));
+  };
+
   const handleSuggestedQuestionClick = async (suggestion: string) => {
     // Close the overlay
     setShowWordCloudOverlay(false);
@@ -983,70 +1030,80 @@ export default function DocumentQA() {
                             message.sources &&
                             message.sources.length > 0 && (
                               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                                  Sources:
-                                </p>
-                                <div className="space-y-1">
-                                  {message.sources
-                                    .slice(0, 3)
-                                    .map((source, index) => (
-                                      <button
-                                        key={index}
-                                        onClick={() =>
-                                          openDocumentViewer(source)
-                                        }
-                                        className="w-full text-left text-xs bg-muted rounded p-2 hover:bg-muted/80 transition-colors cursor-pointer"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex-1">
-                                            <p className="font-medium">
-                                              {source.document_title}
-                                            </p>
-                                            {source.page_number && (
-                                              <p className="text-gray-500">
-                                                Page {source.page_number}
+                                <button
+                                  onClick={() =>
+                                    toggleSourcesVisibility(message.id)
+                                  }
+                                  className="w-full flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 bg-muted rounded p-2 hover:bg-muted/80 transition-colors"
+                                >
+                                  <span>
+                                    Sources ({Math.min(message.sources.length, 3)}
+                                    )
+                                  </span>
+                                  {expandedSourcesByMessage[message.id] ? (
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <ChevronRight className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                                {expandedSourcesByMessage[message.id] && (
+                                  <div className="space-y-1 mt-2">
+                                    {message.sources
+                                      .slice(0, 3)
+                                      .map((source, index) => (
+                                        <div
+                                          key={index}
+                                          className="w-full text-xs bg-muted rounded p-2"
+                                        >
+                                          <div className="flex items-start justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium truncate">
+                                                {source.document_title}
                                               </p>
-                                            )}
-                                            <p className="text-gray-600 dark:text-gray-300 mt-1">
-                                              {source.content ? (
-                                                source.start_char &&
-                                                source.end_char ? (
-                                                  <>
-                                                    {source.content.substring(
-                                                      0,
-                                                      source.start_char
-                                                    )}
-                                                    <mark className="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">
-                                                      {source.content.substring(
-                                                        source.start_char,
-                                                        source.end_char
-                                                      )}
-                                                    </mark>
-                                                    {source.content.substring(
-                                                      source.end_char,
-                                                      Math.min(
-                                                        source.end_char + 50,
-                                                        source.content.length
-                                                      )
-                                                    )}
-                                                    {source.content.length >
-                                                    source.end_char + 50
-                                                      ? "..."
-                                                      : ""}
-                                                  </>
-                                                ) : (
-                                                  `${source.content.substring(0, 100)}...`
-                                                )
-                                              ) : (
-                                                "Content not available"
-                                              )}
-                                            </p>
+                                              {source.page_number != null &&
+                                                source.page_number > 0 && (
+                                                  <p className="text-gray-500 mt-1">
+                                                    Page {source.page_number}
+                                                  </p>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              <div className="relative group">
+                                                <button
+                                                  onClick={() =>
+                                                    openDocumentFileAtSource(
+                                                      source
+                                                    )
+                                                  }
+                                                  className="p-1.5 rounded hover:bg-muted-foreground/10 transition-colors"
+                                                  title="Open document file"
+                                                >
+                                                  <ExternalLink className="w-3.5 h-3.5 text-gray-500" />
+                                                </button>
+                                                <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                                                  Open file
+                                                </span>
+                                              </div>
+                                              <div className="relative group">
+                                                <button
+                                                  onClick={() =>
+                                                    openDocumentViewer(source)
+                                                  }
+                                                  className="p-1.5 rounded hover:bg-muted-foreground/10 transition-colors"
+                                                  title="Open text viewer"
+                                                >
+                                                  <AlignLeft className="w-3.5 h-3.5 text-gray-500" />
+                                                </button>
+                                                <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                                                  Open text
+                                                </span>
+                                              </div>
+                                            </div>
                                           </div>
-                                          <FileText className="w-3 h-3 text-gray-400 ml-2" />
                                         </div>
-                                      </button>
-                                    ))}
-                                </div>
+                                      ))}
+                                  </div>
+                                )}
                               </div>
                             )}
                         </div>
@@ -1163,7 +1220,7 @@ export default function DocumentQA() {
 
       {/* Document Viewer Modal */}
       {selectedDocument && (
-        <DocumentViewer
+        <SourceTextViewer
           documentId={selectedDocument.documentId}
           documentTitle={selectedDocument.documentTitle}
           highlightedText={selectedDocument.highlightedText}
@@ -1171,6 +1228,15 @@ export default function DocumentQA() {
           startChar={selectedDocument.startChar}
           endChar={selectedDocument.endChar}
           onClose={() => setSelectedDocument(null)}
+        />
+      )}
+      {selectedFileDocument && (
+        <FileDocumentViewer
+          documentId={selectedFileDocument.documentId}
+          documentTitle={selectedFileDocument.documentTitle}
+          fileType={selectedFileDocument.fileType}
+          initialPage={selectedFileDocument.initialPage}
+          onClose={() => setSelectedFileDocument(null)}
         />
       )}
 
