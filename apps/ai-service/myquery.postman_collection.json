@@ -30,6 +30,28 @@
                     }
                 },
                 {
+                    "name": "Cancel Document Processing",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/admin/documents/cancel/{document_id}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "admin",
+                                "documents",
+                                "cancel",
+                                "{document_id}"
+                            ]
+                        },
+                        "description": "Request cooperative cancellation of background processing (e.g. user deleted the document)."
+                    }
+                },
+                {
                     "name": "Restart Document Processing",
                     "request": {
                         "method": "POST",

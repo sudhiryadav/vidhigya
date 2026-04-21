@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DocumentCategory, DocumentStatus } from '@prisma/client';
 import { RedactingLogger } from '../common/logging';
 import { QdrantService } from '../config/qdrant.service';
@@ -42,7 +43,41 @@ export class DocumentsService {
     private readonly prisma: PrismaService,
     private readonly qdrantService: QdrantService,
     private readonly logsService: LogsService,
+    private readonly configService: ConfigService,
   ) {}
+
+  /**
+   * Ask the Python AI service to stop a background embedding job (cooperative cancel).
+   */
+  private async cancelAiProcessing(aiDocumentId: string): Promise<void> {
+    const base = this.configService.get<string>('AI_SERVICE_URL');
+    const key = this.configService.get<string>('AI_SERVICE_API_KEY');
+    if (!base?.trim() || !key?.trim()) {
+      this.logger.warn(
+        'AI_SERVICE_URL or AI_SERVICE_API_KEY not set; skip AI cancel',
+      );
+      return;
+    }
+    const url = `${base.replace(/\/$/, '')}/api/v1/admin/documents/cancel/${encodeURIComponent(aiDocumentId)}`;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-API-Key': key,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) {
+        this.logger.warn(`AI cancel returned HTTP ${res.status} for ${aiDocumentId}`);
+      }
+    } catch (e) {
+      this.logger.warn(
+        `AI cancel failed for ${aiDocumentId} (continuing with delete)`,
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
 
   // Helper method to validate practice access
   private async validatePracticeAccess(userId: string, practiceId: string) {
@@ -282,6 +317,10 @@ export class DocumentsService {
     const document = await this.findOne(id, userId);
 
     try {
+      if (document.status === 'PROCESSING' && document.aiDocumentId) {
+        await this.cancelAiProcessing(document.aiDocumentId);
+      }
+
       // Delete embeddings from Qdrant for main document using stored AI document ID
       let qdrantDeleted = false;
       if (document.aiDocumentId) {

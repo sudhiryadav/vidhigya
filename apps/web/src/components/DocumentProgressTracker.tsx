@@ -48,7 +48,8 @@ export default function DocumentProgressTracker({
         if (
           currentStatus.status === "COMPLETED" ||
           currentStatus.status === "ERROR" ||
-          currentStatus.status === "NOT_FOUND"
+          currentStatus.status === "NOT_FOUND" ||
+          currentStatus.status === "CANCELLED"
         ) {
           setIsPolling(false);
           cleanupRef.current = true;
@@ -60,6 +61,8 @@ export default function DocumentProgressTracker({
           } else if (currentStatus.status === "NOT_FOUND") {
             // NOT_FOUND usually means processing completed and status was cleared
             onComplete?.();
+          } else if (currentStatus.status === "CANCELLED") {
+            onError?.(currentStatus.details || "Processing was stopped.");
           }
           return; // Exit early, no need to set up polling
         }
@@ -112,7 +115,8 @@ export default function DocumentProgressTracker({
           if (
             currentStatus.status === "COMPLETED" ||
             currentStatus.status === "ERROR" ||
-            currentStatus.status === "NOT_FOUND"
+            currentStatus.status === "NOT_FOUND" ||
+            currentStatus.status === "CANCELLED"
           ) {
             setIsPolling(false);
             cleanupRef.current = true;
@@ -124,6 +128,8 @@ export default function DocumentProgressTracker({
             } else if (currentStatus.status === "NOT_FOUND") {
               // NOT_FOUND usually means processing completed and status was cleared
               onComplete?.();
+            } else if (currentStatus.status === "CANCELLED") {
+              onError?.(currentStatus.details || "Processing was stopped.");
             }
           }
         } catch (error) {

@@ -38,6 +38,7 @@ interface Document {
   id: string;
   title: string;
   description?: string;
+  originalFilename?: string;
   fileUrl: string;
   fileType: string;
   fileSize: number;
@@ -94,6 +95,18 @@ const FALLBACK_CATEGORIES = [
 
 function humanizeEnum(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getUploadedFilename(doc: Pick<Document, "originalFilename" | "fileUrl">) {
+  const fromOriginal = (doc.originalFilename || "").trim();
+  if (fromOriginal) return fromOriginal;
+
+  const fromUrl = (doc.fileUrl || "").trim();
+  if (!fromUrl) return "";
+
+  const parts = fromUrl.split("/");
+  const raw = parts[parts.length - 1] || "";
+  return decodeURIComponent(raw).trim();
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -186,6 +199,7 @@ const DocumentCard = ({
   onProcessingRestarted: () => void;
 }) => {
   const [retryingProcessing, setRetryingProcessing] = useState(false);
+  const uploadedFilename = getUploadedFilename(doc);
   const fileTypeIcon = (fileType: string) => {
     const ft = fileType.toLowerCase();
     if (ft.includes("pdf")) return FileText;
@@ -249,6 +263,11 @@ const DocumentCard = ({
       <h3 className="font-semibold text-foreground text-base sm:text-lg mb-2 line-clamp-2 leading-snug pr-1">
         {doc.title}
       </h3>
+      {uploadedFilename && (
+        <p className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-1 break-all">
+          File: {uploadedFilename}
+        </p>
+      )}
 
       {/* File Size */}
       <p className="text-xs sm:text-sm text-muted-foreground mb-4">
@@ -303,7 +322,7 @@ const DocumentCard = ({
             <DocumentProgressTracker
               documentId={doc.id}
               aiDocumentId={doc.aiDocumentId}
-              filename={doc.title}
+              filename={uploadedFilename || doc.title}
               apiClient={apiClient}
               onComplete={onComplete}
               onError={onError}
@@ -324,8 +343,9 @@ const DocumentCard = ({
                 Document Processing Failed
               </p>
               <p className="text-xs text-amber-700 dark:text-amber-300">
-                The file is still saved. You can retry processing without
-                uploading again, or re-upload if retry is not available.
+                {doc.fileUrl
+                  ? "The file is still saved. You can retry processing without uploading again, or re-upload if retry is not available."
+                  : "The stored file is no longer available. Please re-upload the document."}
               </p>
             </div>
           </div>
@@ -353,12 +373,17 @@ const DocumentCard = ({
               <Download className="w-4 h-4" />
             </button>
           )}
-          {canDelete && shouldShowActions(doc.status) && (
+          {canDelete && (
             <button
               type="button"
               onClick={() => onDelete(doc)}
               className="inline-flex items-center justify-center rounded-lg p-2.5 sm:p-2 text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={`Delete ${doc.title}`}
+              title={
+                doc.status === "PROCESSING"
+                  ? "Delete document (stops processing)"
+                  : `Delete ${doc.title}`
+              }
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -376,17 +401,19 @@ const DocumentCard = ({
           )}
           {doc.status === "DRAFT" && (
             <>
-              <button
-                type="button"
-                onClick={handleRetryProcessing}
-                disabled={retryingProcessing}
-                className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-md transition-colors"
-              >
-                <RefreshCw
-                  className={`w-3 h-3 mr-1 ${retryingProcessing ? "animate-spin" : ""}`}
-                />
-                {retryingProcessing ? "Retrying…" : "Retry processing"}
-              </button>
+              {doc.fileUrl && (
+                <button
+                  type="button"
+                  onClick={handleRetryProcessing}
+                  disabled={retryingProcessing}
+                  className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-md transition-colors"
+                >
+                  <RefreshCw
+                    className={`w-3 h-3 mr-1 ${retryingProcessing ? "animate-spin" : ""}`}
+                  />
+                  {retryingProcessing ? "Retrying…" : "Retry processing"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onReupload}
@@ -427,6 +454,7 @@ const DocumentTableRow = ({
   onProcessingRestarted: () => void;
 }) => {
   const [retryingProcessing, setRetryingProcessing] = useState(false);
+  const uploadedFilename = getUploadedFilename(doc);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -477,6 +505,11 @@ const DocumentTableRow = ({
           <div className="font-medium text-foreground max-w-xs lg:max-w-md">
             {doc.title}
           </div>
+          {uploadedFilename && (
+            <p className="text-xs text-muted-foreground line-clamp-1 mt-1 break-all">
+              File: {uploadedFilename}
+            </p>
+          )}
           {doc.description && (
             <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
               {doc.description}
@@ -538,12 +571,17 @@ const DocumentTableRow = ({
                 <Download className="w-4 h-4" />
               </button>
             )}
-            {canDelete && shouldShowActions && (
+            {canDelete && (
               <button
                 type="button"
                 onClick={() => onDelete(doc)}
                 className="p-1.5 rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 dark:text-red-400"
                 aria-label="Delete document"
+                title={
+                  doc.status === "PROCESSING"
+                    ? "Delete document (stops processing)"
+                    : "Delete document"
+                }
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -563,7 +601,7 @@ const DocumentTableRow = ({
               <DocumentProgressTracker
                 documentId={doc.id}
                 aiDocumentId={doc.aiDocumentId}
-                filename={doc.title}
+                filename={uploadedFilename || doc.title}
                 apiClient={apiClient}
                 onComplete={onComplete}
                 onError={onError}
@@ -581,22 +619,26 @@ const DocumentTableRow = ({
                       Document processing failed
                     </p>
                     <p className="text-xs text-amber-700 dark:text-amber-300">
-                      Retry processing or re-upload the file.
+                      {doc.fileUrl
+                        ? "Retry processing or re-upload the file."
+                        : "The stored file is no longer available. Please re-upload."}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleRetryProcessing}
-                    disabled={retryingProcessing}
-                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-md transition-colors"
-                  >
-                    <RefreshCw
-                      className={`w-3 h-3 mr-1 ${retryingProcessing ? "animate-spin" : ""}`}
-                    />
-                    {retryingProcessing ? "Retrying…" : "Retry processing"}
-                  </button>
+                  {doc.fileUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRetryProcessing}
+                      disabled={retryingProcessing}
+                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-md transition-colors"
+                    >
+                      <RefreshCw
+                        className={`w-3 h-3 mr-1 ${retryingProcessing ? "animate-spin" : ""}`}
+                      />
+                      {retryingProcessing ? "Retrying…" : "Retry processing"}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={onReupload}

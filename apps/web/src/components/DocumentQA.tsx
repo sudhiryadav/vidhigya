@@ -196,6 +196,7 @@ interface DocumentViewerProps {
   documentId: string;
   documentTitle: string;
   highlightedText?: string;
+  sourceContent?: string;
   startChar?: number;
   endChar?: number;
   onClose: () => void;
@@ -205,6 +206,7 @@ function DocumentViewer({
   documentId,
   documentTitle,
   highlightedText,
+  sourceContent,
   startChar,
   endChar,
   onClose,
@@ -212,6 +214,7 @@ function DocumentViewer({
   const [documentContent, setDocumentContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sourceOnlyPreview, setSourceOnlyPreview] = useState(false);
 
   // Fetch document content when component mounts
   useEffect(() => {
@@ -220,24 +223,37 @@ function DocumentViewer({
         setLoading(true);
         const document = (await apiClient.getDocument(documentId)) as any;
 
-        if (document.content) {
+        if (typeof document.content === "string" && document.content.trim()) {
           setDocumentContent(document.content);
+          setSourceOnlyPreview(false);
+        } else if (typeof sourceContent === "string" && sourceContent.trim()) {
+          // Graceful fallback: many uploaded files don't persist full extracted
+          // text on the LegalDocument row, but each source already has a useful
+          // snippet payload from vector search.
+          setDocumentContent(sourceContent);
+          setSourceOnlyPreview(true);
         } else {
           setError("Document content not available");
         }
       } catch (err) {
         console.error("Error fetching document:", err);
-        setError("Failed to load document content");
+        if (typeof sourceContent === "string" && sourceContent.trim()) {
+          setDocumentContent(sourceContent);
+          setSourceOnlyPreview(true);
+          setError(null);
+        } else {
+          setError("Failed to load document content");
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchDocument();
-  }, [documentId]);
+  }, [documentId, sourceContent]);
 
   const highlightText = (content: string, start?: number, end?: number) => {
-    if (!start || !end || start >= end || start >= content.length) {
+    if (start == null || end == null || start >= end || start >= content.length) {
       return content;
     }
 
@@ -352,7 +368,7 @@ function DocumentViewer({
       ) : (
         <div className="prose prose-sm max-w-none dark:prose-invert">
           <div className="whitespace-pre-wrap text-foreground text-sm">
-            {startChar && endChar ? (
+            {startChar != null && endChar != null && !sourceOnlyPreview ? (
               // Show preview around the highlighted source
               <div>
                 <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 mb-4">
@@ -426,6 +442,12 @@ function DocumentViewer({
                     <strong>Document Length:</strong>{" "}
                     {documentContent.length.toLocaleString()} characters
                   </p>
+                  {sourceOnlyPreview && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      <strong>Note:</strong> Showing source snippet preview (full
+                      document text is not available for this file).
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -448,6 +470,7 @@ export default function DocumentQA() {
     documentTitle: string;
     fileType: string;
     highlightedText?: string;
+    sourceContent?: string;
     startChar?: number;
     endChar?: number;
   } | null>(null);
@@ -779,6 +802,7 @@ export default function DocumentQA() {
       documentTitle: source.document_title,
       fileType: "document", // Assuming all sources are documents for now
       highlightedText: source.content,
+      sourceContent: source.content,
       startChar: source.start_char,
       endChar: source.end_char,
     });
@@ -1143,6 +1167,7 @@ export default function DocumentQA() {
           documentId={selectedDocument.documentId}
           documentTitle={selectedDocument.documentTitle}
           highlightedText={selectedDocument.highlightedText}
+          sourceContent={selectedDocument.sourceContent}
           startChar={selectedDocument.startChar}
           endChar={selectedDocument.endChar}
           onClose={() => setSelectedDocument(null)}

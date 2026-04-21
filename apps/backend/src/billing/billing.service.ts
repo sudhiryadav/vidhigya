@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -11,10 +12,11 @@ export interface CreateBillingRecordDto {
   currency?: Currency;
   description: string;
   billType: BillType;
-  dueDate?: Date;
+  dueDate?: Date | string;
   caseId?: string;
+  clientId?: string;
   userId: string;
-  practiceId: string;
+  practiceId?: string;
 }
 
 export interface UpdateBillingRecordDto {
@@ -23,14 +25,47 @@ export interface UpdateBillingRecordDto {
   description?: string;
   billType?: BillType;
   status?: BillStatus;
-  dueDate?: Date;
-  paidDate?: Date;
+  dueDate?: Date | string;
+  paidDate?: Date | string;
   caseId?: string;
 }
 
 @Injectable()
 export class BillingService {
   constructor(private prisma: PrismaService) {}
+
+  private normalizeDateInput(
+    fieldName: string,
+    value?: Date | string,
+  ): Date | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    if (value instanceof Date) {
+      if (Number.isNaN(value.getTime())) {
+        throw new BadRequestException(`Invalid ${fieldName}`);
+      }
+      return value;
+    }
+
+    const trimmedValue = value.trim();
+    if (!trimmedValue) {
+      return undefined;
+    }
+
+    // Accept HTML date input format (YYYY-MM-DD) and convert to midnight UTC.
+    const isoCandidate = /^\d{4}-\d{2}-\d{2}$/.test(trimmedValue)
+      ? `${trimmedValue}T00:00:00.000Z`
+      : trimmedValue;
+    const parsedDate = new Date(isoCandidate);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      throw new BadRequestException(`Invalid ${fieldName}`);
+    }
+
+    return parsedDate;
+  }
 
   // Helper method to validate practice access
   private async validatePracticeAccess(userId: string, practiceId: string) {
@@ -60,15 +95,101 @@ export class BillingService {
     return true;
   }
 
+  private async resolveUserPracticeId(userId: string): Promise<string> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        primaryPracticeId: true,
+        practices: {
+          where: { isActive: true },
+          select: { practiceId: true },
+        },
+      },
+    });
+
+    const practiceId = user?.primaryPracticeId ?? user?.practices[0]?.practiceId;
+    if (!practiceId) {
+      throw new ForbiddenException('No practice access found for this user');
+    }
+
+    return practiceId;
+  }
+
   async create(createBillingRecordDto: CreateBillingRecordDto) {
+    let resolvedPracticeId = createBillingRecordDto.practiceId;
+    let resolvedClientId = createBillingRecordDto.clientId;
+
+    if (createBillingRecordDto.caseId) {
+      const legalCase = await this.prisma.legalCase.findUnique({
+        where: { id: createBillingRecordDto.caseId },
+        select: {
+          id: true,
+          practiceId: true,
+          clientId: true,
+        },
+      });
+
+      if (!legalCase) {
+        throw new NotFoundException('Case not found');
+      }
+
+      if (
+        resolvedPracticeId &&
+        resolvedPracticeId !== legalCase.practiceId
+      ) {
+        throw new BadRequestException(
+          'Selected case does not belong to the provided practice',
+        );
+      }
+
+      resolvedPracticeId = legalCase.practiceId;
+      resolvedClientId = resolvedClientId ?? legalCase.clientId;
+    } else if (resolvedClientId) {
+      const client = await this.prisma.client.findUnique({
+        where: { id: resolvedClientId },
+        select: {
+          id: true,
+          practiceId: true,
+        },
+      });
+
+      if (!client) {
+        throw new NotFoundException('Client not found');
+      }
+
+      if (resolvedPracticeId && resolvedPracticeId !== client.practiceId) {
+        throw new BadRequestException(
+          'Selected client does not belong to the provided practice',
+        );
+      }
+
+      resolvedPracticeId = resolvedPracticeId ?? client.practiceId;
+    }
+
+    if (!resolvedPracticeId) {
+      resolvedPracticeId = await this.resolveUserPracticeId(
+        createBillingRecordDto.userId,
+      );
+    }
+
     // Validate practice access
     await this.validatePracticeAccess(
       createBillingRecordDto.userId,
-      createBillingRecordDto.practiceId,
+      resolvedPracticeId,
+    );
+
+    const normalizedDueDate = this.normalizeDateInput(
+      'dueDate',
+      createBillingRecordDto.dueDate,
     );
 
     return this.prisma.billingRecord.create({
-      data: createBillingRecordDto,
+      data: {
+        ...createBillingRecordDto,
+        dueDate: normalizedDueDate,
+        practiceId: resolvedPracticeId,
+        clientId: resolvedClientId,
+      },
       include: {
         case: {
           select: {
@@ -234,9 +355,22 @@ export class BillingService {
     // Validate practice access
     await this.validatePracticeAccess(userId, billingRecord.practiceId);
 
+    const normalizedDueDate = this.normalizeDateInput(
+      'dueDate',
+      updateBillingRecordDto.dueDate,
+    );
+    const normalizedPaidDate = this.normalizeDateInput(
+      'paidDate',
+      updateBillingRecordDto.paidDate,
+    );
+
     return this.prisma.billingRecord.update({
       where: { id },
-      data: updateBillingRecordDto,
+      data: {
+        ...updateBillingRecordDto,
+        dueDate: normalizedDueDate,
+        paidDate: normalizedPaidDate,
+      },
       include: {
         case: {
           select: {

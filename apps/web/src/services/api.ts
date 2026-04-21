@@ -816,9 +816,11 @@ class ApiClient {
     amount: number;
     currency?: string;
     description: string;
-    clientId: string;
+    billType: string;
+    clientId?: string;
     caseId?: string;
     dueDate: string;
+    practiceId?: string;
   }) {
     return this.request("/billing", {
       method: "POST",

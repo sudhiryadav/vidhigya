@@ -173,7 +173,8 @@ export class DocumentProcessingMonitorService {
 
         if (
           currentStatus.status === 'COMPLETED' ||
-          currentStatus.status === 'ERROR'
+          currentStatus.status === 'ERROR' ||
+          currentStatus.status === 'CANCELLED'
         ) {
           this.logger.log(
             `Document ${document.id} status updated to ${currentStatus.status}`,
@@ -266,7 +267,9 @@ export class DocumentProcessingMonitorService {
   /**
    * Restart document processing using S3 data
    */
-  private async restartDocumentProcessingFromS3(document: DocumentInfo) {
+  private async restartDocumentProcessingFromS3(
+    document: DocumentInfo,
+  ): Promise<boolean> {
     try {
       // Check if FastAPI service is healthy
       const isHealthy = await this.checkFastAPIHealth();
@@ -274,7 +277,7 @@ export class DocumentProcessingMonitorService {
         this.logger.warn(
           `FastAPI service not healthy, cannot restart processing for ${document.id}`,
         );
-        return;
+        return false;
       }
 
       // Get document data from S3
@@ -329,6 +332,7 @@ export class DocumentProcessingMonitorService {
             s3Key: document.fileUrl,
           },
         });
+        return true;
       } else {
         const errorText = await response.text();
         this.logger.error(
@@ -346,6 +350,7 @@ export class DocumentProcessingMonitorService {
             error: errorText,
           },
         });
+        return false;
       }
     } catch (error) {
       this.logger.error(
@@ -364,6 +369,7 @@ export class DocumentProcessingMonitorService {
           error: error instanceof Error ? error.message : String(error),
         },
       });
+      return false;
     }
   }
 
@@ -580,6 +586,8 @@ export class DocumentProcessingMonitorService {
         dbStatus = 'PROCESSED';
       } else if (status.status === 'ERROR') {
         dbStatus = 'PROCESSING'; // Keep as processing to allow retry
+      } else if (status.status === 'CANCELLED') {
+        dbStatus = 'DRAFT';
       }
 
       await this.prisma.legalDocument.update({
@@ -653,15 +661,20 @@ export class DocumentProcessingMonitorService {
 
         return true;
       } else if (response.status === 404) {
-        // Document not found in FastAPI queue - implement immediate rollback
+        // FastAPI tracks active processing in-memory. A service reload can
+        // return 404 for a valid aiDocumentId that is no longer in that map.
+        // Do NOT perform destructive rollback on this signal alone.
         this.logger.warn(
-          `Document ${document.id} not found in FastAPI queue (404). Implementing immediate rollback.`,
+          `Document ${document.id} not found in FastAPI queue (404). Trying S3 restart instead of rollback.`,
         );
-
-        await this.immediateRollback(
-          document,
-          'Document not found in processing queue',
-        );
+        if (document.fileUrl) {
+          const restarted =
+            await this.restartDocumentProcessingFromS3(document);
+          if (restarted) {
+            return true;
+          }
+        }
+        await this.markDocumentForRetry(document.id);
         return false;
       } else {
         const errorText = await response.text();

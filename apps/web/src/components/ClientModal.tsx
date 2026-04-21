@@ -3,6 +3,7 @@
 import { apiClient } from "@/services/api";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 interface Client {
   id: string;
@@ -69,8 +70,10 @@ export function ClientModal({
     try {
       if (isEditing && client) {
         await apiClient.updateClient(client.id, formData);
+        toast.success("Client updated successfully!");
       } else {
         await apiClient.createClient(practiceId, formData);
+        toast.success("Client created successfully!");
       }
 
       onSuccess();
@@ -78,6 +81,7 @@ export function ClientModal({
     } catch (err: any) {
       console.error("Error saving client:", err);
       setError(err.message || "Failed to save client. Please try again.");
+      toast.error(err.message || "Failed to save client. Please try again.");
     } finally {
       setLoading(false);
     }

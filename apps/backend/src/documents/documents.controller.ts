@@ -299,6 +299,16 @@ export class DocumentsController {
             status: 'PROCESSED',
           },
         });
+      } else if (result.status?.status === 'CANCELLED') {
+        await this.prisma.legalDocument.updateMany({
+          where: {
+            aiDocumentId: aiDocumentId,
+            uploadedById: req.user.sub,
+          },
+          data: {
+            status: 'DRAFT',
+          },
+        });
       }
 
       return result;
@@ -553,9 +563,12 @@ export class DocumentsController {
     confidence: number;
     generated_at: string;
   }> {
+    let searchResults: Awaited<
+      ReturnType<QdrantService['searchDocuments']>
+    > = [];
     try {
       // First, search Qdrant for relevant documents
-      const searchResults = await this.qdrantService.searchDocuments(
+      searchResults = await this.qdrantService.searchDocuments(
         query,
         userId,
         limit,
@@ -739,6 +752,36 @@ export class DocumentsController {
       };
     } catch (error) {
       this.logger.error('Direct Modal.com error:', error);
+
+      // If generation service fails, return a graceful fallback built from
+      // already-retrieved sources so the assistant does not hard-fail.
+      if (searchResults && searchResults.length > 0) {
+        const formattedSources =
+          await this.documentsService.enrichVectorSearchHits(
+            searchResults,
+            userId,
+          );
+
+        const fallbackSnippets = formattedSources
+          .slice(0, 3)
+          .map((source, index) => {
+            const snippet = (source.content || '').replace(/\s+/g, ' ').trim();
+            return `Source ${index + 1}: ${snippet.slice(0, 280)}${snippet.length > 280 ? '...' : ''}`;
+          })
+          .join('\n\n');
+
+        return {
+          question: query,
+          answer:
+            'I am having trouble reaching the AI generation service right now. I found relevant document excerpts below while this is being resolved.\n\n' +
+            fallbackSnippets +
+            '\n\nPlease retry in a moment for a full AI-generated answer.',
+          sources: formattedSources,
+          confidence: 0.25,
+          generated_at: new Date().toISOString(),
+        };
+      }
+
       throw new BadRequestException('Failed to process document query');
     }
   }

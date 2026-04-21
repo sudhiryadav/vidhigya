@@ -21,6 +21,7 @@ import {
   User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 interface Client {
   id: string;
@@ -129,9 +130,11 @@ export default function ClientsPage() {
       });
       setShowCreateModal(false);
       setCreateFormData({ name: "", email: "", phone: "" });
-      fetchClients();
+      await fetchClients();
+      toast.success("Client created successfully!");
     } catch (error) {
       console.error("Error creating client:", error);
+      toast.error("Failed to create client. Please try again.");
     }
   };
 
@@ -163,9 +166,11 @@ export default function ClientsPage() {
       });
       setShowEditModal(false);
       setSelectedClient(null);
-      fetchClients();
+      await fetchClients();
+      toast.success("Client updated successfully!");
     } catch (error) {
       console.error("Error updating client:", error);
+      toast.error("Failed to update client. Please try again.");
     }
   };
 
