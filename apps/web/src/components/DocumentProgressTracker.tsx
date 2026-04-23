@@ -11,6 +11,12 @@ interface ProcessingStatus {
   timestamp?: string;
 }
 
+interface ProcessingDiagnostics {
+  statusSource: "ai-service" | "backend-fallback";
+  ocrProvider: "current" | "google";
+  note?: string;
+}
+
 interface DocumentProgressTrackerProps {
   documentId: string;
   aiDocumentId: string;
@@ -29,20 +35,42 @@ export default function DocumentProgressTracker({
   onRetrySuccess,
   apiClient,
 }: DocumentProgressTrackerProps) {
+  const isDiagnosticsEnabled =
+    (process.env.NEXT_PUBLIC_NODE_ENV ?? process.env.NODE_ENV) ===
+    "development";
   const [status, setStatus] = useState<ProcessingStatus | null>(null);
+  const [diagnostics, setDiagnostics] = useState<ProcessingDiagnostics | null>(
+    null
+  );
   const [isPolling, setIsPolling] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const cleanupRef = useRef(false);
   const pollCountRef = useRef(0);
   const lastSuccessfulPollRef = useRef<number>(Date.now());
 
+  const parseStatusResponse = (response: unknown): {
+    status: ProcessingStatus;
+    diagnostics: ProcessingDiagnostics | null;
+  } => {
+    const payload = response as {
+      status?: ProcessingStatus;
+      diagnostics?: ProcessingDiagnostics;
+    };
+    return {
+      status: payload?.status ?? { status: "PROCESSING" },
+      diagnostics: payload?.diagnostics ?? null,
+    };
+  };
+
   useEffect(() => {
     const checkInitialStatus = async () => {
       try {
         const response = await apiClient.getDocumentStatus(aiDocumentId);
-        const currentStatus = (response as { status: ProcessingStatus }).status;
+        const parsed = parseStatusResponse(response);
+        const currentStatus = parsed.status;
 
         setStatus(currentStatus);
+        setDiagnostics(parsed.diagnostics);
 
         // If document is already completed, failed, or not found, don't start polling
         if (
@@ -99,8 +127,8 @@ export default function DocumentProgressTracker({
 
         try {
           const response = await apiClient.getDocumentStatus(aiDocumentId);
-          const currentStatus = (response as { status: ProcessingStatus })
-            .status;
+          const parsed = parseStatusResponse(response);
+          const currentStatus = parsed.status;
 
           // Don't update state if cleanup has been triggered
           if (cleanupRef.current) return;
@@ -110,6 +138,7 @@ export default function DocumentProgressTracker({
           pollCountRef.current = 0; // Reset error count on successful poll
 
           setStatus(currentStatus);
+          setDiagnostics(parsed.diagnostics);
 
           // Stop polling if processing is complete, failed, or not found (likely completed)
           if (
@@ -230,7 +259,7 @@ export default function DocumentProgressTracker({
   if (!status) {
     return (
       <div className="rounded-md border border-border bg-muted/40 p-3 flex items-start gap-3">
-        <Loader2 className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+        <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-medium text-foreground">Checking status…</p>
           <p className="text-xs text-muted-foreground mt-1">
@@ -244,27 +273,25 @@ export default function DocumentProgressTracker({
   return (
     <div className="border border-border rounded-lg p-3 bg-card shadow-sm">
       {status.details && (
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-          {status.details}
-        </p>
+        <p className="mb-2 text-sm text-foreground">{status.details}</p>
       )}
 
       {status.status === "NOT_FOUND" && (
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+        <p className="mb-2 text-sm text-muted-foreground">
           Document processing status not found. This might be a new upload or
           the processing has completed.
         </p>
       )}
 
-      {status.progress !== undefined && status.progress > 0 && (
+      {status.progress !== undefined && status.progress >= 0 && (
         <div className="mb-2">
-          <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300 mb-1">
+          <div className="mb-1 flex justify-between text-sm text-muted-foreground">
             <span>Progress</span>
             <span>{status.progress}%</span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
             <div
-              className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out"
+              className="h-2 rounded-full bg-primary transition-all duration-300 ease-out"
               style={{ width: `${status.progress}%` }}
             ></div>
           </div>
@@ -273,11 +300,9 @@ export default function DocumentProgressTracker({
 
       {(status.status === "ERROR" ||
         (status.error && status.status !== "NOT_FOUND")) && (
-        <div className="p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg space-y-2">
+        <div className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/10 p-2">
           {status.error && (
-            <p className="text-sm text-red-700 dark:text-red-300">
-              {status.error}
-            </p>
+            <p className="text-sm text-destructive">{status.error}</p>
           )}
           {status.status === "ERROR" && (
             <button
@@ -298,7 +323,7 @@ export default function DocumentProgressTracker({
                   setRetrying(false);
                 }
               }}
-              className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+              className="inline-flex items-center rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
             >
               <RefreshCw
                 className={`w-3 h-3 mr-1 ${retrying ? "animate-spin" : ""}`}
@@ -311,8 +336,8 @@ export default function DocumentProgressTracker({
 
       {isPolling &&
         (status.status === "PROCESSING" || status.status === "PENDING") && (
-          <div className="rounded-md border border-blue-200 dark:border-blue-900 bg-blue-50/90 dark:bg-blue-950/50 p-3 flex items-start gap-3 mt-2">
-            <Loader2 className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+          <div className="mt-2 flex items-start gap-3 rounded-md border border-primary/20 bg-primary/10 p-3">
+            <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-foreground">
                 Processing document…
@@ -327,9 +352,27 @@ export default function DocumentProgressTracker({
         )}
 
       {status.timestamp && (
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+        <p className="mt-2 text-xs text-muted-foreground">
           Last updated: {new Date(status.timestamp).toLocaleTimeString()}
         </p>
+      )}
+
+      {isDiagnosticsEnabled && diagnostics && (
+        <div className="mt-2 rounded-md border border-border/70 bg-muted/40 px-2 py-1.5 text-[11px] text-muted-foreground">
+          <p>
+            Dev diagnostics: source{" "}
+            <span className="font-medium text-foreground">
+              {diagnostics.statusSource}
+            </span>{" "}
+            · OCR{" "}
+            <span className="font-medium text-foreground">
+              {diagnostics.ocrProvider === "google"
+                ? "google-gemini"
+                : "current/internal"}
+            </span>
+          </p>
+          {diagnostics.note && <p className="mt-0.5">{diagnostics.note}</p>}
+        </div>
       )}
     </div>
   );

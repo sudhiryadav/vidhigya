@@ -111,28 +111,30 @@ function getUploadedFilename(doc: Pick<Document, "originalFilename" | "fileUrl">
 
 function StatusBadge({ status }: { status: string }) {
   const statusConfig: Record<string, string> = {
-    DRAFT: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+    DRAFT:
+      "bg-muted text-foreground ring-1 ring-border/70 dark:bg-muted/70 dark:text-foreground",
     PENDING:
-      "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+      "bg-amber-100 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-800/80",
     PROCESSING:
-      "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+      "bg-blue-100 text-blue-900 ring-1 ring-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:ring-blue-800/80",
     PROCESSED:
-      "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+      "bg-green-100 text-green-900 ring-1 ring-green-200 dark:bg-green-900/40 dark:text-green-200 dark:ring-green-800/80",
     UPLOADED:
-      "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+      "bg-sky-100 text-sky-900 ring-1 ring-sky-200 dark:bg-sky-900/40 dark:text-sky-200 dark:ring-sky-800/80",
     REVIEW:
-      "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300",
+      "bg-cyan-100 text-cyan-900 ring-1 ring-cyan-200 dark:bg-cyan-900/40 dark:text-cyan-200 dark:ring-cyan-800/80",
     APPROVED:
-      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+      "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:ring-emerald-800/80",
     FILED:
-      "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
-    REJECTED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+      "bg-teal-100 text-teal-900 ring-1 ring-teal-200 dark:bg-teal-900/40 dark:text-teal-200 dark:ring-teal-800/80",
+    REJECTED:
+      "bg-red-100 text-red-900 ring-1 ring-red-200 dark:bg-red-900/40 dark:text-red-200 dark:ring-red-800/80",
     ARCHIVED:
-      "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
+      "bg-violet-100 text-violet-900 ring-1 ring-violet-200 dark:bg-violet-900/40 dark:text-violet-200 dark:ring-violet-800/80",
   };
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${statusConfig[status] || "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${statusConfig[status] || "bg-muted text-foreground ring-1 ring-border/70 dark:bg-muted/70 dark:text-foreground"}`}
     >
       {humanizeEnum(status)}
     </span>
@@ -141,33 +143,33 @@ function StatusBadge({ status }: { status: string }) {
 
 function CategoryBadge({ category }: { category: string }) {
   const categoryConfig: Record<string, string> = {
-    PETITION: "bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-200",
+    PETITION:
+      "bg-blue-100 text-blue-900 ring-1 ring-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:ring-blue-800/80",
     LEGAL_DOCUMENT:
-      "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200",
+      "bg-slate-100 text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900/40 dark:text-slate-200 dark:ring-slate-700/80",
     EVIDENCE:
-      "bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-emerald-200",
+      "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:ring-emerald-800/80",
     CONTRACT:
-      "bg-violet-100 text-violet-800 dark:bg-violet-700 dark:text-violet-200",
+      "bg-violet-100 text-violet-900 ring-1 ring-violet-200 dark:bg-violet-900/40 dark:text-violet-200 dark:ring-violet-800/80",
     AGREEMENT:
-      "bg-orange-100 text-orange-800 dark:bg-orange-700 dark:text-orange-200",
+      "bg-orange-100 text-orange-900 ring-1 ring-orange-200 dark:bg-orange-900/40 dark:text-orange-200 dark:ring-orange-800/80",
     REPORT:
-      "bg-indigo-100 text-indigo-800 dark:bg-indigo-700 dark:text-indigo-200",
+      "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:ring-indigo-800/80",
     CORRESPONDENCE:
-      "bg-cyan-100 text-cyan-800 dark:bg-cyan-700 dark:text-cyan-200",
+      "bg-cyan-100 text-cyan-900 ring-1 ring-cyan-200 dark:bg-cyan-900/40 dark:text-cyan-200 dark:ring-cyan-800/80",
     COURT_FILING:
-      "bg-amber-100 text-amber-800 dark:bg-amber-700 dark:text-amber-200",
+      "bg-amber-100 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-800/80",
     COURT_ORDER:
-      "bg-rose-100 text-rose-800 dark:bg-rose-700 dark:text-rose-200",
+      "bg-rose-100 text-rose-900 ring-1 ring-rose-200 dark:bg-rose-900/40 dark:text-rose-200 dark:ring-rose-800/80",
     AFFIDAVIT:
-      "bg-lime-100 text-lime-800 dark:bg-lime-700 dark:text-lime-200",
+      "bg-lime-100 text-lime-900 ring-1 ring-lime-200 dark:bg-lime-900/40 dark:text-lime-200 dark:ring-lime-800/80",
     LEGAL_OPINION:
-      "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-700 dark:text-fuchsia-200",
-    OTHER:
-      "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+      "bg-fuchsia-100 text-fuchsia-900 ring-1 ring-fuchsia-200 dark:bg-fuchsia-900/40 dark:text-fuchsia-200 dark:ring-fuchsia-800/80",
+    OTHER: "bg-muted text-foreground ring-1 ring-border/70 dark:bg-muted/70",
   };
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${categoryConfig[category] || "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${categoryConfig[category] || "bg-muted text-foreground ring-1 ring-border/70 dark:bg-muted/70"}`}
     >
       {humanizeEnum(category)}
     </span>

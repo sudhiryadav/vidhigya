@@ -30,6 +30,7 @@ export class DocumentProcessingMonitorService {
   private readonly maxRetries = 3;
   private readonly processingTimeout = 10 * 60 * 1000; // 10 minutes
   private readonly healthCheckInterval = 30 * 1000; // 30 seconds
+  private readonly retryCooldownMs = 2 * 60 * 1000; // 2 minutes
 
   constructor(
     private readonly prisma: PrismaService,
@@ -61,12 +62,12 @@ export class DocumentProcessingMonitorService {
         await this.handleStuckDocument(document);
       }
 
-      // Check for documents that need retry
-      const retryDocuments = await this.findDocumentsNeedingRetry();
-
-      for (const document of retryDocuments) {
-        await this.retryDocumentProcessing(document);
-      }
+      // NOTE:
+      // Do not run a generic "retry all old PROCESSING rows" loop here.
+      // Large OCR/embedding jobs can stay in PROCESSING for several minutes
+      // while still making progress in the AI service, and DB `updatedAt`
+      // alone is not a reliable liveness signal. We only trigger recovery
+      // through the stuck-document path above, which first checks live AI status.
     } catch (error) {
       this.logger.error('Error in document processing monitor:', error);
     }
@@ -115,31 +116,11 @@ export class DocumentProcessingMonitorService {
         aiDocumentId: {
           not: null,
         },
-      },
-      select: {
-        id: true,
-        aiDocumentId: true,
-        title: true,
-        uploadedById: true,
-        updatedAt: true,
-        fileUrl: true,
-        originalFilename: true,
-      },
-    });
-  }
-
-  /**
-   * Find documents that need retry (failed processing with retry attempts left)
-   */
-  private async findDocumentsNeedingRetry(): Promise<DocumentInfo[]> {
-    return this.prisma.legalDocument.findMany({
-      where: {
-        status: 'PROCESSING',
-        aiDocumentId: {
-          not: null,
+        NOT: {
+          aiDocumentId: {
+            startsWith: 'files/',
+          },
         },
-        // Add a custom field for retry count if needed
-        // For now, we'll use a simple approach
       },
       select: {
         id: true,
@@ -478,64 +459,6 @@ export class DocumentProcessingMonitorService {
     } catch (error) {
       this.logger.error(`Error deleting from Qdrant: ${error}`);
       throw error;
-    }
-  }
-
-  /**
-   * Retry processing for a document
-   */
-  private async retryDocumentProcessing(document: DocumentInfo) {
-    try {
-      this.logger.log(`Retrying processing for document ${document.id}...`);
-
-      // Check if FastAPI service is healthy before retry
-      const isHealthy = await this.checkFastAPIHealth();
-      if (!isHealthy) {
-        this.logger.warn(
-          `FastAPI service not healthy, skipping retry for document ${document.id}`,
-        );
-        return;
-      }
-
-      // Attempt to restart processing
-      const success = await this.restartDocumentProcessing(document);
-
-      if (success) {
-        this.logger.log(
-          `Successfully restarted processing for document ${document.id}`,
-        );
-
-        await this.logsService.create({
-          level: 'info',
-          message: `Document processing restarted for ${document.title}`,
-          userId: document.uploadedById,
-          meta: {
-            documentId: document.id,
-            aiDocumentId: document.aiDocumentId,
-            action: 'processing_restart',
-          },
-        });
-      } else {
-        this.logger.error(
-          `Failed to restart processing for document ${document.id}`,
-        );
-
-        await this.logsService.create({
-          level: 'error',
-          message: `Failed to restart document processing for ${document.title}`,
-          userId: document.uploadedById,
-          meta: {
-            documentId: document.id,
-            aiDocumentId: document.aiDocumentId,
-            action: 'processing_restart_failed',
-          },
-        });
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error retrying document processing ${document.id}:`,
-        error,
-      );
     }
   }
 

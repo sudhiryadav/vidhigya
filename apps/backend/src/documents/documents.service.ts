@@ -23,6 +23,7 @@ export interface CreateDocumentDto {
   fileType: string;
   fileSize: number;
   category: DocumentCategory;
+  status?: DocumentStatus;
   caseId?: string;
   uploadedById: string;
   aiDocumentId?: string;
@@ -326,12 +327,18 @@ export class DocumentsService {
       // Delete embeddings from Qdrant for main document using stored AI document ID
       let qdrantDeleted = false;
       if (document.aiDocumentId) {
-        qdrantDeleted = await this.qdrantService.deleteDocumentEmbeddings(
-          document.aiDocumentId,
-        );
-        this.logger.log(
-          `Deleted embeddings for AI document ID: ${document.aiDocumentId}`,
-        );
+        if (document.aiDocumentId.startsWith('files/')) {
+          this.logger.log(
+            `Skipping Qdrant deletion for Google file-backed document ID: ${document.aiDocumentId}`,
+          );
+        } else {
+          qdrantDeleted = await this.qdrantService.deleteDocumentEmbeddings(
+            document.aiDocumentId,
+          );
+          this.logger.log(
+            `Deleted embeddings for AI document ID: ${document.aiDocumentId}`,
+          );
+        }
       } else {
         this.logger.log(`No AI document ID found for document: ${id}`);
       }

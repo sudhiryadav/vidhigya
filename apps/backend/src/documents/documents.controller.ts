@@ -42,6 +42,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateDocumentDto, DocumentsService } from './documents.service';
 import { QueryType } from './dto/create-document-query.dto';
 import { AuthenticatedRequest } from '../auth/types/authenticated-request.interface';
+import { GoogleOcrService } from './google-ocr.service';
 
 // Import DocumentQuery interface
 interface DocumentQuery {
@@ -62,6 +63,35 @@ interface QueryRequest {
   }>;
 }
 
+interface UiProcessingStatus {
+  status: string;
+  details?: string;
+  error?: string;
+  progress?: number;
+  timestamp?: string;
+}
+
+interface ProcessingDiagnostics {
+  statusSource: 'ai-service' | 'backend-fallback';
+  ocrProvider: 'current' | 'google';
+  note?: string;
+}
+
+interface GoogleFileRecord {
+  name: string;
+  uri: string;
+  mimeType: string;
+}
+
+interface GoogleBackedDocument {
+  id: string;
+  title: string;
+  aiDocumentId: string | null;
+  fileUrl: string;
+  fileType: string;
+  originalFilename: string | null;
+}
+
 // Define proper types for body objects
 interface UploadDocumentBody {
   title?: string;
@@ -74,6 +104,7 @@ interface UploadDocumentBody {
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionGuard)
 export class DocumentsController {
   private readonly logger = new RedactingLogger(DocumentsController.name);
+  private readonly localProcessingStatus = new Map<string, UiProcessingStatus>();
 
   constructor(
     private readonly documentsService: DocumentsService,
@@ -82,6 +113,7 @@ export class DocumentsController {
     private readonly qdrantService: QdrantService,
     private readonly prisma: PrismaService,
     private readonly conversationContextService: ConversationContextService,
+    private readonly googleOcrService: GoogleOcrService,
   ) {}
 
   @Post()
@@ -126,6 +158,47 @@ export class DocumentsController {
       this.configService.get<string>('MODAL_API_KEY'),
     );
     return sharedWithAiService ?? modalOnly;
+  }
+
+  private getAiProvider(): 'current' | 'google' {
+    const provider = this.configService.get<string>('DOCUMENT_AI_PROVIDER');
+    if ((provider || '').toLowerCase() === 'google') {
+      return 'google';
+    }
+    return 'current';
+  }
+
+  private getGoogleApiKey(): string | undefined {
+    return this.normalizeEnvSecret(
+      this.configService.get<string>('GOOGLE_GENERATIVE_AI_API_KEY') ??
+        this.configService.get<string>('GOOGLE_API_KEY'),
+    );
+  }
+
+  private getGoogleQueryModel(): string {
+    return (
+      this.configService.get<string>('GOOGLE_QUERY_MODEL') || 'gemini-2.0-flash'
+    );
+  }
+
+  private useCurrentFallbackForGoogleQuery429(): boolean {
+    const raw = (
+      this.configService.get<string>('GOOGLE_QUERY_FALLBACK_TO_CURRENT') ||
+      'true'
+    )
+      .trim()
+      .toLowerCase();
+    return raw === '1' || raw === 'true' || raw === 'yes';
+  }
+
+  private useGoogleOcrPrepassForGoogleAi(): boolean {
+    const raw = (
+      this.configService.get<string>('GOOGLE_OCR_PREPASS_FOR_GOOGLE_AI') ||
+      'false'
+    )
+      .trim()
+      .toLowerCase();
+    return raw === '1' || raw === 'true' || raw === 'yes';
   }
 
   @Post('upload')
@@ -212,6 +285,7 @@ export class DocumentsController {
         fileType: file.mimetype,
         fileSize: file.size,
         category: (body.category as DocumentCategory) || DocumentCategory.OTHER,
+        status: DocumentStatus.PROCESSING,
         caseId: body.caseId || undefined,
         uploadedById: req.user.sub,
         aiDocumentId: randomUUID(),
@@ -220,22 +294,17 @@ export class DocumentsController {
 
       createdDocument = await this.documentsService.create(createDocumentDto);
 
-      // Process document using FastAPI service
-      try {
-        await this.ingestWithAiAndUpdateLegalDocument({
-          legalDocumentId: createdDocument.id,
-          fileBuffer: file.buffer,
-          mimeType: file.mimetype,
-          originalFilename: file.originalname,
-          userId: req.user.sub,
-          aiDocumentId: createdDocument.aiDocumentId,
-          description: body.description,
-        });
-      } catch (error) {
-        this.logger.error('Error processing document with FastAPI:', error);
-        // Don't fail the upload if processing fails, but log it
-        // The document will still be available for download
-      }
+      // Kick off processing in the background so the upload HTTP request returns fast.
+      // This avoids the UI staying stuck on "Uploading..." while OCR/ingestion runs.
+      void this.processDocumentInBackground({
+        legalDocumentId: createdDocument.id,
+        fileBuffer: file.buffer,
+        mimeType: file.mimetype,
+        originalFilename: file.originalname,
+        userId: req.user.sub,
+        aiDocumentId: createdDocument.aiDocumentId,
+        description: body.description,
+      });
 
       return createdDocument;
     } catch (error) {
@@ -271,6 +340,31 @@ export class DocumentsController {
     @Param('aiDocumentId') aiDocumentId: string,
     @Request() req: AuthenticatedRequest,
   ) {
+    const ocrProvider = this.getOcrProvider();
+    const aiProvider = this.getAiProvider();
+
+    if (aiProvider === 'google') {
+      const fallback = await this.buildFallbackProcessingStatus(
+        aiDocumentId,
+        req.user.sub,
+      );
+      return {
+        status:
+          fallback ??
+          ({
+            status: 'PROCESSING',
+            details: 'Processing with Google AI in background...',
+            progress: 10,
+            timestamp: new Date().toISOString(),
+          } satisfies UiProcessingStatus),
+        diagnostics: {
+          statusSource: 'backend-fallback',
+          ocrProvider,
+          note: 'Google provider uses backend checkpoints for progress updates.',
+        } satisfies ProcessingDiagnostics,
+      };
+    }
+
     try {
       const response = await fetch(
         `${this.configService.get('AI_SERVICE_URL')}/api/v1/admin/documents/status/${aiDocumentId}`,
@@ -313,10 +407,51 @@ export class DocumentsController {
         });
       }
 
-      return result;
+      return {
+        status: result.status,
+        diagnostics: {
+          statusSource: 'ai-service',
+          ocrProvider,
+          note:
+            'Status is coming directly from the AI service background worker.',
+        } satisfies ProcessingDiagnostics,
+      };
     } catch (error) {
-      this.logger.error('Error checking document status:', error);
-      throw new BadRequestException('Failed to check document status');
+      const fallback = await this.buildFallbackProcessingStatus(
+        aiDocumentId,
+        req.user.sub,
+      );
+      if (fallback) {
+        return {
+          status: fallback,
+          diagnostics: {
+            statusSource: 'backend-fallback',
+            ocrProvider,
+            note:
+              'AI service status was unavailable; using backend/local processing checkpoints.',
+          } satisfies ProcessingDiagnostics,
+        };
+      }
+      this.logger.warn('Error checking document status:', error);
+      const defaultStatus = {
+        status: {
+          status: 'PROCESSING',
+          details:
+            'Processing is still ongoing in the background. Please wait a moment.',
+          progress: 10,
+          timestamp: new Date().toISOString(),
+        },
+      };
+
+      return {
+        ...defaultStatus,
+        diagnostics: {
+          statusSource: 'backend-fallback',
+          ocrProvider,
+          note:
+            'AI service status lookup failed and no local checkpoint was found.',
+        } satisfies ProcessingDiagnostics,
+      };
     }
   }
 
@@ -381,6 +516,14 @@ export class DocumentsController {
     @Request() req: AuthenticatedRequest,
   ) {
     try {
+      if (this.getAiProvider() === 'google') {
+        return await this.queryDocumentsWithGoogle(
+          queryDto.query,
+          req.user.sub,
+          queryDto.limit ?? 10,
+        );
+      }
+
       const {
         query,
         mode = 'qa',
@@ -893,7 +1036,10 @@ export class DocumentsController {
     const document = await this.documentsService.findOne(id, req.user.sub);
 
     if (document.status === 'PROCESSED') {
-      throw new BadRequestException('Document is already processed');
+      return {
+        message: 'Document is already processed',
+        document,
+      };
     }
 
     if (!document.fileUrl) {
@@ -932,7 +1078,15 @@ export class DocumentsController {
       `${safeTitle}${this.inferExtensionFromMime(document.fileType)}`;
 
     try {
-      await this.ingestWithAiAndUpdateLegalDocument({
+      await this.prisma.legalDocument.update({
+        where: { id: document.id },
+        data: {
+          status: 'PROCESSING',
+          aiDocumentId: newAiDocumentId,
+        },
+      });
+
+      void this.processDocumentInBackground({
         legalDocumentId: document.id,
         fileBuffer,
         mimeType: document.fileType,
@@ -972,6 +1126,20 @@ export class DocumentsController {
     });
 
     try {
+      if (document.aiDocumentId?.startsWith('files/')) {
+        try {
+          await this.deleteGoogleFile(document.aiDocumentId);
+        } catch (googleDeleteError) {
+          this.logger.warn(
+            `Failed to delete Google file ${document.aiDocumentId}: ${
+              googleDeleteError instanceof Error
+                ? googleDeleteError.message
+                : String(googleDeleteError)
+            }`,
+          );
+        }
+      }
+
       // First, delete from database and Qdrant (this is the critical operation)
       this.logger.log(
         'Calling documentsService.remove to delete from DB and Qdrant...',
@@ -1146,6 +1314,302 @@ export class DocumentsController {
     return '.bin';
   }
 
+  private getOcrProvider(): 'current' | 'google' {
+    const provider = this.configService.get<string>('OCR_PROVIDER');
+    if ((provider || '').toLowerCase() === 'google') {
+      return 'google';
+    }
+    return 'current';
+  }
+
+  private getGoogleOcrMaxInlineBytes(): number {
+    const raw = this.configService.get<string>('GOOGLE_OCR_MAX_INLINE_BYTES');
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.floor(parsed);
+    }
+    const maxDocumentSize = Number(
+      this.configService.get<string>('MAX_DOCUMENT_SIZE') || 20 * 1024 * 1024,
+    );
+    if (Number.isFinite(maxDocumentSize) && maxDocumentSize > 0) {
+      return Math.floor(maxDocumentSize);
+    }
+    return 20 * 1024 * 1024;
+  }
+
+  private getGoogleOcrTimeoutMs(): number {
+    const raw = this.configService.get<string>('GOOGLE_OCR_TIMEOUT_MS');
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.floor(parsed);
+    }
+    return 120_000;
+  }
+
+  private supportsGoogleOcrMime(mimeType: string): boolean {
+    const supported = new Set<string>([
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+    ]);
+    return supported.has(mimeType);
+  }
+
+  private replaceFileExtension(fileName: string, newExtension: string): string {
+    const idx = fileName.lastIndexOf('.');
+    if (idx <= 0) {
+      return `${fileName}${newExtension}`;
+    }
+    return `${fileName.slice(0, idx)}${newExtension}`;
+  }
+
+  private async prepareIngestionPayload(params: {
+    aiDocumentId: string;
+    fileBuffer: Buffer;
+    mimeType: string;
+    originalFilename: string;
+  }): Promise<{
+    fileBuffer: Buffer;
+    mimeType: string;
+    originalFilename: string;
+  }> {
+    const { aiDocumentId, fileBuffer, mimeType, originalFilename } = params;
+    const ocrProvider = this.getOcrProvider();
+
+    if (ocrProvider !== 'google') {
+      this.setLocalProcessingStatus(aiDocumentId, {
+        status: 'PROCESSING',
+        details: 'Upload complete. Processing/training started in background.',
+        progress: 0,
+      });
+      return { fileBuffer, mimeType, originalFilename };
+    }
+
+    if (!this.googleOcrService.isConfigured()) {
+      this.logger.warn(
+        'OCR_PROVIDER=google but GOOGLE_GENERATIVE_AI_API_KEY is not configured. Falling back to current OCR.',
+      );
+      this.setLocalProcessingStatus(aiDocumentId, {
+        status: 'PROCESSING',
+        details:
+          'Google OCR key missing. Falling back to current OCR pipeline.',
+        progress: 0,
+      });
+      return { fileBuffer, mimeType, originalFilename };
+    }
+
+    if (!this.supportsGoogleOcrMime(mimeType)) {
+      this.logger.warn(
+        `Google OCR unsupported mime type (${mimeType}). Falling back to current OCR.`,
+      );
+      this.setLocalProcessingStatus(aiDocumentId, {
+        status: 'PROCESSING',
+        details: 'Google OCR not supported for this file type. Using fallback OCR.',
+        progress: 0,
+      });
+      return { fileBuffer, mimeType, originalFilename };
+    }
+
+    const maxInlineBytes = this.getGoogleOcrMaxInlineBytes();
+    if (fileBuffer.length > maxInlineBytes) {
+      this.logger.warn(
+        `File size ${fileBuffer.length} exceeds GOOGLE_OCR_MAX_INLINE_BYTES (${maxInlineBytes}). Falling back to current OCR.`,
+      );
+      this.setLocalProcessingStatus(aiDocumentId, {
+        status: 'PROCESSING',
+        details:
+          'File is too large for inline Google OCR. Using fallback OCR pipeline.',
+        progress: 0,
+      });
+      return { fileBuffer, mimeType, originalFilename };
+    }
+
+    try {
+      this.setLocalProcessingStatus(aiDocumentId, {
+        status: 'PROCESSING',
+        details: 'Google OCR is reading your document...',
+        progress: 10,
+      });
+
+      const extraction = await this.googleOcrService.extractTextFromPdf({
+        fileBuffer,
+        fileName: originalFilename,
+        mimeType,
+        timeoutMs: this.getGoogleOcrTimeoutMs(),
+      });
+
+      if (!extraction.text?.trim()) {
+        this.logger.warn(
+          'Google OCR returned empty text. Falling back to current OCR.',
+        );
+        this.setLocalProcessingStatus(aiDocumentId, {
+          status: 'PROCESSING',
+          details: 'Google OCR returned empty text. Using fallback OCR pipeline.',
+          progress: 0,
+        });
+        return { fileBuffer, mimeType, originalFilename };
+      }
+
+      const textBuffer = Buffer.from(extraction.text, 'utf8');
+      this.logger.log(
+        `Google OCR succeeded (${textBuffer.length} bytes text). Sending extracted text to ingestion.`,
+      );
+      this.setLocalProcessingStatus(aiDocumentId, {
+        status: 'PROCESSING',
+        details: 'Google OCR completed. Starting embeddings and indexing...',
+        progress: 55,
+      });
+
+      return {
+        fileBuffer: textBuffer,
+        mimeType: 'text/plain',
+        originalFilename: this.replaceFileExtension(originalFilename, '.txt'),
+      };
+    } catch (error) {
+      this.logger.warn(
+        'Google OCR failed. Falling back to current OCR.',
+        error instanceof Error ? error.message : error,
+      );
+      this.setLocalProcessingStatus(aiDocumentId, {
+        status: 'PROCESSING',
+        details: 'Google OCR failed. Switching to fallback OCR pipeline.',
+        progress: 0,
+      });
+      return { fileBuffer, mimeType, originalFilename };
+    }
+  }
+
+  private async processDocumentInBackground(params: {
+    legalDocumentId: string;
+    fileBuffer: Buffer;
+    mimeType: string;
+    originalFilename: string;
+    userId: string;
+    aiDocumentId: string;
+    description?: string;
+  }): Promise<void> {
+    try {
+      this.setLocalProcessingStatus(params.aiDocumentId, {
+        status: 'PROCESSING',
+        details: 'Upload complete. Processing/training started in background.',
+        progress: 0,
+      });
+
+      if (this.getAiProvider() === 'google') {
+        await this.ingestWithGoogleAndUpdateLegalDocument(params);
+        return;
+      }
+
+      const ingestionPayload = await this.prepareIngestionPayload({
+        aiDocumentId: params.aiDocumentId,
+        fileBuffer: params.fileBuffer,
+        mimeType: params.mimeType,
+        originalFilename: params.originalFilename,
+      });
+
+      this.setLocalProcessingStatus(params.aiDocumentId, {
+        status: 'PROCESSING',
+        details: 'Uploading processed content for embeddings...',
+        progress: 70,
+      });
+
+      await this.ingestWithAiAndUpdateLegalDocument({
+        legalDocumentId: params.legalDocumentId,
+        fileBuffer: ingestionPayload.fileBuffer,
+        mimeType: ingestionPayload.mimeType,
+        originalFilename: ingestionPayload.originalFilename,
+        userId: params.userId,
+        aiDocumentId: params.aiDocumentId,
+        description: params.description,
+      });
+    } catch (error) {
+      this.setLocalProcessingStatus(params.aiDocumentId, {
+        status: 'ERROR',
+        details: 'Background processing failed.',
+        error: error instanceof Error ? error.message : String(error),
+        progress: 0,
+      });
+      this.logger.error(
+        'Background document processing failed (upload already saved):',
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
+  private async ingestWithGoogleAndUpdateLegalDocument(params: {
+    legalDocumentId: string;
+    fileBuffer: Buffer;
+    mimeType: string;
+    originalFilename: string;
+    userId: string;
+    aiDocumentId: string;
+    description?: string;
+  }): Promise<void> {
+    // In Google end-to-end mode, avoid OCR pre-pass by default.
+    // Gemini Files + model query can read PDFs/images directly and this saves one API call,
+    // reducing early 429 rate-limit hits on free-tier keys.
+    let ingestionPayload: {
+      fileBuffer: Buffer;
+      mimeType: string;
+      originalFilename: string;
+    } = {
+      fileBuffer: params.fileBuffer,
+      mimeType: params.mimeType,
+      originalFilename: params.originalFilename,
+    };
+
+    if (this.useGoogleOcrPrepassForGoogleAi()) {
+      this.setLocalProcessingStatus(params.aiDocumentId, {
+        status: 'PROCESSING',
+        details: 'Google OCR pre-processing is enabled and running...',
+        progress: 40,
+      });
+      ingestionPayload = await this.prepareIngestionPayload({
+        aiDocumentId: params.aiDocumentId,
+        fileBuffer: params.fileBuffer,
+        mimeType: params.mimeType,
+        originalFilename: params.originalFilename,
+      });
+    }
+
+    this.setLocalProcessingStatus(params.aiDocumentId, {
+      status: 'PROCESSING',
+      details: 'Storing document in Google AI for retrieval...',
+      progress: 80,
+    });
+
+    const googleFile = await this.uploadFileToGoogle(
+      ingestionPayload.fileBuffer,
+      ingestionPayload.mimeType,
+      ingestionPayload.originalFilename,
+    );
+
+    await this.prisma.legalDocument.update({
+      where: { id: params.legalDocumentId },
+      data: {
+        aiDocumentId: googleFile.name,
+        content:
+          ingestionPayload.mimeType === 'text/plain'
+            ? ingestionPayload.fileBuffer.toString('utf8').slice(0, 60000)
+            : undefined,
+        status: 'PROCESSED',
+      },
+    });
+
+    this.setLocalProcessingStatus(params.aiDocumentId, {
+      status: 'COMPLETED',
+      details:
+        'Stored in Google AI and ready for querying. Refresh list to sync latest provider ID.',
+      progress: 100,
+    });
+    this.setLocalProcessingStatus(googleFile.name, {
+      status: 'COMPLETED',
+      details: 'Stored in Google AI and ready for querying.',
+      progress: 100,
+    });
+  }
+
   /**
    * Sends a stored file buffer to the AI service and updates the legal document row.
    */
@@ -1185,6 +1649,7 @@ export class DocumentsController {
           'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
         },
         body: formData,
+        signal: AbortSignal.timeout(30_000),
       },
     );
 
@@ -1223,6 +1688,12 @@ export class DocumentsController {
     if (result.processing_status === 'BACKGROUND') {
       const documentInfo = result.documents[0];
 
+      this.setLocalProcessingStatus(aiDocumentId, {
+        status: 'PROCESSING',
+        details: 'Embedding and indexing in progress...',
+        progress: 85,
+      });
+
       this.logger.log(
         'Document uploaded and processing started in background:',
         {
@@ -1249,6 +1720,12 @@ export class DocumentsController {
     } else {
       const documentInfo = result.documents[0];
 
+      this.setLocalProcessingStatus(aiDocumentId, {
+        status: 'COMPLETED',
+        details: 'Processing completed successfully.',
+        progress: 100,
+      });
+
       this.logger.log('Document processed synchronously by FastAPI:', {
         documentId: documentInfo.document_id,
         chunks: documentInfo.chunks,
@@ -1271,5 +1748,511 @@ export class DocumentsController {
         contentLength: documentInfo.content?.length || 0,
       });
     }
+  }
+
+  private async uploadFileToGoogle(
+    fileBuffer: Buffer,
+    mimeType: string,
+    fileName: string,
+  ): Promise<GoogleFileRecord> {
+    const apiKey = this.getGoogleApiKey();
+    if (!apiKey) {
+      throw new Error('Google API key is missing for DOCUMENT_AI_PROVIDER=google');
+    }
+
+    const displayName = fileName.slice(0, 120);
+    const startRes = await fetch(
+      `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'X-Goog-Upload-Protocol': 'resumable',
+          'X-Goog-Upload-Command': 'start',
+          'X-Goog-Upload-Header-Content-Length': String(fileBuffer.length),
+          'X-Goog-Upload-Header-Content-Type': mimeType,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          file: { display_name: displayName },
+        }),
+        signal: AbortSignal.timeout(30_000),
+      },
+    );
+
+    if (!startRes.ok) {
+      throw new Error(
+        `Google upload start failed with status ${startRes.status}: ${await startRes.text()}`,
+      );
+    }
+
+    const uploadUrl = startRes.headers.get('x-goog-upload-url');
+    if (!uploadUrl) {
+      throw new Error('Google upload URL was not returned');
+    }
+
+    const finalizeRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'X-Goog-Upload-Offset': '0',
+        'X-Goog-Upload-Command': 'upload, finalize',
+        'Content-Length': String(fileBuffer.length),
+      },
+      body: fileBuffer,
+      signal: AbortSignal.timeout(90_000),
+    });
+
+    const finalizeBody = (await finalizeRes.json().catch(() => null)) as {
+      file?: {
+        name?: string;
+        uri?: string;
+        mimeType?: string;
+      };
+    } | null;
+
+    if (!finalizeRes.ok || !finalizeBody?.file?.name) {
+      throw new Error(
+        `Google upload finalize failed with status ${finalizeRes.status}`,
+      );
+    }
+
+    return this.waitForGoogleFileReady(finalizeBody.file.name);
+  }
+
+  private async waitForGoogleFileReady(
+    fileName: string,
+  ): Promise<GoogleFileRecord> {
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const metadata = await this.getGoogleFileMetadata(fileName);
+      if (
+        metadata.state === 'ACTIVE' &&
+        typeof metadata.uri === 'string' &&
+        metadata.uri.length > 0
+      ) {
+        return {
+          name: metadata.name,
+          uri: metadata.uri,
+          mimeType: metadata.mimeType || 'application/octet-stream',
+        };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+    throw new Error('Google file did not become ACTIVE within timeout');
+  }
+
+  private async getGoogleFileMetadata(fileName: string): Promise<{
+    name: string;
+    uri?: string;
+    mimeType?: string;
+    state?: string;
+  }> {
+    const apiKey = this.getGoogleApiKey();
+    if (!apiKey) {
+      throw new Error('Google API key missing');
+    }
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${apiKey}`,
+      {
+        method: 'GET',
+        signal: AbortSignal.timeout(20_000),
+      },
+    );
+
+    const body = (await res.json().catch(() => null)) as {
+      name?: string;
+      uri?: string;
+      mimeType?: string;
+      state?: string;
+    } | null;
+
+    if (!res.ok || !body?.name) {
+      throw new Error(`Failed to fetch Google file metadata (${res.status})`);
+    }
+
+    return {
+      name: body.name,
+      uri: body.uri,
+      mimeType: body.mimeType,
+      state: body.state,
+    };
+  }
+
+  private async repairGoogleFileBinding(
+    doc: GoogleBackedDocument,
+  ): Promise<
+    | {
+        docId: string;
+        title: string;
+        uri: string;
+        mimeType: string;
+      }
+    | null
+  > {
+    if (!doc.fileUrl) return null;
+
+    const fileBuffer = await this.s3Service.getDocumentAsBuffer(doc.fileUrl);
+    if (!fileBuffer.length) return null;
+
+    const resolvedName =
+      doc.originalFilename ||
+      `${doc.title || 'document'}${this.inferExtensionFromMime(doc.fileType)}`;
+
+    const uploaded = await this.uploadFileToGoogle(
+      fileBuffer,
+      doc.fileType || 'application/octet-stream',
+      resolvedName,
+    );
+
+    await this.prisma.legalDocument.update({
+      where: { id: doc.id },
+      data: {
+        aiDocumentId: uploaded.name,
+        status: 'PROCESSED',
+      },
+    });
+
+    return {
+      docId: doc.id,
+      title: doc.title || 'Document',
+      uri: uploaded.uri,
+      mimeType: uploaded.mimeType || 'application/octet-stream',
+    };
+  }
+
+  private async deleteGoogleFile(fileName: string): Promise<void> {
+    const apiKey = this.getGoogleApiKey();
+    if (!apiKey) return;
+    if (!fileName.startsWith('files/')) return;
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${apiKey}`,
+      {
+        method: 'DELETE',
+        signal: AbortSignal.timeout(20_000),
+      },
+    );
+
+    if (!res.ok && res.status !== 404) {
+      throw new Error(`Google file delete failed (${res.status})`);
+    }
+  }
+
+  private async queryDocumentsWithGoogle(
+    query: string,
+    userId: string,
+    limit: number,
+  ): Promise<{
+    question: string;
+    answer: string;
+    sources: Array<{
+      document_id: string;
+      content: string;
+      score: number;
+      page_number?: number;
+      start_char?: number;
+      end_char?: number;
+    }>;
+    confidence: number;
+    generated_at: string;
+  }> {
+    const apiKey = this.getGoogleApiKey();
+    if (!apiKey) {
+      throw new BadRequestException(
+        'Google API key missing for DOCUMENT_AI_PROVIDER=google',
+      );
+    }
+
+    const docs = await this.prisma.legalDocument.findMany({
+      where: {
+        uploadedById: userId,
+        status: 'PROCESSED',
+        aiDocumentId: { startsWith: 'files/' },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: Math.max(1, Math.min(limit, 3)),
+      select: {
+        id: true,
+        title: true,
+        aiDocumentId: true,
+        fileUrl: true,
+        fileType: true,
+        originalFilename: true,
+      },
+    });
+
+    if (!docs.length) {
+      return {
+        question: query,
+        answer:
+          'I could not find any Google-indexed documents yet. Please upload and process a document first.',
+        sources: [],
+        confidence: 0,
+        generated_at: new Date().toISOString(),
+      };
+    }
+
+    const resolvedFiles: Array<{
+      docId: string;
+      title: string;
+      uri: string;
+      mimeType: string;
+    }> = [];
+
+    for (const doc of docs) {
+      try {
+        const meta = await this.getGoogleFileMetadata(doc.aiDocumentId || '');
+        if (meta.uri) {
+          resolvedFiles.push({
+            docId: doc.id,
+            title: doc.title || 'Document',
+            uri: meta.uri,
+            mimeType: meta.mimeType || 'application/octet-stream',
+          });
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Skipping Google file for document ${doc.id}: ${errorMessage}`,
+        );
+
+        if (errorMessage.includes('(403)')) {
+          try {
+            const repaired = await this.repairGoogleFileBinding(doc);
+            if (repaired) {
+              resolvedFiles.push(repaired);
+              this.logger.log(
+                `Repaired Google file binding for document ${doc.id}`,
+              );
+            }
+          } catch (repairError) {
+            this.logger.warn(
+              `Auto-repair failed for document ${doc.id}: ${
+                repairError instanceof Error
+                  ? repairError.message
+                  : String(repairError)
+              }`,
+            );
+          }
+        }
+      }
+    }
+
+    if (!resolvedFiles.length) {
+      if (this.useCurrentFallbackForGoogleQuery429()) {
+        this.logger.warn(
+          'No accessible Google files found. Trying current pipeline fallback.',
+        );
+        try {
+          const fallback = await this.queryDocumentsDirect(query, userId, limit);
+          return {
+            ...fallback,
+            answer:
+              '[Using fallback provider because Google file bindings are unavailable]\n\n' +
+              fallback.answer,
+            confidence: Math.min(fallback.confidence, 0.6),
+          };
+        } catch (fallbackError) {
+          this.logger.warn(
+            `Fallback query failed with unavailable Google files: ${
+              fallbackError instanceof Error
+                ? fallbackError.message
+                : String(fallbackError)
+            }`,
+          );
+        }
+      }
+      return {
+        question: query,
+        answer:
+          'Google file references are no longer accessible with the current API key/project. Please reprocess the document(s) to relink them.',
+        sources: [],
+        confidence: 0.1,
+        generated_at: new Date().toISOString(),
+      };
+    }
+
+    const model = this.getGoogleQueryModel();
+    const endpoint =
+      `https://generativelanguage.googleapis.com/v1beta/models/` +
+      `${encodeURIComponent(model)}:generateContent?key=${apiKey}`;
+
+    const parts: Array<Record<string, unknown>> = [
+      {
+        text:
+          'Answer the user question using only the attached legal documents. ' +
+          'If uncertain, clearly say so. Quote key points and mention which document they come from.',
+      },
+      { text: `Question: ${query}` },
+      ...resolvedFiles.map((file) => ({
+        file_data: {
+          mime_type: file.mimeType,
+          file_uri: file.uri,
+        },
+      })),
+    ];
+
+    const requestBody = JSON.stringify({
+      contents: [{ role: 'user', parts }],
+    });
+
+    let response: globalThis.Response | null = null;
+    let payload:
+      | {
+          candidates?: Array<{
+            content?: { parts?: Array<{ text?: string }> };
+          }>;
+        }
+      | null = null;
+
+    const retryDelaysMs = [1200, 2500, 5000];
+    for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: requestBody,
+        signal: AbortSignal.timeout(90_000),
+      });
+
+      payload = (await response.json().catch(() => null)) as
+        | {
+            candidates?: Array<{
+              content?: { parts?: Array<{ text?: string }> };
+            }>;
+          }
+        | null;
+
+      if (response.ok) break;
+      if (response.status !== 429 || attempt === retryDelaysMs.length) break;
+
+      const waitMs = retryDelaysMs[attempt];
+      this.logger.warn(
+        `Google query rate-limited (429). Retrying in ${waitMs}ms...`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+
+    const sources = resolvedFiles.map((file) => ({
+      document_id: file.docId,
+      content: '',
+      score: 1,
+    }));
+
+    if (!response?.ok) {
+      const status = response?.status ?? 0;
+      if (status === 429) {
+        if (this.useCurrentFallbackForGoogleQuery429()) {
+          this.logger.warn(
+            'Google query is rate-limited (429). Trying current pipeline fallback.',
+          );
+          try {
+            const fallback = await this.queryDocumentsDirect(query, userId, limit);
+            return {
+              ...fallback,
+              answer:
+                '[Using fallback provider due to temporary Google rate limit]\n\n' +
+                fallback.answer,
+              confidence: Math.min(fallback.confidence, 0.65),
+            };
+          } catch (fallbackError) {
+            this.logger.warn(
+              `Fallback query also failed: ${
+                fallbackError instanceof Error
+                  ? fallbackError.message
+                  : String(fallbackError)
+              }`,
+            );
+          }
+        }
+        return {
+          question: query,
+          answer:
+            'Google AI is currently rate-limited for this project (429 quota/throttle). Please retry later or rotate to a fresh API key/project quota.',
+          sources,
+          confidence: 0.15,
+          generated_at: new Date().toISOString(),
+        };
+      }
+      throw new BadRequestException(
+        `Google query failed (${status}). Please try again.`,
+      );
+    }
+
+    const answer =
+      payload?.candidates?.[0]?.content?.parts
+        ?.map((p) => p.text || '')
+        .join('\n')
+        .trim() || 'No answer generated by Google model.';
+
+    await this.documentsService.logDocumentQuery(
+      userId,
+      query,
+      answer,
+      undefined,
+      sources,
+      undefined,
+      undefined,
+      QueryType.GENERAL,
+    );
+
+    return {
+      question: query,
+      answer,
+      sources,
+      confidence: 0.85,
+      generated_at: new Date().toISOString(),
+    };
+  }
+
+  private setLocalProcessingStatus(
+    aiDocumentId: string,
+    status: Omit<UiProcessingStatus, 'timestamp'>,
+  ): void {
+    this.localProcessingStatus.set(aiDocumentId, {
+      ...status,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  private async buildFallbackProcessingStatus(
+    aiDocumentId: string,
+    userId: string,
+  ): Promise<UiProcessingStatus | null> {
+    const local = this.localProcessingStatus.get(aiDocumentId);
+    if (local) {
+      return local;
+    }
+
+    const doc = await this.prisma.legalDocument.findFirst({
+      where: { aiDocumentId, uploadedById: userId },
+      select: { status: true, updatedAt: true },
+    });
+
+    if (!doc) {
+      return { status: 'NOT_FOUND', timestamp: new Date().toISOString() };
+    }
+
+    if (doc.status === 'PROCESSED') {
+      return {
+        status: 'COMPLETED',
+        details: 'Document processing completed.',
+        progress: 100,
+        timestamp: doc.updatedAt.toISOString(),
+      };
+    }
+
+    if (doc.status === 'PROCESSING') {
+      return {
+        status: 'PROCESSING',
+        details: 'Background processing is running...',
+        progress: 15,
+        timestamp: doc.updatedAt.toISOString(),
+      };
+    }
+
+    return {
+      status: doc.status,
+      timestamp: doc.updatedAt.toISOString(),
+    };
   }
 }

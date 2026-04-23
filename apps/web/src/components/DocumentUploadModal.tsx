@@ -195,7 +195,9 @@ export default function DocumentUploadModal({
       reset();
       setSelectedFiles([]);
       onUploadSuccess?.();
-      toast.success(`${files.length} document(s) uploaded successfully`);
+      toast.success(
+        `${files.length} document(s) uploaded. Training/processing continues in the background.`
+      );
     } catch (error) {
       console.error("Error uploading document:", error);
       toast.error("Failed to upload document(s)");

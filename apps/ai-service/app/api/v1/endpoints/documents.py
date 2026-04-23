@@ -517,9 +517,9 @@ def process_file_background(
         update_processing_status(
             document_id,
             "PROCESSING",
-            f"Starting to process {original_filename}",
+            f"Upload complete. Processing/training started for {original_filename}",
             None,
-            10,
+            0,
         )
 
         # Process the file with progress updates
@@ -572,7 +572,7 @@ def process_file_with_progress(
         abort_guard = make_abort_guard(document_id, deadline)
 
         update_processing_status(
-            document_id, "PROCESSING", "Extracting text content...", None, 20
+            document_id, "PROCESSING", "Extracting text content...", None, 5
         )
 
         pdf_pages_for_chunking: Optional[List[str]] = None
@@ -589,14 +589,14 @@ def process_file_with_progress(
                 "PROCESSING",
                 f"Extracting text + OCR from {total_pages or '?'} PDF pages...",
                 None,
-                30,
+                10,
             )
 
             # OCR is the single longest phase (8-12 min for big scanned PDFs).
             # Emit per-page progress so the UI bar moves continuously instead
-            # of appearing frozen at 30%. OCR spans progress 30 -> 70 (40%
+            # of appearing frozen. OCR spans progress 10 -> 70 (60%
             # band), chunking 72-78, profile 80, embedding 82-98, upsert 99.
-            _ocr_start_pct = 30
+            _ocr_start_pct = 10
             _ocr_end_pct = 70
             _ocr_span = _ocr_end_pct - _ocr_start_pct
             _ocr_last_reported_pct: List[int] = [_ocr_start_pct]
