@@ -185,6 +185,7 @@ const DocumentCard = ({
   onComplete,
   onError,
   canDelete,
+  deletingDocumentId,
   apiClient,
   onReupload,
   onProcessingRestarted,
@@ -196,12 +197,15 @@ const DocumentCard = ({
   onComplete: () => void;
   onError: (error: string) => void;
   canDelete: boolean;
+  deletingDocumentId: string | null;
   apiClient: any;
   onReupload: () => void;
   onProcessingRestarted: () => void;
 }) => {
   const [retryingProcessing, setRetryingProcessing] = useState(false);
   const uploadedFilename = getUploadedFilename(doc);
+  const isDeletingThisDocument = deletingDocumentId === doc.id;
+  const isAnyDocumentDeleting = deletingDocumentId !== null;
   const fileTypeIcon = (fileType: string) => {
     const ft = fileType.toLowerCase();
     if (ft.includes("pdf")) return FileText;
@@ -379,7 +383,8 @@ const DocumentCard = ({
             <button
               type="button"
               onClick={() => onDelete(doc)}
-              className="inline-flex items-center justify-center rounded-lg p-2.5 sm:p-2 text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              disabled={isAnyDocumentDeleting}
+              className="inline-flex items-center justify-center rounded-lg p-2.5 sm:p-2 text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               aria-label={`Delete ${doc.title}`}
               title={
                 doc.status === "PROCESSING"
@@ -387,7 +392,11 @@ const DocumentCard = ({
                   : `Delete ${doc.title}`
               }
             >
-              <Trash2 className="w-4 h-4" />
+              {isDeletingThisDocument ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
             </button>
           )}
         </div>
@@ -440,6 +449,7 @@ const DocumentTableRow = ({
   onComplete,
   onError,
   canDelete,
+  deletingDocumentId,
   apiClient,
   onReupload,
   onProcessingRestarted,
@@ -451,6 +461,7 @@ const DocumentTableRow = ({
   onComplete: () => void;
   onError: (error: string) => void;
   canDelete: boolean;
+  deletingDocumentId: string | null;
   apiClient: any;
   onReupload: () => void;
   onProcessingRestarted: () => void;
@@ -499,6 +510,8 @@ const DocumentTableRow = ({
     !!doc.aiDocumentId &&
     (doc.status === "PROCESSING" || doc.status === "UPLOADED");
   const showDraftExtras = doc.status === "DRAFT";
+  const isDeletingThisDocument = deletingDocumentId === doc.id;
+  const isAnyDocumentDeleting = deletingDocumentId !== null;
 
   return (
     <>
@@ -577,7 +590,8 @@ const DocumentTableRow = ({
               <button
                 type="button"
                 onClick={() => onDelete(doc)}
-                className="p-1.5 rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 dark:text-red-400"
+                disabled={isAnyDocumentDeleting}
+                className="p-1.5 rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 dark:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Delete document"
                 title={
                   doc.status === "PROCESSING"
@@ -585,7 +599,11 @@ const DocumentTableRow = ({
                     : "Delete document"
                 }
               >
-                <Trash2 className="w-4 h-4" />
+                {isDeletingThisDocument ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
               </button>
             )}
             {shouldShowActions && (
@@ -674,6 +692,9 @@ export default function DocumentsPage() {
     null
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(
+    null,
+  );
   const [cases, setCases] = useState<Case[]>([]);
   const [viewerInitialPage, setViewerInitialPage] = useState<
     number | undefined
@@ -784,6 +805,7 @@ export default function DocumentsPage() {
   };
 
   const handleDeleteClick = (document: Document) => {
+    if (deletingDocumentId) return;
     setSelectedDocument(document);
     // Only lawyers and admins can delete documents
     if (isLawyer || isAdmin) {
@@ -796,12 +818,17 @@ export default function DocumentsPage() {
   const handleDeleteDocument = async () => {
     if (!selectedDocument) return;
     try {
+      setDeletingDocumentId(selectedDocument.id);
       await apiClient.deleteDocument(selectedDocument.id);
       setShowDeleteConfirm(false);
       setSelectedDocument(null);
+      toast.success("Document deleted successfully");
       fetchDocuments();
     } catch (error) {
       console.error("Error deleting document:", error);
+      toast.error("Failed to delete document");
+    } finally {
+      setDeletingDocumentId(null);
     }
   };
 
@@ -1232,6 +1259,7 @@ export default function DocumentsPage() {
                   toast.error(`Processing failed for ${doc.title}: ${error}`);
                 }}
                 canDelete={isLawyer || isAdmin}
+                deletingDocumentId={deletingDocumentId}
                 apiClient={apiClient}
                 onReupload={() => setShowUploadModal(true)}
                 onProcessingRestarted={() => {
@@ -1299,6 +1327,7 @@ export default function DocumentsPage() {
                         );
                       }}
                       canDelete={isLawyer || isAdmin}
+                      deletingDocumentId={deletingDocumentId}
                       apiClient={apiClient}
                       onReupload={() => setShowUploadModal(true)}
                       onProcessingRestarted={() => {
@@ -1341,24 +1370,39 @@ export default function DocumentsPage() {
       {/* Delete Document Confirmation Modal */}
       <ModalDialog
         isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
+        onClose={() => {
+          if (deletingDocumentId) return;
+          setShowDeleteConfirm(false);
+        }}
         header="Confirm Deletion"
         footer={
           <div className="flex justify-end space-x-3">
             <button
               onClick={() => setShowDeleteConfirm(false)}
+              disabled={Boolean(deletingDocumentId)}
               className="btn-secondary"
             >
               Cancel
             </button>
-            <button onClick={handleDeleteDocument} className="btn-danger">
-              Delete
+            <button
+              onClick={handleDeleteDocument}
+              disabled={Boolean(deletingDocumentId)}
+              className="btn-danger inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {deletingDocumentId ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </button>
           </div>
         }
         maxWidth="md"
-        closeOnEscape={true}
-        closeOnOverlayClick={true}
+        closeOnEscape={!deletingDocumentId}
+        closeOnOverlayClick={!deletingDocumentId}
       >
         <div className="text-center">
           <h3 className="text-lg font-medium text-foreground mb-2">

@@ -1109,8 +1109,20 @@ export default function DocumentQA() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <div
+                        className={`flex items-center justify-between mt-2 pt-2 border-t ${
+                          message.type === "question"
+                            ? "border-white/25"
+                            : "border-gray-200 dark:border-gray-600"
+                        }`}
+                      >
+                        <span
+                          className={`text-xs ${
+                            message.type === "question"
+                              ? "text-blue-100"
+                              : "text-gray-500 dark:text-gray-400"
+                          }`}
+                        >
                           {message.timestamp.toLocaleTimeString()}
                         </span>
                         <div className="flex items-center space-x-2">
@@ -1124,7 +1136,11 @@ export default function DocumentQA() {
                                   : message.content,
                               )
                             }
-                            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            className={`transition-colors ${
+                              message.type === "question"
+                                ? "text-blue-100 hover:text-white"
+                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            }`}
                           >
                             <Copy className="w-3 h-3" />
                           </button>
