@@ -5,9 +5,11 @@
 set -e
 
 # Load nvm for yarn/node in non-interactive SSH sessions.
-if [ -f "$HOME/.nvm/nvm.sh" ]; then
+if [ -f "/home/ubuntu/.nvm/nvm.sh" ]; then
+  export NVM_DIR="/home/ubuntu/.nvm"
   set +e
-  . "$HOME/.nvm/nvm.sh"
+  . "/home/ubuntu/.nvm/nvm.sh"
+  nvm use 20 >/dev/null 2>&1 || nvm use 22 >/dev/null 2>&1 || true
   set -e
 fi
 
