@@ -138,6 +138,10 @@ if [ "$BACKEND_CHANGED" = "true" ]; then
   npx prisma generate
   npx prisma migrate deploy 2>/dev/null || npx prisma db push 2>/dev/null || true
   yarn build
+  if [ ! -f "$REPO_DIR/apps/backend/dist/src/main.js" ] && [ -f "$REPO_DIR/apps/backend/dist/main.js" ]; then
+    mkdir -p "$REPO_DIR/apps/backend/dist/src"
+    cp "$REPO_DIR/apps/backend/dist/main.js" "$REPO_DIR/apps/backend/dist/src/main.js"
+  fi
   pm2 restart vidhigya-backend --update-env 2>/dev/null || (cd "$REPO_DIR" && REPO_DIR="$REPO_DIR" pm2 start ecosystem.config.cjs --only vidhigya-backend)
   echo "Backend deployed"
 else

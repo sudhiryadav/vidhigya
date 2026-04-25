@@ -7,7 +7,7 @@ module.exports = {
     {
       name: "vidhigya-backend",
       cwd: path.join(REPO_DIR, "apps/backend"),
-      script: "dist/main.js",
+      script: "dist/src/main.js",
       interpreter: "node",
       env: {
         NODE_ENV: "production",
