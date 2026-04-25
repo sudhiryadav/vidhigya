@@ -1,0 +1,76 @@
+variables:
+  RUN_PIPELINE: "false"
+  FORCE_FRONTEND: "false"
+  FORCE_BACKEND: "false"
+
+stages:
+  - check_changes
+  - deploy_production
+
+check_changes:
+  stage: check_changes
+  image: alpine:latest
+  script:
+    - apk add --no-cache git
+    - touch changes.env
+    - |
+      echo "FRONTEND_CHANGED=$(git diff --name-only ${CI_COMMIT_BEFORE_SHA} ${CI_COMMIT_SHA} | grep -qE '^apps/web/|^packages/' && echo true || echo false)" >> changes.env
+      echo "BACKEND_CHANGED=$(git diff --name-only ${CI_COMMIT_BEFORE_SHA} ${CI_COMMIT_SHA} | grep -qE '^apps/backend/|^packages/' && echo true || echo false)" >> changes.env
+    - cat changes.env
+  artifacts:
+    reports:
+      dotenv: changes.env
+  rules:
+    - if: '$RUN_PIPELINE == "true"'
+    - if: '$CI_COMMIT_BRANCH == "prod"'
+
+.deploy_base:
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client git rsync
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | base64 -d | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+
+deploy_production:
+  stage: deploy_production
+  needs: [check_changes]
+  extends: .deploy_base
+  variables:
+    SSH_PRIVATE_KEY: $PROD_SSH_PRIVATE_KEY
+    SSH_USER: $PROD_SSH_USER
+    SERVER_IP: $PROD_SERVER_IP
+  script:
+    - |
+      if [ -z "$PROD_SERVER_IP" ] || [ -z "$PROD_SSH_USER" ] || [ -z "$PROD_SSH_PRIVATE_KEY" ]; then
+        echo "ERROR: Missing CI/CD variables. Add in GitLab: Settings -> CI/CD -> Variables"
+        echo "  PROD_SERVER_IP, PROD_SSH_USER, PROD_SSH_PRIVATE_KEY"
+        exit 1
+      fi
+      REPO_DIR="${PROD_REPO_DIR:-/home/ubuntu/prod/vidhigya}"
+      BRANCH="prod"
+      F=$([ "$FRONTEND_CHANGED" = "true" ] || [ "$FORCE_FRONTEND" = "true" ] && echo "true" || echo "false")
+      B=$([ "$BACKEND_CHANGED" = "true" ] || [ "$FORCE_BACKEND" = "true" ] && echo "true" || echo "false")
+      git clone --depth 50 --branch "$BRANCH" "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/frontslash/apps/vidhigya.git" /tmp/vidhigya-deploy
+      echo "Deploy target: ${SSH_USER}@${SERVER_IP}:${REPO_DIR}"
+      ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "mkdir -p '${REPO_DIR}' && test -d '${REPO_DIR}' && echo 'Remote dir ready: ${REPO_DIR}'"
+      set +e
+      rsync -avz --exclude=node_modules --exclude=.next --exclude=dist --exclude='*.env' --exclude='.git' --exclude='.cursor' --exclude='.vscode' --rsync-path="mkdir -p ${REPO_DIR} && rsync" -e "ssh -o StrictHostKeyChecking=no" /tmp/vidhigya-deploy/ ${SSH_USER}@${SERVER_IP}:${REPO_DIR}/
+      RSYNC_EXIT=$?
+      set -e
+      if [ "$RSYNC_EXIT" -ne 0 ]; then
+        echo "Primary rsync failed with exit code ${RSYNC_EXIT}. Retrying with no owner/group/perms/times..."
+        set +e
+        rsync -rvz --no-owner --no-group --no-perms --omit-dir-times --exclude=node_modules --exclude=.next --exclude=dist --exclude='*.env' --exclude='.git' --exclude='.cursor' --exclude='.vscode' --rsync-path="mkdir -p ${REPO_DIR} && rsync" -e "ssh -o StrictHostKeyChecking=no" /tmp/vidhigya-deploy/ ${SSH_USER}@${SERVER_IP}:${REPO_DIR}/
+        RSYNC_EXIT=$?
+        set -e
+      fi
+      if [ "$RSYNC_EXIT" -ne 0 ]; then
+        echo "rsync failed after retry with exit code ${RSYNC_EXIT}"
+        exit "$RSYNC_EXIT"
+      fi
+      ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} \
+        "export REPO_DIR='${REPO_DIR}' SKIP_GIT_PULL=1 && cd \"\$REPO_DIR\" && bash ci-cd/scripts/deploy-from-source.sh prod prod $F $B"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "prod"'
+    - if: '$RUN_PIPELINE == "true"'
