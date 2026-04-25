@@ -62,6 +62,8 @@ const envSchema = z
     DOCUMENT_AI_PROVIDER: z.enum(['current', 'google']).optional(),
     GOOGLE_QUERY_MODEL: z.string().optional(),
     GOOGLE_QUERY_FALLBACK_TO_CURRENT: z.string().optional(),
+    GOOGLE_QUERY_MAX_CHUNKS: z.string().optional(),
+    GOOGLE_QUERY_MAX_CONTEXT_CHARS: z.string().optional(),
     GOOGLE_OCR_PREPASS_FOR_GOOGLE_AI: z.string().optional(),
     GOOGLE_OCR_TIMEOUT_MS: z.string().optional(),
     GOOGLE_OCR_MAX_INLINE_BYTES: z.string().optional(),

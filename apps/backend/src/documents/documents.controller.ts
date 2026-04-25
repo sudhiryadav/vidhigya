@@ -191,6 +191,24 @@ export class DocumentsController {
     return raw === '1' || raw === 'true' || raw === 'yes';
   }
 
+  private getGoogleQueryMaxChunks(): number {
+    const raw = Number(this.configService.get<string>('GOOGLE_QUERY_MAX_CHUNKS'));
+    if (!Number.isFinite(raw)) {
+      return 8;
+    }
+    return Math.max(3, Math.min(Math.floor(raw), 20));
+  }
+
+  private getGoogleQueryMaxContextChars(): number {
+    const raw = Number(
+      this.configService.get<string>('GOOGLE_QUERY_MAX_CONTEXT_CHARS'),
+    );
+    if (!Number.isFinite(raw)) {
+      return 12_000;
+    }
+    return Math.max(4_000, Math.min(Math.floor(raw), 60_000));
+  }
+
   private useGoogleOcrPrepassForGoogleAi(): boolean {
     const raw = (
       this.configService.get<string>('GOOGLE_OCR_PREPASS_FOR_GOOGLE_AI') ||
@@ -1546,9 +1564,8 @@ export class DocumentsController {
     aiDocumentId: string;
     description?: string;
   }): Promise<void> {
-    // In Google end-to-end mode, avoid OCR pre-pass by default.
-    // Gemini Files + model query can read PDFs/images directly and this saves one API call,
-    // reducing early 429 rate-limit hits on free-tier keys.
+    // Production default: keep Google OCR optional, but always build chunk embeddings
+    // in the current vector pipeline for scalable retrieval across large corpora.
     let ingestionPayload: {
       fileBuffer: Buffer;
       mimeType: string;
@@ -1575,37 +1592,24 @@ export class DocumentsController {
 
     this.setLocalProcessingStatus(params.aiDocumentId, {
       status: 'PROCESSING',
-      details: 'Storing document in Google AI for retrieval...',
+      details: 'Building searchable chunk embeddings for fast retrieval...',
       progress: 80,
     });
 
-    const googleFile = await this.uploadFileToGoogle(
-      ingestionPayload.fileBuffer,
-      ingestionPayload.mimeType,
-      ingestionPayload.originalFilename,
-    );
-
-    await this.prisma.legalDocument.update({
-      where: { id: params.legalDocumentId },
-      data: {
-        aiDocumentId: googleFile.name,
-        content:
-          ingestionPayload.mimeType === 'text/plain'
-            ? ingestionPayload.fileBuffer.toString('utf8').slice(0, 60000)
-            : undefined,
-        status: 'PROCESSED',
-      },
+    await this.ingestWithAiAndUpdateLegalDocument({
+      legalDocumentId: params.legalDocumentId,
+      fileBuffer: ingestionPayload.fileBuffer,
+      mimeType: ingestionPayload.mimeType,
+      originalFilename: ingestionPayload.originalFilename,
+      userId: params.userId,
+      aiDocumentId: params.aiDocumentId,
+      description: params.description,
     });
 
     this.setLocalProcessingStatus(params.aiDocumentId, {
       status: 'COMPLETED',
       details:
-        'Stored in Google AI and ready for querying. Refresh list to sync latest provider ID.',
-      progress: 100,
-    });
-    this.setLocalProcessingStatus(googleFile.name, {
-      status: 'COMPLETED',
-      details: 'Stored in Google AI and ready for querying.',
+        'Embeddings indexed. Google answering will use retrieved chunks for low-cost, high-scale queries.',
       progress: 100,
     });
   }
@@ -1962,93 +1966,19 @@ export class DocumentsController {
       );
     }
 
-    const docs = await this.prisma.legalDocument.findMany({
-      where: {
-        uploadedById: userId,
-        status: 'PROCESSED',
-        aiDocumentId: { startsWith: 'files/' },
-      },
-      orderBy: { updatedAt: 'desc' },
-      take: Math.max(1, Math.min(limit, 3)),
-      select: {
-        id: true,
-        title: true,
-        aiDocumentId: true,
-        fileUrl: true,
-        fileType: true,
-        originalFilename: true,
-      },
-    });
-
-    if (!docs.length) {
-      return {
-        question: query,
-        answer:
-          'I could not find any Google-indexed documents yet. Please upload and process a document first.',
-        sources: [],
-        confidence: 0,
-        generated_at: new Date().toISOString(),
-      };
-    }
-
-    const resolvedFiles: Array<{
-      docId: string;
-      title: string;
-      uri: string;
-      mimeType: string;
-    }> = [];
-
-    for (const doc of docs) {
-      try {
-        const meta = await this.getGoogleFileMetadata(doc.aiDocumentId || '');
-        if (meta.uri) {
-          resolvedFiles.push({
-            docId: doc.id,
-            title: doc.title || 'Document',
-            uri: meta.uri,
-            mimeType: meta.mimeType || 'application/octet-stream',
-          });
-        }
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        this.logger.warn(
-          `Skipping Google file for document ${doc.id}: ${errorMessage}`,
-        );
-
-        if (errorMessage.includes('(403)')) {
-          try {
-            const repaired = await this.repairGoogleFileBinding(doc);
-            if (repaired) {
-              resolvedFiles.push(repaired);
-              this.logger.log(
-                `Repaired Google file binding for document ${doc.id}`,
-              );
-            }
-          } catch (repairError) {
-            this.logger.warn(
-              `Auto-repair failed for document ${doc.id}: ${
-                repairError instanceof Error
-                  ? repairError.message
-                  : String(repairError)
-              }`,
-            );
-          }
-        }
-      }
-    }
-
-    if (!resolvedFiles.length) {
+    const searchResults = await this.qdrantService.searchDocuments(
+      query,
+      userId,
+      this.getGoogleQueryMaxChunks(),
+    );
+    if (!searchResults || searchResults.length === 0) {
       if (this.useCurrentFallbackForGoogleQuery429()) {
-        this.logger.warn(
-          'No accessible Google files found. Trying current pipeline fallback.',
-        );
         try {
           const fallback = await this.queryDocumentsDirect(query, userId, limit);
           return {
             ...fallback,
             answer:
-              '[Using fallback provider because Google file bindings are unavailable]\n\n' +
+              '[Using fallback provider because no indexed chunks were found for Google RAG]\n\n' +
               fallback.answer,
             confidence: Math.min(fallback.confidence, 0.6),
           };
@@ -2065,7 +1995,7 @@ export class DocumentsController {
       return {
         question: query,
         answer:
-          'Google file references are no longer accessible with the current API key/project. Please reprocess the document(s) to relink them.',
+          'I could not find indexed document chunks for your account yet. Please upload and process a document first.',
         sources: [],
         confidence: 0.1,
         generated_at: new Date().toISOString(),
@@ -2077,19 +2007,43 @@ export class DocumentsController {
       `https://generativelanguage.googleapis.com/v1beta/models/` +
       `${encodeURIComponent(model)}:generateContent?key=${apiKey}`;
 
+    const formattedSources = await this.documentsService.enrichVectorSearchHits(
+      searchResults,
+      userId,
+    );
+    const maxContextChars = this.getGoogleQueryMaxContextChars();
+    let usedChars = 0;
+    const selectedSources: typeof formattedSources = [];
+
+    for (const source of formattedSources) {
+      const normalized = (source.content || '').replace(/\s+/g, ' ').trim();
+      if (!normalized) continue;
+      const slice = normalized.slice(0, 1200);
+      if (usedChars + slice.length > maxContextChars && selectedSources.length) {
+        break;
+      }
+      selectedSources.push({ ...source, content: slice });
+      usedChars += slice.length;
+      if (usedChars >= maxContextChars) {
+        break;
+      }
+    }
+
+    const contextText = selectedSources
+      .map(
+        (source, index) =>
+          `Source ${index + 1} [document_id=${source.document_id}]:\n${source.content}`,
+      )
+      .join('\n\n');
+
     const parts: Array<Record<string, unknown>> = [
       {
         text:
-          'Answer the user question using only the attached legal documents. ' +
-          'If uncertain, clearly say so. Quote key points and mention which document they come from.',
+          'You are a legal document assistant. Answer using ONLY the provided retrieved source snippets. ' +
+          'If the snippets are insufficient, explicitly say what is missing. Include citations as [Source N].',
       },
       { text: `Question: ${query}` },
-      ...resolvedFiles.map((file) => ({
-        file_data: {
-          mime_type: file.mimeType,
-          file_uri: file.uri,
-        },
-      })),
+      { text: `Retrieved snippets:\n\n${contextText}` },
     ];
 
     let { status, payload } = await this.callGoogleGenerateContent(
@@ -2099,10 +2053,13 @@ export class DocumentsController {
       }),
     );
 
-    const sources = resolvedFiles.map((file) => ({
-      document_id: file.docId,
-      content: '',
-      score: 1,
+    const sources = selectedSources.map((source) => ({
+      document_id: source.document_id,
+      content: source.content,
+      score: source.score,
+      page_number: source.page_number,
+      start_char: source.start_char,
+      end_char: source.end_char,
     }));
 
     if (status !== 200) {
@@ -2140,114 +2097,9 @@ export class DocumentsController {
         };
       }
       if (status === 404) {
-        const docsById = new Map(docs.map((d) => [d.id, d]));
-
-        // 404 can be caused by one stale/missing file reference in a multi-file call.
-        // Retry each user-owned file individually before giving up/falling back.
-        for (const candidate of resolvedFiles) {
-          const singleParts: Array<Record<string, unknown>> = [
-            {
-              text:
-                'Answer the user question using only the attached legal document. ' +
-                'If uncertain, clearly say so.',
-            },
-            { text: `Question: ${query}` },
-            {
-              file_data: {
-                mime_type: candidate.mimeType,
-                file_uri: candidate.uri,
-              },
-            },
-          ];
-
-          let single = await this.callGoogleGenerateContent(
-            endpoint,
-            JSON.stringify({
-              contents: [{ role: 'user', parts: singleParts }],
-            }),
-          );
-
-          if (single.status === 404) {
-            const sourceDoc = docsById.get(candidate.docId);
-            if (sourceDoc) {
-              try {
-                const repaired = await this.repairGoogleFileBinding(sourceDoc);
-                if (repaired) {
-                  single = await this.callGoogleGenerateContent(
-                    endpoint,
-                    JSON.stringify({
-                      contents: [
-                        {
-                          role: 'user',
-                          parts: [
-                            { text: `Question: ${query}` },
-                            {
-                              file_data: {
-                                mime_type: repaired.mimeType,
-                                file_uri: repaired.uri,
-                              },
-                            },
-                          ],
-                        },
-                      ],
-                    }),
-                  );
-                }
-              } catch (repairErr) {
-                this.logger.warn(
-                  `Single-file repair failed for ${candidate.docId}: ${
-                    repairErr instanceof Error
-                      ? repairErr.message
-                      : String(repairErr)
-                  }`,
-                );
-              }
-            }
-          }
-
-          if (single.status === 200) {
-            const singleAnswer =
-              single.payload?.candidates?.[0]?.content?.parts
-                ?.map((p) => p.text || '')
-                .join('\n')
-                .trim() || 'No answer generated by Google model.';
-
-            await this.documentsService.logDocumentQuery(
-              userId,
-              query,
-              singleAnswer,
-              undefined,
-              [
-                {
-                  document_id: candidate.docId,
-                  content: '',
-                  score: 1,
-                },
-              ],
-              undefined,
-              undefined,
-              QueryType.GENERAL,
-            );
-
-            return {
-              question: query,
-              answer: singleAnswer,
-              sources: [
-                {
-                  document_id: candidate.docId,
-                  content: '',
-                  score: 1,
-                },
-              ],
-              confidence: 0.82,
-              generated_at: new Date().toISOString(),
-            };
-          }
-        }
-
         if (this.useCurrentFallbackForGoogleQuery429()) {
           this.logger.warn(
-            `Google query returned 404 (model/file not found). Trying current pipeline fallback.`,
+            `Google query returned 404 (likely model not found). Trying current pipeline fallback.`,
           );
           try {
             const fallback = await this.queryDocumentsDirect(query, userId, limit);
