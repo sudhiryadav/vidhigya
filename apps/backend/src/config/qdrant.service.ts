@@ -50,6 +50,9 @@ export class QdrantService {
       this.qdrantClient = new QdrantClient({
         url: this.qdrantUrl,
         apiKey: this.qdrantApiKey,
+        // Keep service startup resilient when managed Qdrant runs a newer
+        // compatible minor version than the JS client.
+        checkCompatibility: false,
       });
       this.logger.log('Qdrant client initialized successfully');
     } catch (error) {
