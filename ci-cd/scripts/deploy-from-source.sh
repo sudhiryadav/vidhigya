@@ -149,4 +149,14 @@ else
 fi
 
 pm2 save 2>/dev/null || true
+
+# Deploy nginx site config if present
+NGINX_SITE="$REPO_DIR/apps/backend/nginx/sites-available/vidhigya"
+if [ -f "$NGINX_SITE" ]; then
+  echo "Updating nginx config..."
+  sudo cp "$NGINX_SITE" /etc/nginx/sites-available/vidhigya
+  sudo ln -sf /etc/nginx/sites-available/vidhigya /etc/nginx/sites-enabled/vidhigya
+  sudo nginx -t >/dev/null 2>&1 && sudo systemctl reload nginx >/dev/null 2>&1 && echo "nginx reloaded" || echo "nginx reload skipped (check config)"
+fi
+
 echo "Deployment completed."

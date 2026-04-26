@@ -1,0 +1,56 @@
+# Vidhigya - Frontend + Backend reverse proxy
+# Frontend: localhost:3888
+# Backend API: localhost:3889
+#
+# Update server_name to your real domain before enabling SSL/certbot.
+
+server {
+    listen 80;
+    server_name vidhigya.frontslash.in www.vidhigya.frontslash.in;
+
+    # Backend API - /api/* -> NestJS (port 3889)
+    location /api/ {
+        proxy_pass http://localhost:3889/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        client_max_body_size 20M;
+    }
+
+    # Socket.io - backend
+    location /socket.io/ {
+        proxy_pass http://localhost:3889;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Frontend - everything else -> Next.js (port 3888)
+    location / {
+        proxy_pass http://localhost:3888/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    error_log /var/log/nginx/vidhigya_error.log;
+    access_log /var/log/nginx/vidhigya_access.log;
+}
