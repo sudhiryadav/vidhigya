@@ -2,11 +2,11 @@
 # Frontend: localhost:3888
 # Backend API: localhost:3889
 #
-# Update server_name to your real domain before enabling SSL/certbot.
+# Hostname for production routing.
 
 server {
     listen 80;
-    server_name vidhigya.frontslash.in www.vidhigya.frontslash.in;
+    server_name vidhigya.qurieus.com;
 
     # Backend API - /api/* -> NestJS (port 3889)
     location /api/ {
