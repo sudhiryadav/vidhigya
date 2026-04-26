@@ -1,4 +1,4 @@
-const DEFAULT_SITE_URL = "https://vidhigya.com";
+const DEFAULT_SITE_URL = "https://vidhigya.qurieus.com";
 
 function sanitizeSiteUrl(value?: string) {
   if (!value) {

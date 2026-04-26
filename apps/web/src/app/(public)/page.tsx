@@ -30,12 +30,21 @@ export const metadata: Metadata = {
     siteName: seoConfig.siteName,
     locale: seoConfig.locale,
     type: "website",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Vidhigya legal practice management platform",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Vidhigya - Legal Practice Management Platform",
     description:
       "Manage your legal operations from one secure platform built for law firms and solo practitioners.",
+    images: ["/twitter-image"],
   },
 };
 
@@ -151,8 +160,86 @@ const plans = [
 ];
 
 export default function HomePage() {
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: seoConfig.siteName,
+    url: seoConfig.siteUrl,
+    email: "support@vidhigya.com",
+    sameAs: [seoConfig.siteUrl],
+  };
+
+  const softwareApplicationSchema = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Vidhigya",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    offers: {
+      "@type": "Offer",
+      price: "2499",
+      priceCurrency: "INR",
+    },
+    description:
+      "Legal practice management platform for law firms and individual lawyers.",
+    url: seoConfig.siteUrl,
+    provider: {
+      "@type": "Organization",
+      name: seoConfig.siteName,
+    },
+  };
+
+  const faqPageSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "What is Vidhigya used for?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Vidhigya is a legal practice management platform used to manage cases, clients, documents, billing, tasks, and hearing schedules in one place.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Is Vidhigya suitable for both solo lawyers and law firms?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Vidhigya supports solo practitioners as well as multi-member law firms with role-based access and team workflows.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Does Vidhigya include legal billing and subscription management?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Vidhigya includes billing workflows, payment tracking, and subscription management features for legal teams.",
+        },
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(organizationSchema),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(softwareApplicationSchema),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqPageSchema),
+        }}
+      />
       <main>
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-blue-100/60 via-transparent to-transparent dark:from-blue-900/20" />

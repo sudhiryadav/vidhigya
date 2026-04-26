@@ -31,11 +31,20 @@ export const metadata: Metadata = {
     title: seoConfig.defaultTitle,
     description: seoConfig.description,
     locale: seoConfig.locale,
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Vidhigya legal practice management platform",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: seoConfig.defaultTitle,
     description: seoConfig.description,
+    images: ["/twitter-image"],
   },
 };
 
