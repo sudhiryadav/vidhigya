@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { NotificationType, Prisma } from '@prisma/client';
+import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationEmitterService } from './notification-emitter.service';
 
@@ -16,7 +17,31 @@ export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private notificationEmitter: NotificationEmitterService,
+    private emailService: EmailService,
   ) {}
+
+  private async getBrandingContext(practiceId: string) {
+    const practice = await this.prisma.practice.findUnique({
+      where: { id: practiceId },
+      select: { name: true },
+    });
+    return {
+      brandName: practice?.name || 'Vidhigya',
+    };
+  }
+
+  private async shouldSendCaseEmail(userId: string): Promise<boolean> {
+    const settings = await this.prisma.userSettings.findUnique({
+      where: { userId },
+      select: { emailNotifications: true, caseUpdates: true },
+    });
+
+    if (!settings) {
+      return true;
+    }
+
+    return Boolean(settings.emailNotifications && settings.caseUpdates);
+  }
 
   async create(data: CreateNotificationDto) {
     return this.prisma.notification.create({
@@ -162,13 +187,42 @@ export class NotificationsService {
       message += ` for case ${task.case.caseNumber}`;
     }
 
-    return this.create({
+    const notification = await this.create({
       title: 'New Task Assigned',
       message,
       type: NotificationType.CASE_UPDATE,
       userId: assignedToId,
       practiceId: task.practiceId,
     });
+
+    const assignee = await this.prisma.user.findUnique({
+      where: { id: assignedToId },
+      select: { name: true, email: true },
+    });
+
+    if (
+      assignee?.email &&
+      this.emailService.isEnabled() &&
+      (await this.shouldSendCaseEmail(assignedToId))
+    ) {
+      const branding = await this.getBrandingContext(task.practiceId);
+      await this.emailService.sendTemplateEmail({
+        to: assignee.email,
+        subject: `Task Assigned: ${task.title}`,
+        templateName: 'task-assigned',
+        context: {
+          ...branding,
+          recipientName: assignee.name,
+          taskTitle: task.title,
+          taskDescription: task.description || '',
+          assignedBy: task.createdBy.name,
+          caseNumber: task.case?.caseNumber || 'N/A',
+          caseTitle: task.case?.title || 'No linked case',
+        },
+      });
+    }
+
+    return notification;
   }
 
   async createEventReminderNotification(
@@ -220,6 +274,7 @@ export class NotificationsService {
 
     const title = 'Document Uploaded';
     const message = `${document.uploadedBy.name} uploaded '${document.title}' to case ${document.case.caseNumber}`;
+    const branding = await this.getBrandingContext(document.practiceId);
 
     // Notify the assigned lawyer
     if (document.case.assignedLawyerId !== uploadedById) {
@@ -230,6 +285,26 @@ export class NotificationsService {
         userId: document.case.assignedLawyerId,
         practiceId: document.practiceId,
       });
+
+      if (
+        document.case.assignedLawyer.email &&
+        this.emailService.isEnabled() &&
+        (await this.shouldSendCaseEmail(document.case.assignedLawyerId))
+      ) {
+        await this.emailService.sendTemplateEmail({
+          to: document.case.assignedLawyer.email,
+          subject: `Document Uploaded: ${document.title}`,
+          templateName: 'document-uploaded',
+          context: {
+            ...branding,
+            recipientName: document.case.assignedLawyer.name,
+            documentTitle: document.title,
+            uploadedBy: document.uploadedBy.name,
+            caseNumber: document.case.caseNumber,
+            caseTitle: document.case.title,
+          },
+        });
+      }
     }
 
     // Notify the client
@@ -241,6 +316,27 @@ export class NotificationsService {
         userId: document.case.clientId,
         practiceId: document.practiceId,
       });
+
+      if (
+        document.case.client.email &&
+        this.emailService.isEnabled() &&
+        document.case.client.userId &&
+        (await this.shouldSendCaseEmail(document.case.client.userId))
+      ) {
+        await this.emailService.sendTemplateEmail({
+          to: document.case.client.email,
+          subject: `Document Uploaded: ${document.title}`,
+          templateName: 'document-uploaded',
+          context: {
+            ...branding,
+            recipientName: document.case.client.name,
+            documentTitle: document.title,
+            uploadedBy: document.uploadedBy.name,
+            caseNumber: document.case.caseNumber,
+            caseTitle: document.case.title,
+          },
+        });
+      }
     }
   }
 
@@ -256,14 +352,46 @@ export class NotificationsService {
 
     const title = 'New Billing Record';
     const message = `New ${bill.billType.toLowerCase()} bill of $${bill.amount} for case ${bill.case.caseNumber}`;
-
-    return this.create({
+    const notification = await this.create({
       title,
       message,
       type: NotificationType.BILLING,
       userId: clientId,
       practiceId: bill.practiceId,
     });
+
+    const clientUser = await this.prisma.user.findUnique({
+      where: { id: clientId },
+      select: { name: true, email: true },
+    });
+
+    if (
+      clientUser?.email &&
+      this.emailService.isEnabled() &&
+      (await this.shouldSendCaseEmail(clientId))
+    ) {
+      const branding = await this.getBrandingContext(bill.practiceId);
+      await this.emailService.sendTemplateEmail({
+        to: clientUser.email,
+        subject: `Billing Update: ${bill.case.caseNumber}`,
+        templateName: 'billing-notification',
+        context: {
+          ...branding,
+          recipientName: clientUser.name,
+          caseNumber: bill.case.caseNumber,
+          caseTitle: bill.case.title,
+          billType: bill.billType,
+          amount: bill.amount.toFixed(2),
+          currency: bill.currency,
+          dueDate: bill.dueDate
+            ? new Date(bill.dueDate).toLocaleDateString()
+            : 'N/A',
+          description: bill.description,
+        },
+      });
+    }
+
+    return notification;
   }
 
   async createVideoCallScheduledNotification(
@@ -385,5 +513,35 @@ export class NotificationsService {
     });
 
     return notification;
+  }
+
+  async sendTestEmail(userId: string, practiceId: string, to?: string) {
+    if (!this.emailService.isEnabled()) {
+      return { success: false, reason: 'Email service is not configured' };
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true },
+    });
+
+    const recipientEmail = to || user?.email;
+    if (!recipientEmail) {
+      return { success: false, reason: 'Recipient email not available' };
+    }
+
+    const branding = await this.getBrandingContext(practiceId);
+    const sent = await this.emailService.sendTemplateEmail({
+      to: recipientEmail,
+      subject: 'Test Email from Vidhigya',
+      templateName: 'test-email',
+      context: {
+        ...branding,
+        recipientName: user?.name || 'User',
+        sentAt: new Date().toLocaleString(),
+      },
+    });
+
+    return { success: sent, to: recipientEmail };
   }
 }

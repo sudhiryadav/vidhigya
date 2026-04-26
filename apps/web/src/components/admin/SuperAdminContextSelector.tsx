@@ -1,11 +1,10 @@
 "use client";
 
 import LoadingOverlay from "@/components/LoadingOverlay";
-import { useAuth } from "@/contexts/AuthContext";
 import { useSuperAdminContext } from "@/contexts/SuperAdminContext";
 import { apiClient } from "@/services/api";
 import { Practice } from "@/types/practices";
-import { Building2, Globe, Search, User, Users } from "lucide-react";
+import { Building2, Globe, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface SuperAdminContextSelectorProps {
@@ -25,15 +24,11 @@ export default function SuperAdminContextSelector({
   onContextChange,
   currentContext,
 }: SuperAdminContextSelectorProps) {
-  const { user } = useAuth();
   const { context, setContext, isSuperAdmin } = useSuperAdminContext();
   const [practices, setPractices] = useState<Practice[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [filterType, setFilterType] = useState<
-    "all" | "practice" | "firm" | "individual"
-  >("all");
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -82,10 +77,6 @@ export default function SuperAdminContextSelector({
     switch (type) {
       case "practice":
         return <Building2 className="h-4 w-4" />;
-      case "firm":
-        return <Users className="h-4 w-4" />;
-      case "individual":
-        return <User className="h-4 w-4" />;
       default:
         return <Globe className="h-4 w-4" />;
     }
@@ -96,13 +87,12 @@ export default function SuperAdminContextSelector({
 
     switch (context.type) {
       case "all":
-        return "All Practices & Users";
+        return "All Practices";
       case "practice":
         return `Practice: ${context.name}`;
       case "firm":
-        return `Firm: ${context.name}`;
       case "individual":
-        return `Individual: ${context.name}`;
+        return `Practice: ${context.name}`;
       default:
         return "Select Context";
     }
@@ -113,11 +103,6 @@ export default function SuperAdminContextSelector({
       practice.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       practice.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    if (filterType === "all") return matchesSearch;
-    if (filterType === "firm")
-      return practice.practiceType === "FIRM" && matchesSearch;
-    if (filterType === "individual")
-      return practice.practiceType === "INDIVIDUAL" && matchesSearch;
     return matchesSearch;
   });
 
@@ -133,8 +118,8 @@ export default function SuperAdminContextSelector({
       {
         type: "all",
         id: undefined,
-        name: "All Practices & Users",
-        description: "View and manage all data across the system",
+        name: "All Practices",
+        description: "View and manage data across all practices",
         icon: <Globe className="h-5 w-5 text-blue-600" />,
         count: practices.length,
       },
@@ -142,34 +127,14 @@ export default function SuperAdminContextSelector({
 
     // Add practice options
     filteredPractices.forEach((practice) => {
-      if (practice.practiceType === "FIRM") {
-        options.push({
-          type: "firm",
-          id: practice.id,
-          name: practice.name,
-          description: `Firm practice with ${practice.members?.length || 0} members`,
-          icon: <Users className="h-5 w-5 text-green-600" />,
-          count: practice.members?.length || 0,
-        });
-      } else if (practice.practiceType === "INDIVIDUAL") {
-        options.push({
-          type: "individual",
-          id: practice.id,
-          name: practice.name,
-          description: "Individual lawyer practice",
-          icon: <User className="h-5 w-5 text-purple-600" />,
-          count: 1,
-        });
-      } else {
-        options.push({
-          type: "practice",
-          id: practice.id,
-          name: practice.name,
-          description: `Mixed practice with ${practice.members?.length || 0} members`,
-          icon: <Building2 className="h-5 w-5 text-orange-600" />,
-          count: practice.members?.length || 0,
-        });
-      }
+      options.push({
+        type: "practice",
+        id: practice.id,
+        name: practice.name,
+        description: `Practice with ${practice.members?.length || 0} members`,
+        icon: <Building2 className="h-5 w-5 text-orange-600" />,
+        count: practice.members?.length || 0,
+      });
     });
 
     return options;
@@ -217,7 +182,7 @@ export default function SuperAdminContextSelector({
       {/* Dropdown Menu */}
       {showDropdown && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-xl z-50 max-h-96 overflow-hidden">
-          {/* Search and Filter Header */}
+          {/* Search Header */}
           <div className="p-3 border-b border-border">
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -228,44 +193,6 @@ export default function SuperAdminContextSelector({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex space-x-1">
-              {[
-                { key: "all" as const, label: "All", count: practices.length },
-                {
-                  key: "firm" as const,
-                  label: "Firms",
-                  count: practices.filter((p) => p.practiceType === "FIRM")
-                    .length,
-                },
-                {
-                  key: "individual" as const,
-                  label: "Individuals",
-                  count: practices.filter(
-                    (p) => p.practiceType === "INDIVIDUAL"
-                  ).length,
-                },
-                {
-                  key: "practice" as const,
-                  label: "Mixed",
-                  count: practices.filter((p) => p.practiceType === "MIXED")
-                    .length,
-                },
-              ].map((filter) => (
-                <button
-                  key={filter.key}
-                  onClick={() => setFilterType(filter.key)}
-                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                    filterType === filter.key
-                      ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
-                >
-                  {filter.label} ({filter.count})
-                </button>
-              ))}
             </div>
           </div>
 

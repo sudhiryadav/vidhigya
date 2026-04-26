@@ -5,11 +5,65 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import {
+  ACTIVE_SUBSCRIPTION_STATUSES,
+  DEFAULT_PLAN_BY_PRACTICE_TYPE,
+  DEFAULT_SEAT_LIMIT_BY_PLAN,
+  ALLOWED_SUBSCRIPTION_PLANS,
+  getPracticePlanKey,
+  getPracticeSeatLimitKey,
+  getPracticeSubscriptionStatusKey,
+  isInternalOnlyRole,
+  isInviteOnlyRole,
+} from '../common/policies/account-policy';
+import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+  ) {}
+
+  private readonly emailTemplateKeyPrefix = 'email_template.';
+
+  private getEmailTemplateKey(templateId: string): string {
+    return `${this.emailTemplateKeyPrefix}${templateId}`;
+  }
+
+  private async getPracticeOwnerUserIds(
+    practiceIds: string[],
+  ): Promise<Map<string, string>> {
+    if (practiceIds.length === 0) {
+      return new Map<string, string>();
+    }
+
+    const firstMembers = await this.prisma.practiceMember.findMany({
+      where: {
+        practiceId: { in: [...new Set(practiceIds)] },
+        isActive: true,
+      },
+      select: {
+        practiceId: true,
+        userId: true,
+      },
+      orderBy: [
+        { practiceId: 'asc' },
+        { joinDate: 'asc' },
+        { createdAt: 'asc' },
+      ],
+    });
+
+    const ownerByPractice = new Map<string, string>();
+    for (const member of firstMembers) {
+      if (!ownerByPractice.has(member.practiceId)) {
+        ownerByPractice.set(member.practiceId, member.userId);
+      }
+    }
+
+    return ownerByPractice;
+  }
 
   async getSystemStats() {
     const [
@@ -514,6 +568,7 @@ export class AdminService {
         practices: {
           where: { isActive: true },
           select: {
+            practiceId: true,
             practice: {
               select: {
                 id: true,
@@ -521,14 +576,28 @@ export class AdminService {
                 practiceType: true,
               },
             },
+            joinDate: true,
             isActive: true,
           },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
+    const practiceIds = users.flatMap((u) =>
+      u.practices.map((p) => p.practiceId),
+    );
+    const ownerByPractice = await this.getPracticeOwnerUserIds(practiceIds);
 
-    return users;
+    return users.map((user) => ({
+      ...user,
+      practices: user.practices.map((membership) => ({
+        ...membership,
+        practiceRole:
+          ownerByPractice.get(membership.practiceId) === user.id
+            ? 'OWNER'
+            : 'MEMBER',
+      })),
+    }));
   }
 
   /**
@@ -580,14 +649,24 @@ export class AdminService {
         practices: {
           where: { practiceId, isActive: true },
           select: {
+            practiceId: true,
+            joinDate: true,
             isActive: true,
           },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
+    const ownerByPractice = await this.getPracticeOwnerUserIds([practiceId]);
+    const ownerUserId = ownerByPractice.get(practiceId);
 
-    return users;
+    return users.map((user) => ({
+      ...user,
+      practices: user.practices.map((membership) => ({
+        ...membership,
+        practiceRole: ownerUserId === user.id ? 'OWNER' : 'MEMBER',
+      })),
+    }));
   }
 
   /**
@@ -850,6 +929,19 @@ export class AdminService {
       );
     }
 
+    const requestedRole = createData.role as UserRole;
+    if (isInternalOnlyRole(requestedRole)) {
+      throw new ForbiddenException(
+        'SUPER_ADMIN can only be provisioned internally',
+      );
+    }
+
+    if (currentUserRole !== 'SUPER_ADMIN' && !isInviteOnlyRole(requestedRole)) {
+      throw new ForbiddenException(
+        'Only invite-only roles can be created by practice admins',
+      );
+    }
+
     // Check if email already exists
     const existingUser = await this.prisma.user.findUnique({
       where: { email: createData.email },
@@ -857,6 +949,10 @@ export class AdminService {
 
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
+    }
+
+    if (currentUserRole === 'ADMIN' && currentUserPracticeId) {
+      await this.ensureSeatAvailable(currentUserPracticeId);
     }
 
     // Hash password
@@ -868,13 +964,7 @@ export class AdminService {
         email: createData.email,
         password: hashedPassword,
         name: createData.name,
-        role: createData.role as
-          | 'SUPER_ADMIN'
-          | 'ADMIN'
-          | 'LAWYER'
-          | 'CLIENT'
-          | 'ASSOCIATE'
-          | 'PARALEGAL',
+        role: requestedRole,
         phone: createData.phone,
         isActive: true,
       },
@@ -909,7 +999,410 @@ export class AdminService {
     };
   }
 
+  async getPracticeSubscriptionSettings(practiceId: string): Promise<{
+    plan: string;
+    seatLimit: number;
+    activeMembers: number;
+    availableSeats: number;
+  }> {
+    const [
+      activeMemberCount,
+      practice,
+      planSetting,
+      seatLimitSetting,
+      statusSetting,
+    ] = await Promise.all([
+      this.prisma.practiceMember.count({
+        where: { practiceId, isActive: true },
+      }),
+      this.prisma.practice.findUnique({
+        where: { id: practiceId },
+        select: { practiceType: true },
+      }),
+      this.prisma.systemSettings.findUnique({
+        where: { key: getPracticePlanKey(practiceId) },
+        select: { value: true },
+      }),
+      this.prisma.systemSettings.findUnique({
+        where: { key: getPracticeSeatLimitKey(practiceId) },
+        select: { value: true },
+      }),
+      this.prisma.systemSettings.findUnique({
+        where: { key: getPracticeSubscriptionStatusKey(practiceId) },
+        select: { value: true },
+      }),
+    ]);
+
+    if (!practice) {
+      throw new BadRequestException('Practice not found');
+    }
+
+    const subscriptionStatus = (statusSetting?.value || 'pending_activation')
+      .toLowerCase()
+      .trim();
+    if (
+      subscriptionStatus &&
+      !ACTIVE_SUBSCRIPTION_STATUSES.includes(subscriptionStatus)
+    ) {
+      throw new ForbiddenException(
+        `Cannot add users while subscription is ${subscriptionStatus}. Please reactivate subscription.`,
+      );
+    }
+
+    const fallbackPlan = DEFAULT_PLAN_BY_PRACTICE_TYPE[practice.practiceType];
+    const resolvedPlan = planSetting?.value || fallbackPlan;
+    const fallbackSeatLimit =
+      DEFAULT_SEAT_LIMIT_BY_PLAN[resolvedPlan] ??
+      DEFAULT_SEAT_LIMIT_BY_PLAN.FIRM_STARTER;
+
+    const parsedSeatLimit = seatLimitSetting
+      ? Number.parseInt(seatLimitSetting.value, 10)
+      : Number.NaN;
+    const seatLimit = Number.isFinite(parsedSeatLimit)
+      ? parsedSeatLimit
+      : fallbackSeatLimit;
+
+    return {
+      plan: resolvedPlan,
+      seatLimit,
+      activeMembers: activeMemberCount,
+      availableSeats: Math.max(seatLimit - activeMemberCount, 0),
+    };
+  }
+
+  async updatePracticeSubscriptionSettings(
+    practiceId: string,
+    input: { plan?: string; seatLimit?: number },
+    updatedByUserId: string,
+  ): Promise<{
+    plan: string;
+    seatLimit: number;
+    activeMembers: number;
+    availableSeats: number;
+  }> {
+    const current = await this.getPracticeSubscriptionSettings(practiceId);
+    const nextPlan = input.plan ?? current.plan;
+    const nextSeatLimit = input.seatLimit ?? current.seatLimit;
+
+    if (!ALLOWED_SUBSCRIPTION_PLANS.includes(nextPlan)) {
+      throw new BadRequestException(
+        `Invalid subscription plan. Allowed plans: ${ALLOWED_SUBSCRIPTION_PLANS.join(', ')}`,
+      );
+    }
+
+    if (!Number.isInteger(nextSeatLimit) || nextSeatLimit < 1) {
+      throw new BadRequestException('Seat limit must be an integer >= 1');
+    }
+
+    if (nextSeatLimit < current.activeMembers) {
+      throw new BadRequestException(
+        `Seat limit cannot be below active members (${current.activeMembers})`,
+      );
+    }
+
+    await this.prisma.systemSettings.upsert({
+      where: { key: getPracticePlanKey(practiceId) },
+      create: {
+        key: getPracticePlanKey(practiceId),
+        value: nextPlan,
+        category: 'subscription',
+        description: `Subscription plan for practice ${practiceId}`,
+        isActive: true,
+        updatedBy: updatedByUserId,
+      },
+      update: {
+        value: nextPlan,
+        isActive: true,
+        updatedBy: updatedByUserId,
+      },
+    });
+
+    await this.prisma.systemSettings.upsert({
+      where: { key: getPracticeSeatLimitKey(practiceId) },
+      create: {
+        key: getPracticeSeatLimitKey(practiceId),
+        value: String(nextSeatLimit),
+        category: 'subscription',
+        description: `Seat limit for practice ${practiceId}`,
+        isActive: true,
+        updatedBy: updatedByUserId,
+      },
+      update: {
+        value: String(nextSeatLimit),
+        isActive: true,
+        updatedBy: updatedByUserId,
+      },
+    });
+
+    return this.getPracticeSubscriptionSettings(practiceId);
+  }
+
   private async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
+  }
+
+  private async ensureSeatAvailable(practiceId: string): Promise<void> {
+    const [activeMemberCount, practice, planSetting, seatLimitSetting] =
+      await Promise.all([
+        this.prisma.practiceMember.count({
+          where: { practiceId, isActive: true },
+        }),
+        this.prisma.practice.findUnique({
+          where: { id: practiceId },
+          select: { practiceType: true },
+        }),
+        this.prisma.systemSettings.findUnique({
+          where: { key: getPracticePlanKey(practiceId) },
+          select: { value: true },
+        }),
+        this.prisma.systemSettings.findUnique({
+          where: { key: getPracticeSeatLimitKey(practiceId) },
+          select: { value: true },
+        }),
+      ]);
+
+    if (!practice) {
+      throw new BadRequestException('Practice not found');
+    }
+
+    const fallbackPlan = DEFAULT_PLAN_BY_PRACTICE_TYPE[practice.practiceType];
+    const resolvedPlan = planSetting?.value || fallbackPlan;
+    const fallbackSeatLimit =
+      DEFAULT_SEAT_LIMIT_BY_PLAN[resolvedPlan] ??
+      DEFAULT_SEAT_LIMIT_BY_PLAN.FIRM_STARTER;
+
+    const parsedSeatLimit = seatLimitSetting
+      ? Number.parseInt(seatLimitSetting.value, 10)
+      : Number.NaN;
+    const seatLimit = Number.isFinite(parsedSeatLimit)
+      ? parsedSeatLimit
+      : fallbackSeatLimit;
+
+    if (activeMemberCount >= seatLimit) {
+      throw new ForbiddenException(
+        `Seat limit reached for plan ${resolvedPlan}. Current seats: ${activeMemberCount}/${seatLimit}`,
+      );
+    }
+  }
+
+  previewAdminEmailTemplate(
+    subject: string,
+    htmlContent: string,
+    currentUserName: string,
+  ) {
+    if (!subject?.trim() || !htmlContent?.trim()) {
+      throw new BadRequestException('subject and htmlContent are required');
+    }
+
+    return {
+      subject,
+      html: this.emailService.renderTemplateForPreview('admin-broadcast', {
+        recipientName: currentUserName || 'User',
+        htmlContent,
+      }),
+    };
+  }
+
+  async sendBroadcastEmail(
+    input: {
+      userIds: string[];
+      subject: string;
+      htmlContent: string;
+    },
+    currentUserId: string,
+    currentUserRole: string,
+    currentUserPracticeId?: string,
+  ) {
+    if (
+      !input.userIds?.length ||
+      !input.subject?.trim() ||
+      !input.htmlContent?.trim()
+    ) {
+      throw new BadRequestException(
+        'userIds, subject and htmlContent are required',
+      );
+    }
+
+    if (!this.emailService.isEnabled()) {
+      throw new BadRequestException('Email service is not configured');
+    }
+
+    const uniqueUserIds = [...new Set(input.userIds)];
+    let users: Array<{ id: string; name: string; email: string }>;
+
+    if (currentUserRole === 'SUPER_ADMIN') {
+      users = await this.prisma.user.findMany({
+        where: {
+          id: { in: uniqueUserIds },
+          isActive: true,
+        },
+        select: { id: true, name: true, email: true },
+      });
+    } else if (currentUserRole === 'ADMIN' && currentUserPracticeId) {
+      users = await this.prisma.user.findMany({
+        where: {
+          id: { in: uniqueUserIds },
+          isActive: true,
+          practices: {
+            some: {
+              practiceId: currentUserPracticeId,
+              isActive: true,
+            },
+          },
+        },
+        select: { id: true, name: true, email: true },
+      });
+    } else {
+      throw new ForbiddenException(
+        'You do not have permission to send broadcast emails',
+      );
+    }
+
+    if (users.length === 0) {
+      throw new BadRequestException('No valid users found for email broadcast');
+    }
+
+    const batchSize = 10;
+    let sent = 0;
+    let failed = 0;
+    const errors: Array<{ userId: string; email: string; error: string }> = [];
+
+    for (let i = 0; i < users.length; i += batchSize) {
+      const batch = users.slice(i, i + batchSize);
+      const results = await Promise.allSettled(
+        batch.map((user) =>
+          this.emailService.sendTemplateEmail({
+            to: user.email,
+            subject: input.subject,
+            templateName: 'admin-broadcast',
+            context: {
+              recipientName: user.name,
+              htmlContent: input.htmlContent,
+            },
+          }),
+        ),
+      );
+
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) {
+          sent += 1;
+        } else {
+          failed += 1;
+          errors.push({
+            userId: batch[index].id,
+            email: batch[index].email,
+            error:
+              result.status === 'rejected'
+                ? result.reason instanceof Error
+                  ? result.reason.message
+                  : 'Unknown failure'
+                : 'Email delivery failed',
+          });
+        }
+      });
+    }
+
+    return {
+      success: failed === 0,
+      sent,
+      failed,
+      total: users.length,
+      errors: errors.length > 0 ? errors : undefined,
+    };
+  }
+
+  async getEmailTemplates() {
+    const templates = await this.prisma.systemSettings.findMany({
+      where: {
+        key: {
+          startsWith: this.emailTemplateKeyPrefix,
+        },
+        isActive: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return templates
+      .map((template) => {
+        try {
+          const parsed = JSON.parse(template.value) as {
+            label: string;
+            subject: string;
+            htmlContent: string;
+          };
+          return {
+            id: template.key.replace(this.emailTemplateKeyPrefix, ''),
+            label: parsed.label,
+            subject: parsed.subject,
+            htmlContent: parsed.htmlContent,
+            updatedAt: template.updatedAt,
+          };
+        } catch {
+          return null;
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }
+
+  async upsertEmailTemplate(
+    data: { id: string; label: string; subject: string; htmlContent: string },
+    updatedByUserId: string,
+  ) {
+    if (
+      !data.id?.trim() ||
+      !data.label?.trim() ||
+      !data.subject?.trim() ||
+      !data.htmlContent?.trim()
+    ) {
+      throw new BadRequestException(
+        'id, label, subject and htmlContent are required',
+      );
+    }
+
+    const key = this.getEmailTemplateKey(data.id.trim());
+    const value = JSON.stringify({
+      label: data.label,
+      subject: data.subject,
+      htmlContent: data.htmlContent,
+    });
+
+    await this.prisma.systemSettings.upsert({
+      where: { key },
+      create: {
+        key,
+        value,
+        description: `Admin email template: ${data.label}`,
+        category: 'email',
+        isActive: true,
+        updatedBy: updatedByUserId,
+      },
+      update: {
+        value,
+        description: `Admin email template: ${data.label}`,
+        category: 'email',
+        isActive: true,
+        updatedBy: updatedByUserId,
+      },
+    });
+
+    return { success: true, id: data.id.trim() };
+  }
+
+  async deleteEmailTemplate(templateId: string, updatedByUserId: string) {
+    if (!templateId?.trim()) {
+      throw new BadRequestException('templateId is required');
+    }
+
+    const key = this.getEmailTemplateKey(templateId.trim());
+
+    await this.prisma.systemSettings.update({
+      where: { key },
+      data: {
+        isActive: false,
+        updatedBy: updatedByUserId,
+      },
+    });
+
+    return { success: true };
   }
 }

@@ -34,6 +34,13 @@ interface AdminSettings {
   };
 }
 
+interface PracticeSubscriptionSettings {
+  plan: "SOLO" | "FIRM_STARTER" | "FIRM_GROWTH" | "FIRM_SCALE";
+  seatLimit: number;
+  activeMembers: number;
+  availableSeats: number;
+}
+
 export default function AdminSettings() {
   const [settings, setSettings] = useState<AdminSettings>({
     system: {
@@ -64,9 +71,18 @@ export default function AdminSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("system");
+  const [subscriptionSettings, setSubscriptionSettings] =
+    useState<PracticeSubscriptionSettings>({
+      plan: "FIRM_STARTER",
+      seatLimit: 5,
+      activeMembers: 0,
+      availableSeats: 5,
+    });
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
 
   useEffect(() => {
     loadAdminSettings();
+    loadPracticeSubscriptionSettings();
   }, []);
 
   const loadAdminSettings = async () => {
@@ -150,6 +166,41 @@ export default function AdminSettings() {
     } catch (error) {
       console.error("Error saving admin settings:", error);
       toast.error("Failed to save system settings");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const loadPracticeSubscriptionSettings = async () => {
+    try {
+      setIsSubscriptionLoading(true);
+      const response = (await apiClient.getPracticeSubscriptionSettings()) as
+        | PracticeSubscriptionSettings
+        | null;
+      if (response && typeof response === "object") {
+        setSubscriptionSettings(response);
+      }
+    } catch (error) {
+      // This page can be visited by users who do not own a practice.
+    } finally {
+      setIsSubscriptionLoading(false);
+    }
+  };
+
+  const handleSaveSubscription = async () => {
+    try {
+      setIsSaving(true);
+
+      await apiClient.updatePracticeSubscriptionSettings({
+        plan: subscriptionSettings.plan,
+        seatLimit: Number(subscriptionSettings.seatLimit),
+      });
+
+      await loadPracticeSubscriptionSettings();
+      toast.success("Subscription settings updated successfully!");
+    } catch (error) {
+      console.error("Error updating subscription settings:", error);
+      toast.error("Failed to update subscription settings");
     } finally {
       setIsSaving(false);
     }
@@ -277,6 +328,17 @@ export default function AdminSettings() {
                     >
                       <Globe className="w-5 h-5" />
                       <span>Integrations</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("subscription")}
+                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                        activeTab === "subscription"
+                          ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                          : "text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <Settings className="w-5 h-5" />
+                      <span>Subscription</span>
                     </button>
                   </nav>
                 </div>
@@ -750,26 +812,105 @@ export default function AdminSettings() {
                     </div>
                   )}
 
+                  {/* Subscription Tab */}
+                  {activeTab === "subscription" && (
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground mb-6">
+                        Practice Subscription
+                      </h2>
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">
+                            Plan
+                          </label>
+                          <select
+                            value={subscriptionSettings.plan}
+                            onChange={(e) =>
+                              setSubscriptionSettings((prev) => ({
+                                ...prev,
+                                plan: e.target.value as PracticeSubscriptionSettings["plan"],
+                              }))
+                            }
+                            className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                            disabled={isSubscriptionLoading}
+                          >
+                            <option value="SOLO">Solo</option>
+                            <option value="FIRM_STARTER">Firm Starter</option>
+                            <option value="FIRM_GROWTH">Firm Growth</option>
+                            <option value="FIRM_SCALE">Firm Scale</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">
+                            Seat Limit
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={subscriptionSettings.seatLimit}
+                            onChange={(e) =>
+                              setSubscriptionSettings((prev) => ({
+                                ...prev,
+                                seatLimit: Number(e.target.value || 1),
+                              }))
+                            }
+                            className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                            disabled={isSubscriptionLoading}
+                          />
+                        </div>
+
+                        <div className="rounded-lg border border-border p-4 bg-muted/30">
+                          <p className="text-sm text-foreground">
+                            Active Members:{" "}
+                            <strong>{subscriptionSettings.activeMembers}</strong>
+                          </p>
+                          <p className="text-sm text-foreground">
+                            Available Seats:{" "}
+                            <strong>{subscriptionSettings.availableSeats}</strong>
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Seat limits are enforced whenever practice admins add
+                            new users.
+                          </p>
+                        </div>
+
+                        <div className="flex justify-end">
+                          <button
+                            onClick={handleSaveSubscription}
+                            disabled={isSaving || isSubscriptionLoading}
+                            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Save className="w-4 h-4" />
+                            <span>Save Subscription</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Save Button */}
-                  <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSaving ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4" />
-                          <span>Save Changes</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  {activeTab !== "subscription" && (
+                    <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                      <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSaving ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            <span>Save Changes</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

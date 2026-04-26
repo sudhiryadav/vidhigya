@@ -77,6 +77,32 @@ const envSchema = z
     RATE_LIMIT_MAX_REQUESTS: z.string().optional(),
 
     PUPPETEER_HEADLESS: z.string().optional(),
+
+    RAZORPAY_KEY_ID: z.string().optional(),
+    RAZORPAY_KEY_SECRET: z.string().optional(),
+    RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+    RAZORPAY_PLAN_SOLO: z.string().optional(),
+    RAZORPAY_PLAN_FIRM_STARTER: z.string().optional(),
+    RAZORPAY_PLAN_FIRM_GROWTH: z.string().optional(),
+    RAZORPAY_PLAN_FIRM_SCALE: z.string().optional(),
+
+    SMTP_HOST: z.string().optional(),
+    SMTP_PORT: z.string().optional(),
+    SMTP_SECURE: z.string().optional(),
+    SMTP_USER: z.string().optional(),
+    SMTP_USERNAME: z.string().optional(),
+    SMTP_PASS: z.string().optional(),
+    SMTP_PASSWORD: z.string().optional(),
+    SMTP_FROM: z.string().email().optional(),
+    SMTP_FROM_EMAIL: z.string().email().optional(),
+    SMTP_FROM_NAME: z.string().optional(),
+    EMAIL_HOST: z.string().optional(),
+    EMAIL_PORT: z.string().optional(),
+    EMAIL_SECURE: z.string().optional(),
+    EMAIL_USER: z.string().optional(),
+    EMAIL_PASS: z.string().optional(),
+    EMAIL_FROM: z.string().email().optional(),
+    EMAIL_FROM_NAME: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === 'production') {

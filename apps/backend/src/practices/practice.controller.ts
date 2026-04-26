@@ -37,6 +37,11 @@ interface PracticeUserUpdateData {
   password?: string;
 }
 
+interface UpdatePracticeSubscriptionData {
+  plan?: string;
+  seatLimit?: number;
+}
+
 @Controller('practice')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.LAWYER)
@@ -303,6 +308,67 @@ export class PracticeController {
       req.user.sub,
       req.user.role,
       currentUser.primaryPracticeId,
+    );
+  }
+
+  @Get('subscription-settings')
+  async getPracticeSubscriptionSettings(@Req() req: AuthenticatedRequest) {
+    const currentUser = await this.adminService.getCurrentUserPractice(
+      req.user.sub,
+    );
+
+    if (!currentUser.primaryPracticeId) {
+      throw new ForbiddenException(
+        'You must be associated with a practice to view subscription settings',
+      );
+    }
+
+    const isOwner = await this.adminService.isPracticeOwner(
+      req.user.sub,
+      currentUser.primaryPracticeId,
+    );
+
+    if (!isOwner) {
+      throw new ForbiddenException(
+        'Only the firm owner can view subscription settings',
+      );
+    }
+
+    return this.adminService.getPracticeSubscriptionSettings(
+      currentUser.primaryPracticeId,
+    );
+  }
+
+  @Put('subscription-settings')
+  async updatePracticeSubscriptionSettings(
+    @Body() updateData: UpdatePracticeSubscriptionData,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const currentUser = await this.adminService.getCurrentUserPractice(
+      req.user.sub,
+    );
+
+    if (!currentUser.primaryPracticeId) {
+      throw new ForbiddenException(
+        'You must be associated with a practice to update subscription settings',
+      );
+    }
+
+    const isOwner = await this.adminService.isPracticeOwner(
+      req.user.sub,
+      currentUser.primaryPracticeId,
+    );
+
+    if (!isOwner) {
+      throw new ForbiddenException(
+        'Only the firm owner can update subscription settings',
+      );
+    }
+
+    return this.adminService.updatePracticeSubscriptionSettings(
+      currentUser.primaryPracticeId,
+      updateData,
+      req.user.sub,
     );
   }
 }

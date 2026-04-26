@@ -1,0 +1,34 @@
+<p style="margin: 0 0 16px 0; color: #111827; font-size: 15px;">
+  Hi {{recipientName}},
+</p>
+
+<p style="margin: 0 0 16px 0; color: #374151; font-size: 14px;">
+  This is a reminder for an upcoming case date with important case details.
+</p>
+
+<div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px; margin-bottom: 16px;">
+  <p style="margin: 0 0 8px 0;"><strong>Case Number:</strong> {{caseNumber}}</p>
+  <p style="margin: 0 0 8px 0;"><strong>Title:</strong> {{caseTitle}}</p>
+  <p style="margin: 0 0 8px 0;"><strong>Status:</strong> {{caseStatus}}</p>
+  <p style="margin: 0 0 8px 0;"><strong>Priority:</strong> {{casePriority}}</p>
+  <p style="margin: 0 0 8px 0;"><strong>Client:</strong> {{clientName}}</p>
+  <p style="margin: 0 0 8px 0;"><strong>Assigned Lawyer:</strong> {{assignedLawyerName}}</p>
+  <p style="margin: 0 0 8px 0;"><strong>Court:</strong> {{courtName}}</p>
+  <p style="margin: 0;"><strong>Next Hearing Date:</strong> {{nextHearingDate}}</p>
+</div>
+
+{{#if judge}}
+<p style="margin: 0 0 8px 0; color: #374151; font-size: 14px;">
+  <strong>Judge:</strong> {{judge}}
+</p>
+{{/if}}
+
+{{#if opposingParty}}
+<p style="margin: 0 0 8px 0; color: #374151; font-size: 14px;">
+  <strong>Opposing Party:</strong> {{opposingParty}}
+</p>
+{{/if}}
+
+<p style="margin: 16px 0 0 0; color: #374151; font-size: 14px;">
+  Please review the case and prepare for the scheduled hearing.
+</p>

@@ -6,23 +6,81 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AssignTaskDto, CreateTaskDto, UpdateTaskDto } from './dto/task.dto';
 
+interface TaskAccessContext {
+  role: string;
+  practiceIds: string[];
+}
+
 @Injectable()
 export class TasksService {
   constructor(private prisma: PrismaService) {}
 
-  async getAllTasks(userId: string) {
-    // First check if user is a super admin
+  private async getTaskAccessContext(
+    userId: string,
+  ): Promise<TaskAccessContext> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true },
+      select: {
+        role: true,
+        practices: {
+          where: { isActive: true },
+          select: { practiceId: true },
+        },
+      },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    // Super admins can see all tasks
-    if (user.role === 'SUPER_ADMIN') {
+    return {
+      role: user.role,
+      practiceIds: user.practices.map((p) => p.practiceId),
+    };
+  }
+
+  private canReadTask(
+    userId: string,
+    access: TaskAccessContext,
+    task: {
+      practiceId: string;
+      createdById: string;
+      assignedToId: string | null;
+    },
+  ): boolean {
+    if (access.role === 'SUPER_ADMIN') return true;
+    if (access.role === 'ADMIN' || access.role === 'LAWYER') {
+      return access.practiceIds.includes(task.practiceId);
+    }
+    return (
+      access.practiceIds.includes(task.practiceId) &&
+      (task.createdById === userId || task.assignedToId === userId)
+    );
+  }
+
+  private canManageTask(
+    userId: string,
+    access: TaskAccessContext,
+    task: {
+      practiceId: string;
+      createdById: string;
+      assignedToId: string | null;
+    },
+  ): boolean {
+    if (access.role === 'SUPER_ADMIN') return true;
+    if (access.role === 'ADMIN' || access.role === 'LAWYER') {
+      return access.practiceIds.includes(task.practiceId);
+    }
+    return (
+      access.practiceIds.includes(task.practiceId) &&
+      (task.createdById === userId || task.assignedToId === userId)
+    );
+  }
+
+  async getAllTasks(userId: string) {
+    const access = await this.getTaskAccessContext(userId);
+
+    if (access.role === 'SUPER_ADMIN') {
       return this.prisma.task.findMany({
         include: {
           createdBy: {
@@ -66,29 +124,22 @@ export class TasksService {
         },
       });
     } else {
-      // For non-super admins, get tasks from practices they're members of
-      const practiceMemberships = await this.prisma.practiceMember.findMany({
-        where: {
-          userId,
-          isActive: true,
-        },
-        select: {
-          practiceId: true,
-        },
-      });
-
-      const practiceIds = practiceMemberships.map((pm) => pm.practiceId);
+      const practiceIds = access.practiceIds;
 
       if (practiceIds.length === 0) {
         return [];
       }
 
+      const baseWhere =
+        access.role === 'ADMIN' || access.role === 'LAWYER'
+          ? { practiceId: { in: practiceIds } }
+          : {
+              practiceId: { in: practiceIds },
+              OR: [{ createdById: userId }, { assignedToId: userId }],
+            };
+
       return this.prisma.task.findMany({
-        where: {
-          practiceId: {
-            in: practiceIds,
-          },
-        },
+        where: baseWhere,
         include: {
           createdBy: {
             select: {
@@ -134,32 +185,12 @@ export class TasksService {
   }
 
   async createTask(userId: string, createTaskDto: CreateTaskDto) {
-    // First check if user is a super admin
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // Super admins can create tasks in any practice
-    if (user.role === 'SUPER_ADMIN') {
-      // Continue without membership check
-    } else {
-      // For non-super admins, check if they have access to this practice
-      const practiceMember = await this.prisma.practiceMember.findFirst({
-        where: {
-          practiceId: createTaskDto.practiceId,
-          userId,
-          isActive: true,
-        },
-      });
-
-      if (!practiceMember) {
-        throw new ForbiddenException('Access denied to this practice');
-      }
+    const access = await this.getTaskAccessContext(userId);
+    if (
+      access.role !== 'SUPER_ADMIN' &&
+      !access.practiceIds.includes(createTaskDto.practiceId)
+    ) {
+      throw new ForbiddenException('Access denied to this practice');
     }
 
     return this.prisma.task.create({
@@ -209,38 +240,26 @@ export class TasksService {
   }
 
   async getTasksByPractice(practiceId: string, userId: string) {
-    // First check if user is a super admin
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
+    const access = await this.getTaskAccessContext(userId);
+    if (
+      access.role !== 'SUPER_ADMIN' &&
+      !access.practiceIds.includes(practiceId)
+    ) {
+      throw new ForbiddenException('Access denied to this practice');
     }
 
-    // Super admins can access any practice
-    if (user.role === 'SUPER_ADMIN') {
-      // Continue without membership check
-    } else {
-      // For non-super admins, check if they have access to this practice
-      const practiceMember = await this.prisma.practiceMember.findFirst({
-        where: {
-          practiceId,
-          userId,
-          isActive: true,
-        },
-      });
-
-      if (!practiceMember) {
-        throw new ForbiddenException('Access denied to this practice');
-      }
-    }
+    const where =
+      access.role === 'SUPER_ADMIN' ||
+      access.role === 'ADMIN' ||
+      access.role === 'LAWYER'
+        ? { practiceId }
+        : {
+            practiceId,
+            OR: [{ createdById: userId }, { assignedToId: userId }],
+          };
 
     return this.prisma.task.findMany({
-      where: {
-        practiceId,
-      },
+      where,
       include: {
         createdBy: {
           select: {
@@ -285,6 +304,7 @@ export class TasksService {
   }
 
   async getTaskById(taskId: string, userId: string) {
+    const access = await this.getTaskAccessContext(userId);
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
       include: {
@@ -330,32 +350,8 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    // Check if user has access to this task's practice
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // Super admins can access any task
-    if (user.role === 'SUPER_ADMIN') {
-      // Continue without membership check
-    } else {
-      // For non-super admins, check if they have access to this task's practice
-      const practiceMember = await this.prisma.practiceMember.findFirst({
-        where: {
-          practiceId: task.practiceId,
-          userId,
-          isActive: true,
-        },
-      });
-
-      if (!practiceMember) {
-        throw new ForbiddenException('Access denied to this task');
-      }
+    if (!this.canReadTask(userId, access, task)) {
+      throw new ForbiddenException('Access denied to this task');
     }
 
     return task;
@@ -366,16 +362,14 @@ export class TasksService {
     userId: string,
     updateTaskDto: UpdateTaskDto,
   ) {
+    const access = await this.getTaskAccessContext(userId);
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
-      include: {
-        practice: {
-          include: {
-            members: {
-              where: { userId },
-            },
-          },
-        },
+      select: {
+        id: true,
+        practiceId: true,
+        createdById: true,
+        assignedToId: true,
       },
     });
 
@@ -383,25 +377,8 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    // Check if user has access to this task's practice
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // Super admins can update any task
-    if (user.role === 'SUPER_ADMIN') {
-      // Continue without membership check
-    } else {
-      // For non-super admins, check if they have access to this task's practice
-      const practiceMember = task.practice.members[0];
-      if (!practiceMember) {
-        throw new ForbiddenException('Access denied to this task');
-      }
+    if (!this.canManageTask(userId, access, task)) {
+      throw new ForbiddenException('Access denied to this task');
     }
 
     return this.prisma.task.update({
@@ -452,16 +429,14 @@ export class TasksService {
   }
 
   async deleteTask(taskId: string, userId: string) {
+    const access = await this.getTaskAccessContext(userId);
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
-      include: {
-        practice: {
-          include: {
-            members: {
-              where: { userId },
-            },
-          },
-        },
+      select: {
+        id: true,
+        practiceId: true,
+        createdById: true,
+        assignedToId: true,
       },
     });
 
@@ -469,25 +444,8 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    // Check if user has access to this task's practice
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // Super admins can delete any task
-    if (user.role === 'SUPER_ADMIN') {
-      // Continue without membership check
-    } else {
-      // For non-super admins, check if they have access to this task's practice
-      const practiceMember = task.practice.members[0];
-      if (!practiceMember) {
-        throw new ForbiddenException('Access denied to this task');
-      }
+    if (!this.canManageTask(userId, access, task)) {
+      throw new ForbiddenException('Access denied to this task');
     }
 
     return this.prisma.task.delete({
@@ -500,16 +458,14 @@ export class TasksService {
     userId: string,
     assignTaskDto: AssignTaskDto,
   ) {
+    const access = await this.getTaskAccessContext(userId);
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
-      include: {
-        practice: {
-          include: {
-            members: {
-              where: { userId },
-            },
-          },
-        },
+      select: {
+        id: true,
+        practiceId: true,
+        createdById: true,
+        assignedToId: true,
       },
     });
 
@@ -517,25 +473,12 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    // Check if user has access to this task's practice
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // Super admins can assign any task
-    if (user.role === 'SUPER_ADMIN') {
-      // Continue without membership check
-    } else {
-      // For non-super admins, check if they have access to this task's practice
-      const practiceMember = task.practice.members[0];
-      if (!practiceMember) {
-        throw new ForbiddenException('Access denied to this task');
-      }
+    const canAssign =
+      access.role === 'SUPER_ADMIN' ||
+      ((access.role === 'ADMIN' || access.role === 'LAWYER') &&
+        access.practiceIds.includes(task.practiceId));
+    if (!canAssign) {
+      throw new ForbiddenException('Access denied to assign this task');
     }
 
     return this.prisma.task.update({

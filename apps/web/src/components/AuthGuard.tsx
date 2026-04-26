@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import LoadingOverlay from "./LoadingOverlay";
 
-const publicRoutes = ["/login", "/register", "/forgot-password"];
+const publicRoutes = ["/", "/landing", "/login", "/register", "/forgot-password"];
 const specialRoutes = ["/logout"]; // Routes that need special handling
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -16,7 +16,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // Helper function to check if current path is a public route
   const isPublicRoute = (path: string) => {
-    return publicRoutes.some((route) => path.includes(route));
+    return publicRoutes.some((route) => {
+      if (route === "/") {
+        return path === "/";
+      }
+      return path === route || path.startsWith(`${route}/`);
+    });
   };
 
   useEffect(() => {

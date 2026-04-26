@@ -7,8 +7,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { PracticeType } from '@prisma/client';
+import { PracticeType, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import {
+  DEFAULT_PLAN_BY_PRACTICE_TYPE,
+  DEFAULT_SEAT_LIMIT_BY_PLAN,
+  getPracticePlanKey,
+  getPracticeSeatLimitKey,
+  isInternalOnlyRole,
+  isPublicSignupRole,
+} from '../common/policies/account-policy';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface LoginRequest {
@@ -20,13 +28,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
-  role:
-    | 'SUPER_ADMIN'
-    | 'ADMIN'
-    | 'LAWYER'
-    | 'CLIENT'
-    | 'ASSOCIATE'
-    | 'PARALEGAL';
+  role: UserRole;
   phone?: string;
   currency?: string;
   practiceName?: string;
@@ -134,6 +136,18 @@ export class AuthService {
   }
 
   async register(registerRequest: RegisterRequest): Promise<AuthResponse> {
+    if (isInternalOnlyRole(registerRequest.role)) {
+      throw new BadRequestException(
+        'This role cannot be created via public registration',
+      );
+    }
+
+    if (!isPublicSignupRole(registerRequest.role)) {
+      throw new BadRequestException(
+        'Public registration is only available for individual lawyers and firm admins',
+      );
+    }
+
     // Check if user already exists
     const existingUser = await this.prisma.user.findUnique({
       where: { email: registerRequest.email },
@@ -159,7 +173,10 @@ export class AuthService {
     });
 
     // Create practice for the user if they're a lawyer or admin
-    if (registerRequest.role === 'LAWYER' || registerRequest.role === 'ADMIN') {
+    if (
+      registerRequest.role === UserRole.LAWYER ||
+      registerRequest.role === UserRole.ADMIN
+    ) {
       const practiceName =
         registerRequest.practiceName || `${user.name}'s Practice`;
       const practiceType =
@@ -184,6 +201,32 @@ export class AuthService {
       await this.prisma.user.update({
         where: { id: user.id },
         data: { primaryPracticeId: practice.id },
+      });
+
+      const defaultPlan =
+        DEFAULT_PLAN_BY_PRACTICE_TYPE[practiceType as PracticeType];
+      const defaultSeatLimit = DEFAULT_SEAT_LIMIT_BY_PLAN[defaultPlan];
+      await this.prisma.systemSettings.upsert({
+        where: { key: getPracticePlanKey(practice.id) },
+        create: {
+          key: getPracticePlanKey(practice.id),
+          value: defaultPlan,
+          description: `Subscription plan for practice ${practice.id}`,
+          category: 'subscription',
+          isActive: true,
+        },
+        update: { value: defaultPlan, isActive: true },
+      });
+      await this.prisma.systemSettings.upsert({
+        where: { key: getPracticeSeatLimitKey(practice.id) },
+        create: {
+          key: getPracticeSeatLimitKey(practice.id),
+          value: String(defaultSeatLimit),
+          description: `Seat limit for practice ${practice.id}`,
+          category: 'subscription',
+          isActive: true,
+        },
+        update: { value: String(defaultSeatLimit), isActive: true },
       });
     }
 

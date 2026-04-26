@@ -9,7 +9,9 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { Request as ExpressRequest } from 'express';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import {
@@ -60,6 +62,27 @@ export class BillingController {
   @Get('overdue')
   getOverdueBills(@Request() req: AuthenticatedRequest) {
     return this.billingService.getOverdueBills(req.user.sub);
+  }
+
+  @Get('subscriptions/me')
+  @RequireRead(PermissionResource.BILLING)
+  getMySubscription(@Request() req: AuthenticatedRequest) {
+    return this.billingService.getMySubscription(req.user.sub);
+  }
+
+  @Post('subscriptions/checkout')
+  @RequireUpdate(PermissionResource.BILLING)
+  createSubscriptionCheckout(
+    @Request() req: AuthenticatedRequest,
+    @Body() data: { plan?: string },
+  ) {
+    return this.billingService.createRazorpayCheckout(req.user.sub, data?.plan);
+  }
+
+  @Get('subscriptions/overview')
+  @Roles(UserRole.SUPER_ADMIN)
+  getSubscriptionsOverview() {
+    return this.billingService.getSubscriptionsOverview();
   }
 
   @Get(':id')

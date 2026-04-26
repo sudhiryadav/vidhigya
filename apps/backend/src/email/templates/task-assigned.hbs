@@ -1,0 +1,20 @@
+<p style="margin: 0 0 16px 0; color: #111827; font-size: 15px;">
+  Hi {{recipientName}},
+</p>
+
+<p style="margin: 0 0 16px 0; color: #374151; font-size: 14px;">
+  A new task has been assigned to you.
+</p>
+
+<div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px; margin-bottom: 16px;">
+  <p style="margin: 0 0 8px 0;"><strong>Task:</strong> {{taskTitle}}</p>
+  <p style="margin: 0 0 8px 0;"><strong>Assigned By:</strong> {{assignedBy}}</p>
+  <p style="margin: 0 0 8px 0;"><strong>Case Number:</strong> {{caseNumber}}</p>
+  <p style="margin: 0;"><strong>Case Title:</strong> {{caseTitle}}</p>
+</div>
+
+{{#if taskDescription}}
+<p style="margin: 0; color: #374151; font-size: 14px;">
+  <strong>Description:</strong> {{taskDescription}}
+</p>
+{{/if}}

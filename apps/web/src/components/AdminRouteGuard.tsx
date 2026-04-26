@@ -10,6 +10,7 @@ const adminRoutes = [
   "/admin",
   "/admin/dashboard",
   "/admin/users",
+  "/admin/email-broadcast",
   "/admin/settings",
   "/admin/analytics",
   "/admin/billing",

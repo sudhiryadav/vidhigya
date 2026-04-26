@@ -55,6 +55,11 @@ export interface UpdateParticipantStatusDto {
   response?: string;
 }
 
+interface CalendarAccessContext {
+  role: string;
+  practiceIds: string[];
+}
+
 @Injectable()
 export class CalendarService {
   private readonly logger = new RedactingLogger(CalendarService.name);
@@ -87,6 +92,48 @@ export class CalendarService {
     }
 
     return true;
+  }
+
+  private async getCalendarAccessContext(
+    userId: string,
+  ): Promise<CalendarAccessContext> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        role: true,
+        practices: {
+          where: { isActive: true },
+          select: { practiceId: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+
+    return {
+      role: user.role,
+      practiceIds: user.practices.map((p) => p.practiceId),
+    };
+  }
+
+  private buildCalendarReadWhere(
+    userId: string,
+    access: CalendarAccessContext,
+  ): Record<string, unknown> {
+    if (access.role === 'SUPER_ADMIN') return {};
+    if (access.role === 'ADMIN' || access.role === 'LAWYER') {
+      return access.practiceIds.length > 0
+        ? { practiceId: { in: access.practiceIds } }
+        : { createdById: userId };
+    }
+    return {
+      ...(access.practiceIds.length > 0
+        ? { practiceId: { in: access.practiceIds } }
+        : {}),
+      OR: [{ createdById: userId }, { participants: { some: { userId } } }],
+    };
   }
 
   async createEvent(createEventDto: CreateEventDto, userId: string) {
@@ -309,53 +356,11 @@ export class CalendarService {
   }
 
   async findAll(userId: string, query: Record<string, unknown> = {}) {
-    // Get user's role and practice information
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        role: true,
-        primaryPracticeId: true,
-        practices: {
-          where: { isActive: true },
-          select: { practiceId: true },
-        },
-      },
-    });
-
-    if (!user) {
-      throw new ForbiddenException('User not found');
-    }
-
-    const where: Record<string, unknown> = {};
-
-    // SUPER_ADMIN can see all events
-    if (user.role === 'SUPER_ADMIN') {
-      // No additional filters needed
-    }
-    // ADMIN can see all events from all practices (read-only access)
-    else if (user.role === 'ADMIN') {
-      // No additional filters needed - admin can see all events
-    }
-    // LAWYER, ASSOCIATE, and PARALEGAL can see events from their practices
-    else if (['LAWYER', 'ASSOCIATE', 'PARALEGAL'].includes(user.role)) {
-      const practiceIds = user.practices.map((p) => p.practiceId);
-      if (practiceIds.length > 0) {
-        where.practiceId = { in: practiceIds };
-      } else {
-        // If no practices, they can only see their own events
-        where.OR = [
-          { createdById: userId },
-          { participants: { some: { userId } } },
-        ];
-      }
-    }
-    // CLIENT can only see their own events
-    else {
-      where.OR = [
-        { createdById: userId },
-        { participants: { some: { userId } } },
-      ];
-    }
+    const access = await this.getCalendarAccessContext(userId);
+    const where: Record<string, unknown> = this.buildCalendarReadWhere(
+      userId,
+      access,
+    );
 
     // Add date range filters
     if (query.startDate && query.endDate) {
@@ -411,11 +416,9 @@ export class CalendarService {
   }
 
   async findOne(id: string, userId: string) {
+    const access = await this.getCalendarAccessContext(userId);
     const event = await this.prisma.calendarEvent.findFirst({
-      where: {
-        id,
-        OR: [{ createdById: userId }, { participants: { some: { userId } } }],
-      },
+      where: { id },
       include: {
         createdBy: {
           select: {
@@ -449,13 +452,23 @@ export class CalendarService {
       throw new NotFoundException('Event not found');
     }
 
-    // Validate practice access
-    await this.validatePracticeAccess(userId, event.practiceId);
+    const canRead =
+      access.role === 'SUPER_ADMIN' ||
+      (access.role === 'ADMIN' || access.role === 'LAWYER'
+        ? access.practiceIds.includes(event.practiceId)
+        : access.practiceIds.includes(event.practiceId) &&
+          (event.createdById === userId ||
+            event.participants.some((p) => p.userId === userId)));
+
+    if (!canRead) {
+      throw new ForbiddenException('Access denied');
+    }
 
     return event;
   }
 
   async update(id: string, updateEventDto: UpdateEventDto, userId: string) {
+    const access = await this.getCalendarAccessContext(userId);
     // Find the event and check permissions
     const event = await this.prisma.calendarEvent.findFirst({
       where: { id },
@@ -469,31 +482,17 @@ export class CalendarService {
       throw new NotFoundException('Event not found');
     }
 
-    // Check if user can edit this event
-    // Users can edit if they: created the event, are admin, or have practice access
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-
-    if (!user) {
-      throw new ForbiddenException('User not found');
-    }
-
     const canEdit =
-      event.createdBy.id === userId ||
-      user.role === 'SUPER_ADMIN' ||
-      user.role === 'ADMIN';
+      access.role === 'SUPER_ADMIN' ||
+      ((access.role === 'ADMIN' || access.role === 'LAWYER') &&
+        access.practiceIds.includes(event.practice.id)) ||
+      (access.practiceIds.includes(event.practice.id) &&
+        event.createdBy.id === userId);
 
     if (!canEdit) {
-      // Check if user has practice access
-      try {
-        await this.validatePracticeAccess(userId, event.practice.id);
-      } catch {
-        throw new ForbiddenException(
-          'You do not have permission to edit this event',
-        );
-      }
+      throw new ForbiddenException(
+        'You do not have permission to edit this event',
+      );
     }
 
     // Validate dates if both are provided
@@ -619,6 +618,7 @@ export class CalendarService {
   }
 
   async remove(id: string, userId: string) {
+    const access = await this.getCalendarAccessContext(userId);
     // Find the event and check permissions
     const event = await this.prisma.calendarEvent.findFirst({
       where: { id },
@@ -632,31 +632,17 @@ export class CalendarService {
       throw new NotFoundException('Event not found');
     }
 
-    // Check if user can delete this event
-    // Users can delete if they: created the event, are admin, or have practice access
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-
-    if (!user) {
-      throw new ForbiddenException('User not found');
-    }
-
     const canDelete =
-      event.createdBy.id === userId ||
-      user.role === 'SUPER_ADMIN' ||
-      user.role === 'ADMIN';
+      access.role === 'SUPER_ADMIN' ||
+      ((access.role === 'ADMIN' || access.role === 'LAWYER') &&
+        access.practiceIds.includes(event.practice.id)) ||
+      (access.practiceIds.includes(event.practice.id) &&
+        event.createdBy.id === userId);
 
     if (!canDelete) {
-      // Check if user has practice access
-      try {
-        await this.validatePracticeAccess(userId, event.practice.id);
-      } catch {
-        throw new ForbiddenException(
-          'You do not have permission to delete this event',
-        );
-      }
+      throw new ForbiddenException(
+        'You do not have permission to delete this event',
+      );
     }
 
     // Log the deletion for debugging

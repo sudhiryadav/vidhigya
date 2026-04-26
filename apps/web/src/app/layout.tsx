@@ -1,7 +1,43 @@
 import { Inter } from "next/font/google";
+import Script from "next/script";
+import type { Metadata } from "next";
 import "./globals.css";
+import { seoConfig } from "@/lib/seo";
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  metadataBase: new URL(seoConfig.siteUrl),
+  title: {
+    default: seoConfig.defaultTitle,
+    template: seoConfig.titleTemplate,
+  },
+  description: seoConfig.description,
+  keywords: seoConfig.keywords,
+  applicationName: seoConfig.siteName,
+  referrer: "origin-when-cross-origin",
+  alternates: {
+    canonical: "/",
+  },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: ["/icon.svg"],
+    apple: [{ url: "/icon.svg" }],
+  },
+  openGraph: {
+    type: "website",
+    url: seoConfig.siteUrl,
+    siteName: seoConfig.siteName,
+    title: seoConfig.defaultTitle,
+    description: seoConfig.description,
+    locale: seoConfig.locale,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: seoConfig.defaultTitle,
+    description: seoConfig.description,
+  },
+};
 
 export default function RootLayout({
   children,
@@ -12,16 +48,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         <meta name="color-scheme" content="light dark" />
-        <title>Vidhigya - Legal Practice Management</title>
-        <meta
-          name="description"
-          content="Comprehensive legal practice management platform for lawyers and law firms"
-        />
-        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
-        <link rel="shortcut icon" href="/logo.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/logo.svg" />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" />
+        {children}
+      </body>
     </html>
   );
 }

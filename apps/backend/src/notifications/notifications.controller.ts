@@ -1,9 +1,11 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
   Param,
   Patch,
+  Post,
   Query,
   Request,
   UseGuards,
@@ -29,6 +31,10 @@ interface NotificationQuery {
 interface NotificationFilters {
   isRead?: boolean;
   type?: string;
+}
+
+interface SendTestEmailBody {
+  to?: string;
 }
 
 @Controller('notifications')
@@ -169,6 +175,27 @@ export class NotificationsController {
       id,
       req.user.sub,
       user.primaryPracticeId,
+    );
+  }
+
+  @Post('test-email')
+  async sendTestEmail(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: SendTestEmailBody,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: req.user.sub },
+      select: { primaryPracticeId: true },
+    });
+
+    if (!user?.primaryPracticeId) {
+      throw new Error('User not associated with any practice');
+    }
+
+    return this.notificationsService.sendTestEmail(
+      req.user.sub,
+      user.primaryPracticeId,
+      body?.to,
     );
   }
 }

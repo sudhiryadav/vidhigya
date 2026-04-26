@@ -7,6 +7,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { DocumentCategory, DocumentStatus } from '@prisma/client';
 import { RedactingLogger } from '../common/logging';
+import {
+  PLAN_ENTITLEMENTS_BY_PLAN,
+  getPracticePlanKey,
+} from '../common/policies/account-policy';
 import { QdrantService } from '../config/qdrant.service';
 import { LogsService } from '../logs/logs.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -36,6 +40,24 @@ interface DocumentQuery {
   status?: DocumentStatus;
 }
 
+interface DocumentAccessContext {
+  role: string;
+  practiceIds: string[];
+}
+
+export interface AiUsageQuotaSnapshot {
+  practiceId: string;
+  plan: string;
+  planLabel: string;
+  usageDate: string;
+  userUsedToday: number;
+  userDailyLimit: number;
+  userRemainingToday: number;
+  practiceUsedToday: number;
+  practiceDailyLimit: number;
+  practiceRemainingToday: number;
+}
+
 @Injectable()
 export class DocumentsService {
   private readonly logger = new RedactingLogger(DocumentsService.name);
@@ -46,6 +68,122 @@ export class DocumentsService {
     private readonly logsService: LogsService,
     private readonly configService: ConfigService,
   ) {}
+
+  private getUtcDayBounds(date = new Date()): { start: Date; end: Date } {
+    const start = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    );
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 1);
+    return { start, end };
+  }
+
+  private async resolvePracticeForAiUsage(userId: string): Promise<{
+    practiceId: string;
+    plan: string;
+  }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        primaryPracticeId: true,
+        practices: {
+          where: { isActive: true },
+          orderBy: { joinDate: 'asc' },
+          take: 1,
+          select: { practiceId: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const practiceId =
+      user.primaryPracticeId ?? user.practices[0]?.practiceId ?? null;
+    if (!practiceId) {
+      throw new ForbiddenException(
+        'No practice is associated with this user account.',
+      );
+    }
+
+    const planSetting = await this.prisma.systemSettings.findUnique({
+      where: { key: getPracticePlanKey(practiceId) },
+      select: { value: true },
+    });
+
+    const plan = planSetting?.value || 'FIRM_STARTER';
+    return { practiceId, plan };
+  }
+
+  async getAiUsageQuotaSnapshot(userId: string): Promise<AiUsageQuotaSnapshot> {
+    const { practiceId, plan } = await this.resolvePracticeForAiUsage(userId);
+    const planEntitlement =
+      PLAN_ENTITLEMENTS_BY_PLAN[plan] || PLAN_ENTITLEMENTS_BY_PLAN.FIRM_STARTER;
+    const { start, end } = this.getUtcDayBounds();
+
+    const [userUsedToday, practiceUsedToday] = await Promise.all([
+      this.prisma.documentQuery.count({
+        where: {
+          userId,
+          isDeleted: false,
+          createdAt: {
+            gte: start,
+            lt: end,
+          },
+        },
+      }),
+      this.prisma.documentQuery.count({
+        where: {
+          practiceId,
+          isDeleted: false,
+          createdAt: {
+            gte: start,
+            lt: end,
+          },
+        },
+      }),
+    ]);
+
+    return {
+      practiceId,
+      plan,
+      planLabel: planEntitlement.marketingName,
+      usageDate: start.toISOString().slice(0, 10),
+      userUsedToday,
+      userDailyLimit: planEntitlement.aiDailyUserLimit,
+      userRemainingToday: Math.max(
+        planEntitlement.aiDailyUserLimit - userUsedToday,
+        0,
+      ),
+      practiceUsedToday,
+      practiceDailyLimit: planEntitlement.aiDailyPracticeLimit,
+      practiceRemainingToday: Math.max(
+        planEntitlement.aiDailyPracticeLimit - practiceUsedToday,
+        0,
+      ),
+    };
+  }
+
+  async enforceAiUsageWithinDailyLimits(
+    userId: string,
+  ): Promise<AiUsageQuotaSnapshot> {
+    const snapshot = await this.getAiUsageQuotaSnapshot(userId);
+
+    if (snapshot.userUsedToday >= snapshot.userDailyLimit) {
+      throw new ForbiddenException(
+        `Daily AI limit reached for your account (${snapshot.userUsedToday}/${snapshot.userDailyLimit}). Please retry tomorrow or upgrade your plan.`,
+      );
+    }
+
+    if (snapshot.practiceUsedToday >= snapshot.practiceDailyLimit) {
+      throw new ForbiddenException(
+        `Daily AI limit reached for your practice (${snapshot.practiceUsedToday}/${snapshot.practiceDailyLimit}). Please retry tomorrow or upgrade your plan.`,
+      );
+    }
+
+    return snapshot;
+  }
 
   /**
    * Ask the Python AI service to stop a background embedding job (cooperative cancel).
@@ -110,6 +248,104 @@ export class DocumentsService {
     return true;
   }
 
+  private async getDocumentAccessContext(
+    userId: string,
+  ): Promise<DocumentAccessContext> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        role: true,
+        practices: {
+          where: { isActive: true },
+          select: { practiceId: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+
+    return {
+      role: user.role,
+      practiceIds: user.practices.map((p) => p.practiceId),
+    };
+  }
+
+  private buildDocumentReadWhere(
+    userId: string,
+    access: DocumentAccessContext,
+  ): Record<string, unknown> {
+    if (access.role === 'SUPER_ADMIN') {
+      return {};
+    }
+
+    // Firm owner/admin and lead lawyer: full access inside their own practice(s).
+    if (access.role === 'ADMIN' || access.role === 'LAWYER') {
+      if (access.practiceIds.length === 0) {
+        return { uploadedById: userId };
+      }
+      return { practiceId: { in: access.practiceIds } };
+    }
+
+    // Associates/paralegals: only own uploads or case/client-linked documents
+    // within their practice context.
+    if (access.role === 'ASSOCIATE' || access.role === 'PARALEGAL') {
+      return {
+        OR: [
+          { uploadedById: userId },
+          { case: { assignedLawyerId: userId } },
+          { case: { clientId: userId } },
+          { client: { userId } },
+        ],
+        ...(access.practiceIds.length > 0
+          ? { practiceId: { in: access.practiceIds } }
+          : {}),
+      };
+    }
+
+    // Client users: only their own client-linked documents.
+    return {
+      OR: [
+        { uploadedById: userId },
+        { case: { clientId: userId } },
+        { client: { userId } },
+      ],
+    };
+  }
+
+  private canReadDocument(
+    userId: string,
+    access: DocumentAccessContext,
+    document: {
+      uploadedById: string;
+      practiceId: string;
+      case: { assignedLawyerId: string; clientId: string } | null;
+      client: { userId: string | null } | null;
+    },
+  ): boolean {
+    if (access.role === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    const inPractice = access.practiceIds.includes(document.practiceId);
+    const linkedToUser =
+      document.uploadedById === userId ||
+      document.case?.assignedLawyerId === userId ||
+      document.case?.clientId === userId ||
+      document.client?.userId === userId;
+
+    if (access.role === 'ADMIN' || access.role === 'LAWYER') {
+      return inPractice;
+    }
+
+    if (access.role === 'ASSOCIATE' || access.role === 'PARALEGAL') {
+      return inPractice && linkedToUser;
+    }
+
+    return linkedToUser;
+  }
+
   /** Resolve practice for uploads when JWT context must match DB (primary or first active membership). */
   async resolvePracticeIdForDocumentUpload(userId: string): Promise<string> {
     const user = await this.prisma.user.findUnique({
@@ -170,47 +406,11 @@ export class DocumentsService {
   }
 
   async findAll(userId: string, query: DocumentQuery = {}) {
-    // Get user's role and practice information
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        role: true,
-        primaryPracticeId: true,
-        practices: {
-          where: { isActive: true },
-          select: { practiceId: true },
-        },
-      },
-    });
-
-    if (!user) {
-      throw new ForbiddenException('User not found');
-    }
-
-    const where: Record<string, unknown> = {};
-
-    // SUPER_ADMIN can see all documents
-    if (user.role === 'SUPER_ADMIN') {
-      // No additional filters needed
-    }
-    // ADMIN can see all documents from all practices (read-only access)
-    else if (user.role === 'ADMIN') {
-      // No additional filters needed - admin can see all documents
-    }
-    // LAWYER, ASSOCIATE, and PARALEGAL can see documents from their practices
-    else if (['LAWYER', 'ASSOCIATE', 'PARALEGAL'].includes(user.role)) {
-      const practiceIds = user.practices.map((p) => p.practiceId);
-      if (practiceIds.length > 0) {
-        where.practiceId = { in: practiceIds };
-      } else {
-        // If no practices, they can only see their own documents
-        where.uploadedById = userId;
-      }
-    }
-    // CLIENT can only see their own documents
-    else {
-      where.uploadedById = userId;
-    }
+    const access = await this.getDocumentAccessContext(userId);
+    const where: Record<string, unknown> = this.buildDocumentReadWhere(
+      userId,
+      access,
+    );
 
     if (query.caseId) {
       where.caseId = query.caseId;
@@ -249,6 +449,8 @@ export class DocumentsService {
   }
 
   async findOne(id: string, userId: string) {
+    const access = await this.getDocumentAccessContext(userId);
+
     let document = await this.prisma.legalDocument.findUnique({
       where: { id },
       include: {
@@ -259,6 +461,11 @@ export class DocumentsService {
             caseNumber: true,
             assignedLawyerId: true,
             clientId: true,
+          },
+        },
+        client: {
+          select: {
+            userId: true,
           },
         },
         uploadedBy: {
@@ -284,6 +491,11 @@ export class DocumentsService {
               clientId: true,
             },
           },
+          client: {
+            select: {
+              userId: true,
+            },
+          },
           uploadedBy: {
             select: {
               id: true,
@@ -299,17 +511,24 @@ export class DocumentsService {
       throw new NotFoundException('Document not found');
     }
 
-    // Validate practice access
-    await this.validatePracticeAccess(userId, document.practiceId);
-
-    // Check if user has access to this document
     if (
-      document.case &&
-      document.case.assignedLawyerId !== userId &&
-      document.case.clientId !== userId &&
-      document.uploadedById !== userId
+      !this.canReadDocument(userId, access, {
+        uploadedById: document.uploadedById,
+        practiceId: document.practiceId,
+        case: document.case
+          ? {
+              assignedLawyerId: document.case.assignedLawyerId,
+              clientId: document.case.clientId,
+            }
+          : null,
+        client: document.client
+          ? {
+              userId: document.client.userId,
+            }
+          : null,
+      })
     ) {
-      throw new BadRequestException('Access denied');
+      throw new ForbiddenException('Access denied');
     }
 
     return document;

@@ -13,6 +13,8 @@ import {
   AlertCircle,
   Building2,
   CheckCircle,
+  ChevronDown,
+  ChevronRight,
   Edit,
   Eye,
   Lock,
@@ -56,6 +58,13 @@ interface UpdateUserData {
   password?: string;
 }
 
+interface PracticeSubscriptionSettings {
+  plan: string;
+  seatLimit: number;
+  activeMembers: number;
+  availableSeats: number;
+}
+
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth();
   const { currentPractice } = usePractice();
@@ -73,6 +82,11 @@ export default function AdminUsersPage() {
     useState(false);
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<
+    Record<string, boolean>
+  >({});
+  const [subscriptionSettings, setSubscriptionSettings] =
+    useState<PracticeSubscriptionSettings | null>(null);
 
   // Form states
   const [createForm, setCreateForm] = useState<CreateUserData>({
@@ -99,6 +113,7 @@ export default function AdminUsersPage() {
   // Load users based on current user's role
   useEffect(() => {
     loadUsers();
+    loadSubscriptionSettings();
   }, [currentUser?.role]);
 
   // Filter users based on search and filters
@@ -153,6 +168,25 @@ export default function AdminUsersPage() {
     }
   };
 
+  const loadSubscriptionSettings = async () => {
+    try {
+      if (currentUser?.role !== "ADMIN" && currentUser?.role !== "LAWYER") {
+        setSubscriptionSettings(null);
+        return;
+      }
+
+      const subscriptionResponse =
+        (await apiClient.getPracticeSubscriptionSettings()) as
+          | PracticeSubscriptionSettings
+          | null;
+      if (subscriptionResponse) {
+        setSubscriptionSettings(subscriptionResponse);
+      }
+    } catch {
+      setSubscriptionSettings(null);
+    }
+  };
+
   const handleCreateUser = async () => {
     try {
       if (!createForm.name || !createForm.email || !createForm.password) {
@@ -171,6 +205,7 @@ export default function AdminUsersPage() {
         password: "",
       });
       loadUsers();
+      loadSubscriptionSettings();
     } catch (error) {
       console.error("Failed to create user:", error);
       toast.error("Failed to create user");
@@ -318,8 +353,6 @@ export default function AdminUsersPage() {
         "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
       PARALEGAL:
         "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400",
-      ASSISTANT:
-        "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
     };
 
     return (
@@ -342,6 +375,179 @@ export default function AdminUsersPage() {
     );
   };
 
+  const getPrimaryPracticeRole = (user: User) => {
+    if (!user.practices || user.practices.length === 0) {
+      return null;
+    }
+
+    if (user.primaryPracticeId) {
+      const primaryPractice = user.practices.find(
+        (practice) => practice.practiceId === user.primaryPracticeId
+      );
+      if (primaryPractice?.practiceRole) {
+        return primaryPractice.practiceRole;
+      }
+    }
+
+    return user.practices[0]?.practiceRole ?? null;
+  };
+
+  const getPrimaryPracticeId = (user: User) => {
+    if (user.primaryPracticeId) {
+      return user.primaryPracticeId;
+    }
+
+    return user.practices?.[0]?.practiceId ?? null;
+  };
+
+  const getPracticeRoleBadge = (practiceRole?: string | null) => {
+    if (!practiceRole) {
+      return (
+        <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">
+          N/A
+        </Badge>
+      );
+    }
+
+    const normalizedPracticeRole = practiceRole.toUpperCase();
+    const roleColors: { [key: string]: string } = {
+      OWNER:
+        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400",
+      ADMIN:
+        "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
+      MEMBER:
+        "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
+      ASSOCIATE:
+        "bg-violet-100 text-violet-800 dark:bg-violet-900/20 dark:text-violet-400",
+    };
+
+    return (
+      <Badge
+        className={
+          roleColors[normalizedPracticeRole] ||
+          "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+        }
+      >
+        {normalizedPracticeRole.replace("_", " ")}
+      </Badge>
+    );
+  };
+
+  const hasNoAvailableSeats =
+    !!subscriptionSettings && subscriptionSettings.availableSeats <= 0;
+
+  const groupedUsersForSuperAdmin = (() => {
+    if (currentUser?.role !== "SUPER_ADMIN") {
+      return [];
+    }
+
+    const groupedByPractice = new Map<string, User[]>();
+    const unassignedUsers: User[] = [];
+
+    filteredUsers.forEach((user) => {
+      const practiceId = getPrimaryPracticeId(user);
+      if (!practiceId) {
+        unassignedUsers.push(user);
+        return;
+      }
+
+      const practiceUsers = groupedByPractice.get(practiceId) || [];
+      practiceUsers.push(user);
+      groupedByPractice.set(practiceId, practiceUsers);
+    });
+
+    const groups: Array<{
+      key: string;
+      title: string;
+      owner: User;
+      members: User[];
+    }> = [];
+
+    groupedByPractice.forEach((practiceUsers, practiceId) => {
+      const ownerIndex = practiceUsers.findIndex(
+        (user) => getPrimaryPracticeRole(user)?.toUpperCase() === "OWNER"
+      );
+
+      if (ownerIndex >= 0) {
+        const owner = practiceUsers[ownerIndex];
+        const members = practiceUsers.filter((user) => user.id !== owner.id);
+        groups.push({
+          key: `practice-${practiceId}`,
+          title: `${owner.name}'s Team`,
+          owner,
+          members,
+        });
+        return;
+      }
+
+      const fallbackOwner = practiceUsers[0];
+      groups.push({
+        key: `practice-${practiceId}`,
+        title: `Practice ${practiceId.slice(0, 8)}`,
+        owner: fallbackOwner,
+        members: practiceUsers.filter((user) => user.id !== fallbackOwner.id),
+      });
+    });
+
+    unassignedUsers.forEach((user) => {
+      groups.push({
+        key: `unassigned-${user.id}`,
+        title: "Unassigned User",
+        owner: user,
+        members: [],
+      });
+    });
+
+    return groups.sort((a, b) => a.title.localeCompare(b.title));
+  })();
+
+  const renderActions = (user: User) => (
+    <div className="flex items-center justify-end space-x-2">
+      <button
+        onClick={() => openViewModal(user)}
+        className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+        title="View Details"
+      >
+        <Eye className="w-4 h-4" />
+      </button>
+      {(currentUser?.role === "ADMIN" || currentUser?.role === "LAWYER") && (
+        <>
+          <button
+            onClick={() => openEditModal(user)}
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+            title="Edit User"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => openResetPasswordModal(user)}
+            className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
+            title="Reset Password"
+          >
+            <Lock className="w-4 h-4" />
+          </button>
+          {user.isActive ? (
+            <button
+              onClick={() => openDeactivateModal(user)}
+              className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+              title="Deactivate"
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={() => openReactivateModal(user)}
+              className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
+              title="Reactivate"
+            >
+              <CheckCircle className="w-4 h-4" />
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -361,6 +567,24 @@ export default function AdminUsersPage() {
           <p className="text-muted-foreground">
             Manage users and their permissions in your practice
           </p>
+          {subscriptionSettings && (
+            <div className="mt-2 flex items-center gap-2">
+              <Badge
+                className={
+                  subscriptionSettings.availableSeats <= 0
+                    ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                    : "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                }
+              >
+                Seats Left: {subscriptionSettings.availableSeats}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {subscriptionSettings.activeMembers}/
+                {subscriptionSettings.seatLimit} in use ({subscriptionSettings.plan}
+                )
+              </span>
+            </div>
+          )}
         </div>
         {(currentUser?.role === "ADMIN" || currentUser?.role === "LAWYER") && (
           <Button onClick={() => setIsCreateModalOpen(true)}>
@@ -403,7 +627,6 @@ export default function AdminUsersPage() {
                 <option value="LAWYER">Lawyer</option>
                 <option value="ASSOCIATE">Associate</option>
                 <option value="PARALEGAL">Paralegal</option>
-                <option value="ASSISTANT">Assistant</option>
               </select>
             </div>
             <div>
@@ -460,6 +683,9 @@ export default function AdminUsersPage() {
                     Role
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Practice Position
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -470,7 +696,7 @@ export default function AdminUsersPage() {
               <tbody className="bg-card divide-y divide-border">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8">
+                    <td colSpan={7} className="text-center py-8">
                       <div className="flex flex-col items-center space-y-2">
                         <AlertCircle className="w-8 h-8 text-muted-foreground" />
                         <p className="text-muted-foreground">No users found</p>
@@ -489,6 +715,144 @@ export default function AdminUsersPage() {
                       </div>
                     </td>
                   </tr>
+                ) : currentUser?.role === "SUPER_ADMIN" ? (
+                  groupedUsersForSuperAdmin.flatMap((group) => {
+                    const isCollapsed = collapsedGroups[group.key] ?? false;
+                    const hasMembers = group.members.length > 0;
+                    const rows = [
+                      <tr
+                        key={`owner-${group.key}`}
+                        className="bg-muted/40 hover:bg-muted/60"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2 text-left">
+                            {hasMembers ? (
+                              <button
+                                onClick={() =>
+                                  setCollapsedGroups((prev) => ({
+                                    ...prev,
+                                    [group.key]: !isCollapsed,
+                                  }))
+                                }
+                                className="text-muted-foreground"
+                                aria-label={
+                                  isCollapsed
+                                    ? "Expand team members"
+                                    : "Collapse team members"
+                                }
+                              >
+                                {isCollapsed ? (
+                                  <ChevronRight className="w-4 h-4" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4" />
+                                )}
+                              </button>
+                            ) : (
+                              <span className="w-4 h-4" />
+                            )}
+                            <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium">
+                                {group.owner.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-medium">
+                                {group.owner.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {group.title}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                            <span>{group.owner.email}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {group.owner.phone ? (
+                            <div className="flex items-center space-x-2">
+                              <Phone className="w-4 h-4 text-muted-foreground" />
+                              <span>{group.owner.phone}</span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge className={getRoleBadge(group.owner.role)}>
+                            <Shield className="w-3 h-3 mr-1" />
+                            {group.owner.role.replace("_", " ")}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getPracticeRoleBadge(
+                            getPrimaryPracticeRole(group.owner) || "OWNER"
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(group.owner.isActive)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          {renderActions(group.owner)}
+                        </td>
+                      </tr>,
+                    ];
+
+                    if (hasMembers && !isCollapsed) {
+                      rows.push(
+                        ...group.members.map((user) => (
+                          <tr key={user.id} className="hover:bg-muted">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center space-x-3 pl-8">
+                                <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-medium">
+                                    {user.name.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <span className="font-medium">{user.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center space-x-2">
+                                <Mail className="w-4 h-4 text-muted-foreground" />
+                                <span>{user.email}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {user.phone ? (
+                                <div className="flex items-center space-x-2">
+                                  <Phone className="w-4 h-4 text-muted-foreground" />
+                                  <span>{user.phone}</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge className={getRoleBadge(user.role)}>
+                                <Shield className="w-3 h-3 mr-1" />
+                                {user.role.replace("_", " ")}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {getPracticeRoleBadge(getPrimaryPracticeRole(user))}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {getStatusBadge(user.isActive)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              {renderActions(user)}
+                            </td>
+                          </tr>
+                        ))
+                      );
+                    }
+
+                    return rows;
+                  })
                 ) : (
                   filteredUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-muted">
@@ -525,54 +889,13 @@ export default function AdminUsersPage() {
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        {getPracticeRoleBadge(getPrimaryPracticeRole(user))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(user.isActive)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => openViewModal(user)}
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          {(currentUser?.role === "ADMIN" ||
-                            currentUser?.role === "LAWYER") && (
-                            <>
-                              <button
-                                onClick={() => openEditModal(user)}
-                                className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
-                                title="Edit User"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => openResetPasswordModal(user)}
-                                className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
-                                title="Reset Password"
-                              >
-                                <Lock className="w-4 h-4" />
-                              </button>
-                              {user.isActive ? (
-                                <button
-                                  onClick={() => openDeactivateModal(user)}
-                                  className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
-                                  title="Deactivate"
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => openReactivateModal(user)}
-                                  className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
-                                  title="Reactivate"
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
+                        {renderActions(user)}
                       </td>
                     </tr>
                   ))
@@ -637,9 +960,34 @@ export default function AdminUsersPage() {
                     <option value="LAWYER">Lawyer</option>
                     <option value="ASSOCIATE">Associate</option>
                     <option value="PARALEGAL">Paralegal</option>
-                    <option value="ASSISTANT">Assistant</option>
                   </select>
                 </div>
+                {subscriptionSettings && (
+                  <div className="rounded-md border border-border bg-muted/30 p-3">
+                    <p className="text-sm font-medium text-foreground">
+                      Plan: {subscriptionSettings.plan}
+                    </p>
+                    <p className="text-sm text-foreground">
+                      Seats: {subscriptionSettings.activeMembers}/
+                      {subscriptionSettings.seatLimit} used
+                    </p>
+                    <p
+                      className={`text-xs mt-1 ${
+                        hasNoAvailableSeats
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      Remaining seats: {subscriptionSettings.availableSeats}
+                    </p>
+                    {hasNoAvailableSeats && (
+                      <p className="text-xs mt-2 text-red-600 dark:text-red-400">
+                        No seats available. Increase seat limit in admin settings
+                        before adding users.
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="create-password">Password *</Label>
                   <Input
@@ -660,7 +1008,11 @@ export default function AdminUsersPage() {
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateUser} className="flex-1">
+                  <Button
+                    onClick={handleCreateUser}
+                    className="flex-1"
+                    disabled={hasNoAvailableSeats}
+                  >
                     Create User
                   </Button>
                 </div>
@@ -725,7 +1077,6 @@ export default function AdminUsersPage() {
                     <option value="LAWYER">Lawyer</option>
                     <option value="ASSOCIATE">Associate</option>
                     <option value="PARALEGAL">Paralegal</option>
-                    <option value="ASSISTANT">Assistant</option>
                   </select>
                 </div>
                 <div>
@@ -796,7 +1147,11 @@ export default function AdminUsersPage() {
                     )}
                     <div className="flex items-center space-x-2">
                       <Building2 className="w-4 h-4 text-muted-foreground" />
-                      <span>Practice: {currentPractice?.name || "N/A"}</span>
+                      <span>
+                        Practice Position:{" "}
+                        {getPrimaryPracticeRole(selectedUser)?.replace("_", " ") ||
+                          "N/A"}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       {selectedUser.isActive ? (

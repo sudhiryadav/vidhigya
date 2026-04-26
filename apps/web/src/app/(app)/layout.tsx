@@ -12,7 +12,24 @@ import { SuperAdminProvider } from "@/contexts/SuperAdminContext";
 import { SystemSettingsProvider } from "@/contexts/SystemSettingsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { VideoCallProvider } from "@/contexts/VideoCallContext";
+import type { Metadata } from "next";
 import { Toaster } from "react-hot-toast";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      "max-image-preview": "none",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+};
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (

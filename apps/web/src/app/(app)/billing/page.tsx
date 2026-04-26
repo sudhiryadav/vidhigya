@@ -54,6 +54,19 @@ interface User {
   role: string;
 }
 
+interface MySubscription {
+  practiceId: string;
+  practiceName: string;
+  plan: string;
+  status: string;
+  canAddUsers?: boolean;
+  seatLimit: number;
+  activeMembers: number;
+  availableSeats: number;
+  razorpaySubscriptionId?: string | null;
+  razorpayConfigured?: boolean;
+}
+
 export default function BillingPage() {
   const { user } = useAuth();
   const { getSetting } = useSettings();
@@ -71,6 +84,8 @@ export default function BillingPage() {
   const [cases, setCases] = useState<Case[]>([]);
   const [clients, setClients] = useState<User[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [subscription, setSubscription] = useState<MySubscription | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -100,7 +115,75 @@ export default function BillingPage() {
     fetchBills();
     fetchCases();
     fetchOverdueBills();
+    fetchSubscription();
   }, [searchTerm, filterStatus, filterCase]);
+
+  const fetchSubscription = async () => {
+    try {
+      setSubscriptionLoading(true);
+      const response = (await apiClient.getMySubscription()) as
+        | MySubscription
+        | null;
+      if (response) {
+        setSubscription(response);
+      }
+    } catch {
+      setSubscription(null);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  const startSubscriptionCheckout = async () => {
+    try {
+      const response = (await apiClient.createSubscriptionCheckout()) as {
+        keyId: string;
+        subscriptionId: string;
+      };
+
+      const win = window as Window & {
+        Razorpay?: new (options: Record<string, unknown>) => {
+          open: () => void;
+        };
+      };
+
+      if (!win.Razorpay) {
+        toast.error(
+          "Razorpay checkout script is not loaded. Please add it in app layout."
+        );
+        return;
+      }
+
+      const rz = new win.Razorpay({
+        key: response.keyId,
+        subscription_id: response.subscriptionId,
+        name: "Vidhigya",
+        description: "Subscription checkout",
+        handler: async () => {
+          await fetchSubscription();
+          toast.success("Subscription checkout completed.");
+        },
+      });
+      rz.open();
+    } catch (error) {
+      toast.error("Unable to start Razorpay checkout.");
+    }
+  };
+
+  const normalizedSubscriptionStatus = (subscription?.status || "")
+    .toLowerCase()
+    .trim();
+  const isSubscriptionRestricted = !!subscription && !subscription.canAddUsers;
+  const needsAttentionStatuses = new Set([
+    "halted",
+    "cancelled",
+    "payment_failed",
+    "expired",
+    "completed",
+  ]);
+  const showSubscriptionActionBanner =
+    isSubscriptionRestricted &&
+    needsAttentionStatuses.has(normalizedSubscriptionStatus);
 
   const fetchBills = async () => {
     try {
@@ -456,6 +539,72 @@ export default function BillingPage() {
             </div>
           </div>
         </div>
+
+        {(user?.role === "LAWYER" || user?.role === "ADMIN") && (
+          <div className="bg-card rounded-lg shadow-sm border border-border p-4 mb-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Subscription Plan
+                </h2>
+                {subscriptionLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                ) : subscription ? (
+                  <div className="text-sm text-muted-foreground space-y-1 mt-1">
+                    <p>
+                      Plan: <strong>{subscription.plan}</strong> | Status:{" "}
+                      <strong>{subscription.status}</strong>
+                    </p>
+                    <p>
+                      Seats: {subscription.activeMembers}/{subscription.seatLimit}{" "}
+                      used ({subscription.availableSeats} left)
+                    </p>
+                    {subscription.razorpaySubscriptionId && (
+                      <p>
+                        Razorpay Sub ID: {subscription.razorpaySubscriptionId}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Subscription details unavailable.
+                  </p>
+                )}
+                {showSubscriptionActionBanner && (
+                  <div className="mt-3 rounded-md border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
+                    <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                      Team invites are currently locked because subscription status
+                      is <span className="uppercase">{subscription?.status}</span>.
+                    </p>
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                      Complete or resume Razorpay subscription to reactivate seats
+                      and allow new user invites.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={fetchSubscription}
+                  className="btn-outline"
+                  type="button"
+                >
+                  Refresh Plan
+                </button>
+                <button
+                  onClick={startSubscriptionCheckout}
+                  className="btn-primary"
+                  type="button"
+                  disabled={!subscription?.razorpayConfigured}
+                >
+                  {showSubscriptionActionBanner
+                    ? "Resume Razorpay Subscription"
+                    : "Start Razorpay Subscription"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

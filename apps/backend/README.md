@@ -25,6 +25,16 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Access Control Policy
+
+Before modifying any backend endpoint related to `documents`, `cases`, `billing`,
+`calendar`, `tasks`, or AI/search source selection, review:
+
+- `docs/access-matrix.md`
+
+This file is the canonical role/scope reference used to keep service-layer access
+checks consistent with law-firm workflows.
+
 ## Project setup
 
 ```bash

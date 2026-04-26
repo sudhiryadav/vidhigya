@@ -104,7 +104,10 @@ interface UploadDocumentBody {
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionGuard)
 export class DocumentsController {
   private readonly logger = new RedactingLogger(DocumentsController.name);
-  private readonly localProcessingStatus = new Map<string, UiProcessingStatus>();
+  private readonly localProcessingStatus = new Map<
+    string,
+    UiProcessingStatus
+  >();
 
   constructor(
     private readonly documentsService: DocumentsService,
@@ -192,7 +195,9 @@ export class DocumentsController {
   }
 
   private getGoogleQueryMaxChunks(): number {
-    const raw = Number(this.configService.get<string>('GOOGLE_QUERY_MAX_CHUNKS'));
+    const raw = Number(
+      this.configService.get<string>('GOOGLE_QUERY_MAX_CHUNKS'),
+    );
     if (!Number.isFinite(raw)) {
       return 8;
     }
@@ -430,8 +435,7 @@ export class DocumentsController {
         diagnostics: {
           statusSource: 'ai-service',
           ocrProvider,
-          note:
-            'Status is coming directly from the AI service background worker.',
+          note: 'Status is coming directly from the AI service background worker.',
         } satisfies ProcessingDiagnostics,
       };
     } catch (error) {
@@ -445,8 +449,7 @@ export class DocumentsController {
           diagnostics: {
             statusSource: 'backend-fallback',
             ocrProvider,
-            note:
-              'AI service status was unavailable; using backend/local processing checkpoints.',
+            note: 'AI service status was unavailable; using backend/local processing checkpoints.',
           } satisfies ProcessingDiagnostics,
         };
       }
@@ -466,8 +469,7 @@ export class DocumentsController {
         diagnostics: {
           statusSource: 'backend-fallback',
           ocrProvider,
-          note:
-            'AI service status lookup failed and no local checkpoint was found.',
+          note: 'AI service status lookup failed and no local checkpoint was found.',
         } satisfies ProcessingDiagnostics,
       };
     }
@@ -480,6 +482,10 @@ export class DocumentsController {
     @Request() req: AuthenticatedRequest,
   ) {
     try {
+      const quotaSnapshot =
+        await this.documentsService.enforceAiUsageWithinDailyLimits(
+          req.user.sub,
+        );
       const { query, limit = 10 } = searchDto;
 
       if (!this.qdrantService) {
@@ -503,6 +509,12 @@ export class DocumentsController {
         results: enhancedResults,
         total_results: enhancedResults.length,
         generated_at: new Date().toISOString(),
+        quota: {
+          userRemainingToday: quotaSnapshot.userRemainingToday,
+          practiceRemainingToday: quotaSnapshot.practiceRemainingToday,
+          usageDate: quotaSnapshot.usageDate,
+          plan: quotaSnapshot.planLabel,
+        },
       };
 
       // Log the search query
@@ -534,12 +546,26 @@ export class DocumentsController {
     @Request() req: AuthenticatedRequest,
   ) {
     try {
+      const quotaSnapshot =
+        await this.documentsService.enforceAiUsageWithinDailyLimits(
+          req.user.sub,
+        );
+
       if (this.getAiProvider() === 'google') {
-        return await this.queryDocumentsWithGoogle(
+        const googleResult = await this.queryDocumentsWithGoogle(
           queryDto.query,
           req.user.sub,
           queryDto.limit ?? 10,
         );
+        return {
+          ...googleResult,
+          quota: {
+            userRemainingToday: quotaSnapshot.userRemainingToday,
+            practiceRemainingToday: quotaSnapshot.practiceRemainingToday,
+            usageDate: quotaSnapshot.usageDate,
+            plan: quotaSnapshot.planLabel,
+          },
+        };
       }
 
       const {
@@ -609,13 +635,22 @@ export class DocumentsController {
       this.logger.log(
         'Using direct Modal.com integration with optimized conversation context',
       );
-      return await this.queryDocumentsDirect(
+      const directResult = await this.queryDocumentsDirect(
         query,
         req.user.sub,
         limit,
         context,
         finalHistory, // Use validated history that's guaranteed to fit within token limits
       );
+      return {
+        ...directResult,
+        quota: {
+          userRemainingToday: quotaSnapshot.userRemainingToday,
+          practiceRemainingToday: quotaSnapshot.practiceRemainingToday,
+          usageDate: quotaSnapshot.usageDate,
+          plan: quotaSnapshot.planLabel,
+        },
+      };
     } catch (error) {
       this.logger.error('Error processing document query:', error);
       if (error instanceof BadRequestException) {
@@ -1423,7 +1458,8 @@ export class DocumentsController {
       );
       this.setLocalProcessingStatus(aiDocumentId, {
         status: 'PROCESSING',
-        details: 'Google OCR not supported for this file type. Using fallback OCR.',
+        details:
+          'Google OCR not supported for this file type. Using fallback OCR.',
         progress: 0,
       });
       return { fileBuffer, mimeType, originalFilename };
@@ -1463,7 +1499,8 @@ export class DocumentsController {
         );
         this.setLocalProcessingStatus(aiDocumentId, {
           status: 'PROCESSING',
-          details: 'Google OCR returned empty text. Using fallback OCR pipeline.',
+          details:
+            'Google OCR returned empty text. Using fallback OCR pipeline.',
           progress: 0,
         });
         return { fileBuffer, mimeType, originalFilename };
@@ -1761,7 +1798,9 @@ export class DocumentsController {
   ): Promise<GoogleFileRecord> {
     const apiKey = this.getGoogleApiKey();
     if (!apiKey) {
-      throw new Error('Google API key is missing for DOCUMENT_AI_PROVIDER=google');
+      throw new Error(
+        'Google API key is missing for DOCUMENT_AI_PROVIDER=google',
+      );
     }
 
     const displayName = fileName.slice(0, 120);
@@ -1881,17 +1920,12 @@ export class DocumentsController {
     };
   }
 
-  private async repairGoogleFileBinding(
-    doc: GoogleBackedDocument,
-  ): Promise<
-    | {
-        docId: string;
-        title: string;
-        uri: string;
-        mimeType: string;
-      }
-    | null
-  > {
+  private async repairGoogleFileBinding(doc: GoogleBackedDocument): Promise<{
+    docId: string;
+    title: string;
+    uri: string;
+    mimeType: string;
+  } | null> {
     if (!doc.fileUrl) return null;
 
     const fileBuffer = await this.s3Service.getDocumentAsBuffer(doc.fileUrl);
@@ -1974,7 +2008,11 @@ export class DocumentsController {
     if (!searchResults || searchResults.length === 0) {
       if (this.useCurrentFallbackForGoogleQuery429()) {
         try {
-          const fallback = await this.queryDocumentsDirect(query, userId, limit);
+          const fallback = await this.queryDocumentsDirect(
+            query,
+            userId,
+            limit,
+          );
           return {
             ...fallback,
             answer:
@@ -2019,7 +2057,10 @@ export class DocumentsController {
       const normalized = (source.content || '').replace(/\s+/g, ' ').trim();
       if (!normalized) continue;
       const slice = normalized.slice(0, 1200);
-      if (usedChars + slice.length > maxContextChars && selectedSources.length) {
+      if (
+        usedChars + slice.length > maxContextChars &&
+        selectedSources.length
+      ) {
         break;
       }
       selectedSources.push({ ...source, content: slice });
@@ -2046,7 +2087,7 @@ export class DocumentsController {
       { text: `Retrieved snippets:\n\n${contextText}` },
     ];
 
-    let { status, payload } = await this.callGoogleGenerateContent(
+    const { status, payload } = await this.callGoogleGenerateContent(
       endpoint,
       JSON.stringify({
         contents: [{ role: 'user', parts }],
@@ -2069,7 +2110,11 @@ export class DocumentsController {
             'Google query is rate-limited (429). Trying current pipeline fallback.',
           );
           try {
-            const fallback = await this.queryDocumentsDirect(query, userId, limit);
+            const fallback = await this.queryDocumentsDirect(
+              query,
+              userId,
+              limit,
+            );
             return {
               ...fallback,
               answer:
@@ -2102,7 +2147,11 @@ export class DocumentsController {
             `Google query returned 404 (likely model not found). Trying current pipeline fallback.`,
           );
           try {
-            const fallback = await this.queryDocumentsDirect(query, userId, limit);
+            const fallback = await this.queryDocumentsDirect(
+              query,
+              userId,
+              limit,
+            );
             return {
               ...fallback,
               answer:
@@ -2165,22 +2214,18 @@ export class DocumentsController {
     requestBody: string,
   ): Promise<{
     status: number;
-    payload:
-      | {
-          candidates?: Array<{
-            content?: { parts?: Array<{ text?: string }> };
-          }>;
-        }
-      | null;
+    payload: {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+      }>;
+    } | null;
   }> {
     let status = 0;
-    let payload:
-      | {
-          candidates?: Array<{
-            content?: { parts?: Array<{ text?: string }> };
-          }>;
-        }
-      | null = null;
+    let payload: {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+      }>;
+    } | null = null;
 
     const retryDelaysMs = [1200, 2500, 5000];
     for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
@@ -2191,13 +2236,11 @@ export class DocumentsController {
         signal: AbortSignal.timeout(90_000),
       });
       status = response.status;
-      payload = (await response.json().catch(() => null)) as
-        | {
-            candidates?: Array<{
-              content?: { parts?: Array<{ text?: string }> };
-            }>;
-          }
-        | null;
+      payload = (await response.json().catch(() => null)) as {
+        candidates?: Array<{
+          content?: { parts?: Array<{ text?: string }> };
+        }>;
+      } | null;
 
       if (response.ok) {
         return { status, payload };

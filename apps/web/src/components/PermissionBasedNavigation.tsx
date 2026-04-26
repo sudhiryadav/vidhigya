@@ -19,6 +19,7 @@ import {
   Gavel,
   Home,
   LogOut,
+  Mail,
   Menu,
   Search,
   Settings,
@@ -49,6 +50,12 @@ const baseNavigationItems = [
     name: "User Management",
     href: "/admin/users",
     icon: Users,
+    roles: ["SUPER_ADMIN", "ADMIN"],
+  },
+  {
+    name: "Email Broadcast",
+    href: "/admin/email-broadcast",
+    icon: Mail,
     roles: ["SUPER_ADMIN", "ADMIN"],
   },
   {
@@ -221,6 +228,14 @@ const baseNavigationItems = [
     resource: PermissionResource.BILLING,
   },
   {
+    name: "Admin Subscriptions",
+    href: "/admin/subscriptions",
+    icon: CreditCard,
+    roles: ["SUPER_ADMIN"],
+    action: PermissionAction.READ,
+    resource: PermissionResource.BILLING,
+  },
+  {
     name: "Admin Analytics",
     href: "/admin/analytics",
     icon: BarChart3,
@@ -246,6 +261,20 @@ const baseNavigationItems = [
     resource: PermissionResource.PRACTICE,
   },
 ];
+
+const superAdminMenuRoutes = new Set([
+  "/admin/dashboard",
+  "/admin/users",
+  "/admin/email-broadcast",
+  "/admin/settings",
+  "/admin/clients",
+  "/admin/cases",
+  "/admin/documents",
+  "/admin/billing",
+  "/admin/subscriptions",
+  "/admin/analytics",
+  "/admin/reports",
+]);
 
 interface NavigationItemProps {
   name: string;
@@ -457,8 +486,23 @@ export function PermissionBasedNavigation() {
     }
   };
 
-  // Use base navigation items only
-  const allNavigationItems = baseNavigationItems;
+  const allNavigationItems =
+    user.role === "SUPER_ADMIN"
+      ? Array.from(
+          baseNavigationItems
+            .filter((item) => superAdminMenuRoutes.has(item.href))
+            .reduce((map, item) => {
+              map.set(item.href, {
+                ...item,
+                name: item.name.startsWith("Admin ")
+                  ? item.name.replace("Admin ", "")
+                  : item.name,
+              });
+              return map;
+            }, new Map<string, (typeof baseNavigationItems)[number]>())
+            .values()
+        )
+      : baseNavigationItems;
 
   return (
     <>

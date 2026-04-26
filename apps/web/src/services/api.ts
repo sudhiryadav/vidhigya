@@ -367,6 +367,63 @@ class ApiClient {
     });
   }
 
+  async previewAdminEmailTemplate(data: {
+    subject: string;
+    htmlContent: string;
+  }) {
+    return this.request("/admin/email/preview", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async sendAdminBroadcastEmail(data: {
+    userIds: string[];
+    subject: string;
+    htmlContent: string;
+  }) {
+    return this.request("/admin/email/broadcast", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getAdminEmailTemplates() {
+    return this.request("/admin/email/templates");
+  }
+
+  async createAdminEmailTemplate(data: {
+    id: string;
+    label: string;
+    subject: string;
+    htmlContent: string;
+  }) {
+    return this.request("/admin/email/templates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAdminEmailTemplate(
+    id: string,
+    data: {
+      label: string;
+      subject: string;
+      htmlContent: string;
+    }
+  ) {
+    return this.request(`/admin/email/templates/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAdminEmailTemplate(id: string) {
+    return this.request(`/admin/email/templates/${id}`, {
+      method: "DELETE",
+    });
+  }
+
   // New admin endpoints for admin pages
   async getAdminDocuments(filters?: {
     search?: string;
@@ -423,6 +480,21 @@ class ApiClient {
 
   async getOverdueBills() {
     return this.request("/cases/overdue-bills");
+  }
+
+  async getMySubscription() {
+    return this.request("/billing/subscriptions/me");
+  }
+
+  async createSubscriptionCheckout(data?: { plan?: string }) {
+    return this.request("/billing/subscriptions/checkout", {
+      method: "POST",
+      body: JSON.stringify(data || {}),
+    });
+  }
+
+  async getSubscriptionsOverview() {
+    return this.request("/billing/subscriptions/overview");
   }
 
   // Cases endpoints
@@ -1529,6 +1601,20 @@ class ApiClient {
 
   async getPracticeStats(practiceId: string) {
     return this.request(`/practices/${practiceId}/stats`);
+  }
+
+  async getPracticeSubscriptionSettings() {
+    return this.request("/practice/subscription-settings");
+  }
+
+  async updatePracticeSubscriptionSettings(data: {
+    plan?: string;
+    seatLimit?: number;
+  }) {
+    return this.request("/practice/subscription-settings", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   }
 
   // Permission methods

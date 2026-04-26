@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Param,
@@ -42,6 +43,19 @@ interface UserFilters {
   role?: string;
   isActive?: boolean;
   practiceId?: string;
+}
+
+interface AdminEmailRequest {
+  userIds: string[];
+  subject: string;
+  htmlContent: string;
+}
+
+interface EmailTemplateRequest {
+  id: string;
+  label: string;
+  subject: string;
+  htmlContent: string;
 }
 
 @Controller('admin')
@@ -301,5 +315,72 @@ export class AdminController {
       req.user.role,
       currentUser.primaryPracticeId,
     );
+  }
+
+  @Post('email/preview')
+  previewEmailTemplate(
+    @Body() body: { subject: string; htmlContent: string },
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.adminService.previewAdminEmailTemplate(
+      body.subject,
+      body.htmlContent,
+      req.user.name,
+    );
+  }
+
+  @Post('email/broadcast')
+  async sendBroadcastEmail(
+    @Body() body: AdminEmailRequest,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const currentUser = await this.adminService.getCurrentUserPractice(
+      req.user.sub,
+    );
+
+    return this.adminService.sendBroadcastEmail(
+      body,
+      req.user.sub,
+      req.user.role,
+      currentUser.primaryPracticeId,
+    );
+  }
+
+  @Get('email/templates')
+  async getEmailTemplates() {
+    return this.adminService.getEmailTemplates();
+  }
+
+  @Post('email/templates')
+  async createEmailTemplate(
+    @Body() body: EmailTemplateRequest,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.adminService.upsertEmailTemplate(body, req.user.sub);
+  }
+
+  @Put('email/templates/:id')
+  async updateEmailTemplate(
+    @Param('id') id: string,
+    @Body() body: Omit<EmailTemplateRequest, 'id'>,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.adminService.upsertEmailTemplate(
+      {
+        id,
+        label: body.label,
+        subject: body.subject,
+        htmlContent: body.htmlContent,
+      },
+      req.user.sub,
+    );
+  }
+
+  @Delete('email/templates/:id')
+  async deleteEmailTemplate(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.adminService.deleteEmailTemplate(id, req.user.sub);
   }
 }

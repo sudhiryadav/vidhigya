@@ -60,6 +60,11 @@ export interface UpdateCaseNoteDto {
   type?: NoteType;
 }
 
+interface CaseAccessContext {
+  role: string;
+  practiceIds: string[];
+}
+
 @Injectable()
 export class CasesService {
   private readonly logger = new RedactingLogger(CasesService.name);
@@ -92,6 +97,73 @@ export class CasesService {
     }
 
     return true;
+  }
+
+  private async getCaseAccessContext(
+    userId: string,
+  ): Promise<CaseAccessContext> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        role: true,
+        practices: {
+          where: { isActive: true },
+          select: { practiceId: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+
+    return {
+      role: user.role,
+      practiceIds: user.practices.map((p) => p.practiceId),
+    };
+  }
+
+  private buildCaseReadWhere(
+    userId: string,
+    access: CaseAccessContext,
+  ): Record<string, unknown> {
+    if (access.role === 'SUPER_ADMIN') return {};
+    if (access.role === 'ADMIN' || access.role === 'LAWYER') {
+      return access.practiceIds.length > 0
+        ? { practiceId: { in: access.practiceIds } }
+        : { assignedLawyerId: userId };
+    }
+    if (access.role === 'ASSOCIATE' || access.role === 'PARALEGAL') {
+      return {
+        assignedLawyerId: userId,
+        ...(access.practiceIds.length > 0
+          ? { practiceId: { in: access.practiceIds } }
+          : {}),
+      };
+    }
+    return { clientId: userId };
+  }
+
+  private canManageCase(
+    userId: string,
+    access: CaseAccessContext,
+    legalCase: {
+      practiceId: string;
+      assignedLawyerId: string;
+      clientId: string;
+    },
+  ): boolean {
+    if (access.role === 'SUPER_ADMIN') return true;
+    if (access.role === 'ADMIN' || access.role === 'LAWYER') {
+      return access.practiceIds.includes(legalCase.practiceId);
+    }
+    if (access.role === 'ASSOCIATE' || access.role === 'PARALEGAL') {
+      return (
+        access.practiceIds.includes(legalCase.practiceId) &&
+        legalCase.assignedLawyerId === userId
+      );
+    }
+    return false;
   }
 
   /**
@@ -250,47 +322,11 @@ export class CasesService {
   }
 
   async findAll(userId: string, query: Record<string, unknown> = {}) {
-    // Get user's role and practice information
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        role: true,
-        primaryPracticeId: true,
-        practices: {
-          where: { isActive: true },
-          select: { practiceId: true },
-        },
-      },
-    });
-
-    if (!user) {
-      throw new ForbiddenException('User not found');
-    }
-
-    const where: Record<string, unknown> = {};
-
-    // SUPER_ADMIN can see all cases
-    if (user.role === 'SUPER_ADMIN') {
-      // No additional filters needed
-    }
-    // ADMIN can see all cases from all practices (read-only access)
-    else if (user.role === 'ADMIN') {
-      // No additional filters needed - admin can see all cases
-    }
-    // LAWYER, ASSOCIATE, and PARALEGAL can see cases from their practices
-    else if (['LAWYER', 'ASSOCIATE', 'PARALEGAL'].includes(user.role)) {
-      const practiceIds = user.practices.map((p) => p.practiceId);
-      if (practiceIds.length > 0) {
-        where.practiceId = { in: practiceIds };
-      } else {
-        // If no practices, they can only see their own cases
-        where.OR = [{ assignedLawyerId: userId }, { clientId: userId }];
-      }
-    }
-    // CLIENT can only see their own cases
-    else {
-      where.clientId = userId;
-    }
+    const access = await this.getCaseAccessContext(userId);
+    const where: Record<string, unknown> = this.buildCaseReadWhere(
+      userId,
+      access,
+    );
 
     if (query.status) {
       where.status = query.status;
@@ -347,6 +383,7 @@ export class CasesService {
   }
 
   async findOne(id: string, userId: string) {
+    const access = await this.getCaseAccessContext(userId);
     const legalCase = await this.prisma.legalCase.findFirst({
       where: {
         id,
@@ -438,8 +475,18 @@ export class CasesService {
       throw new NotFoundException('Case not found');
     }
 
-    // Validate practice access
-    await this.validatePracticeAccess(userId, legalCase.practiceId);
+    const canRead =
+      access.role === 'SUPER_ADMIN' ||
+      (access.role === 'ADMIN' || access.role === 'LAWYER'
+        ? access.practiceIds.includes(legalCase.practiceId)
+        : access.role === 'ASSOCIATE' || access.role === 'PARALEGAL'
+          ? access.practiceIds.includes(legalCase.practiceId) &&
+            legalCase.assignedLawyerId === userId
+          : legalCase.clientId === userId);
+
+    if (!canRead) {
+      throw new ForbiddenException('Access denied');
+    }
 
     return legalCase;
   }
@@ -452,6 +499,7 @@ export class CasesService {
    * @returns Updated case with related data
    */
   async update(id: string, updateCaseDto: UpdateCaseDto, userId: string) {
+    const access = await this.getCaseAccessContext(userId);
     const legalCase = await this.prisma.legalCase.findFirst({
       where: {
         id,
@@ -462,8 +510,9 @@ export class CasesService {
       throw new NotFoundException('Case not found');
     }
 
-    // Validate practice access
-    await this.validatePracticeAccess(userId, legalCase.practiceId);
+    if (!this.canManageCase(userId, access, legalCase)) {
+      throw new ForbiddenException('Access denied');
+    }
 
     // Clean up date fields - convert empty strings to null and validate date strings
     const cleanedData = { ...updateCaseDto };
@@ -557,6 +606,7 @@ export class CasesService {
   }
 
   async remove(id: string, userId: string) {
+    const access = await this.getCaseAccessContext(userId);
     const legalCase = await this.prisma.legalCase.findFirst({
       where: {
         id,
@@ -567,8 +617,9 @@ export class CasesService {
       throw new NotFoundException('Case not found');
     }
 
-    // Validate practice access
-    await this.validatePracticeAccess(userId, legalCase.practiceId);
+    if (!this.canManageCase(userId, access, legalCase)) {
+      throw new ForbiddenException('Access denied');
+    }
 
     return this.prisma.legalCase.delete({
       where: { id },
