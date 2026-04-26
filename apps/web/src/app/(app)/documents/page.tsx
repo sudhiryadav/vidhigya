@@ -31,7 +31,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 interface Document {
@@ -1311,31 +1311,30 @@ export default function DocumentsPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredDocuments.map((doc) => (
-                  <Fragment key={doc.id}>
-                    <DocumentTableRow
-                      document={doc}
-                      onView={handleViewClick}
-                      onDownload={handleDownloadDocument}
-                      onDelete={handleDeleteClick}
-                      onComplete={() => {
-                        fetchDocuments();
-                        toast.success(`${doc.title} processing completed!`);
-                      }}
-                      onError={(error) => {
-                        toast.error(
-                          `Processing failed for ${doc.title}: ${error}`,
-                        );
-                      }}
-                      canDelete={isLawyer || isAdmin}
-                      deletingDocumentId={deletingDocumentId}
-                      apiClient={apiClient}
-                      onReupload={() => setShowUploadModal(true)}
-                      onProcessingRestarted={() => {
-                        fetchDocuments();
-                        toast.success(`${doc.title}: processing restarted`);
-                      }}
-                    />
-                  </Fragment>
+                  <DocumentTableRow
+                    key={doc.id}
+                    document={doc}
+                    onView={handleViewClick}
+                    onDownload={handleDownloadDocument}
+                    onDelete={handleDeleteClick}
+                    onComplete={() => {
+                      fetchDocuments();
+                      toast.success(`${doc.title} processing completed!`);
+                    }}
+                    onError={(error) => {
+                      toast.error(
+                        `Processing failed for ${doc.title}: ${error}`,
+                      );
+                    }}
+                    canDelete={isLawyer || isAdmin}
+                    deletingDocumentId={deletingDocumentId}
+                    apiClient={apiClient}
+                    onReupload={() => setShowUploadModal(true)}
+                    onProcessingRestarted={() => {
+                      fetchDocuments();
+                      toast.success(`${doc.title}: processing restarted`);
+                    }}
+                  />
                 ))}
               </tbody>
             </table>
