@@ -121,6 +121,7 @@ if [ "$FRONTEND_CHANGED" = "true" ]; then
   cd "$REPO_DIR"
   PKG_CHANGED=$(packages_changed "apps/web")
   [ ! -d "node_modules" ] || [ "$PKG_CHANGED" = "yes" ] && yarn install --frozen-lockfile
+  rm -rf "$REPO_DIR/apps/web/.next"
   yarn workspace vidhigya-frontend build
   pm2 restart vidhigya-frontend --update-env 2>/dev/null || (cd "$REPO_DIR" && REPO_DIR="$REPO_DIR" pm2 start ecosystem.config.cjs --only vidhigya-frontend)
   echo "Frontend deployed"
