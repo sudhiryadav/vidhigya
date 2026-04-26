@@ -7,6 +7,14 @@
 server {
     listen 80;
     server_name vidhigya.qurieus.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name vidhigya.qurieus.com;
+    ssl_certificate /etc/letsencrypt/live/vidhigya.qurieus.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/vidhigya.qurieus.com/privkey.pem;
 
     # Backend API - /api/* -> NestJS (port 3889)
     location /api/ {
