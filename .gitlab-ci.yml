@@ -55,13 +55,13 @@ deploy_production:
       echo "Deploy target: ${SSH_USER}@${SERVER_IP}:${REPO_DIR}"
       ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "mkdir -p '${REPO_DIR}' && test -d '${REPO_DIR}' && echo 'Remote dir ready: ${REPO_DIR}'"
       set +e
-      rsync -avz --exclude=node_modules --exclude=.next --exclude=dist --exclude='*.env' --exclude='.git' --exclude='.cursor' --exclude='.vscode' --rsync-path="mkdir -p ${REPO_DIR} && rsync" -e "ssh -o StrictHostKeyChecking=no" /tmp/vidhigya-deploy/ ${SSH_USER}@${SERVER_IP}:${REPO_DIR}/
+      rsync -avz --delete --exclude=node_modules --exclude=.next --exclude=dist --exclude='*.env' --exclude='.git' --exclude='.cursor' --exclude='.vscode' --rsync-path="mkdir -p ${REPO_DIR} && rsync" -e "ssh -o StrictHostKeyChecking=no" /tmp/vidhigya-deploy/ ${SSH_USER}@${SERVER_IP}:${REPO_DIR}/
       RSYNC_EXIT=$?
       set -e
       if [ "$RSYNC_EXIT" -ne 0 ]; then
         echo "Primary rsync failed with exit code ${RSYNC_EXIT}. Retrying with no owner/group/perms/times..."
         set +e
-        rsync -rvz --no-owner --no-group --no-perms --omit-dir-times --exclude=node_modules --exclude=.next --exclude=dist --exclude='*.env' --exclude='.git' --exclude='.cursor' --exclude='.vscode' --rsync-path="mkdir -p ${REPO_DIR} && rsync" -e "ssh -o StrictHostKeyChecking=no" /tmp/vidhigya-deploy/ ${SSH_USER}@${SERVER_IP}:${REPO_DIR}/
+        rsync -rvz --delete --no-owner --no-group --no-perms --omit-dir-times --exclude=node_modules --exclude=.next --exclude=dist --exclude='*.env' --exclude='.git' --exclude='.cursor' --exclude='.vscode' --rsync-path="mkdir -p ${REPO_DIR} && rsync" -e "ssh -o StrictHostKeyChecking=no" /tmp/vidhigya-deploy/ ${SSH_USER}@${SERVER_IP}:${REPO_DIR}/
         RSYNC_EXIT=$?
         set -e
       fi
