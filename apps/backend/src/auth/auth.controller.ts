@@ -223,11 +223,7 @@ export class AuthController {
       });
 
       if (!userWithAvatar?.avatarS3Key) {
-        return res.status(404).json({
-          message: 'Avatar not found',
-          error: 'NO_AVATAR',
-          userId: userId,
-        });
+        return res.status(204).send();
       }
 
       const s3Key = userWithAvatar.avatarS3Key;
@@ -257,11 +253,7 @@ export class AuthController {
           'name' in error &&
           (error as { name: string }).name === 'NoSuchKey'
         ) {
-          return res.status(404).json({
-            message: 'Avatar not found',
-            error: 'NO_AVATAR',
-            userId: userId,
-          });
+          return res.status(204).send();
         }
         this.logger.error('Unexpected avatar storage error', error);
         return res.status(500).json({ message: 'Error accessing avatar' });

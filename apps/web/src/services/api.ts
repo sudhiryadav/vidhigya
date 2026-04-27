@@ -157,7 +157,7 @@ class ApiClient {
     return response.json();
   }
 
-  async getAvatar(userId: string): Promise<Blob> {
+  async getAvatar(userId: string): Promise<Blob | null> {
     const token =
       typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${API_BASE_URL}/auth/avatar/${userId}`, {
@@ -166,6 +166,10 @@ class ApiClient {
         Authorization: `Bearer ${token}`,
       },
     });
+
+    if (response.status === 204) {
+      return null;
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

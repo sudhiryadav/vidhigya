@@ -127,6 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchAvatar = async (userId: string) => {
     try {
       const blob = await apiClient.getAvatar(userId);
+      if (!blob) {
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64data = reader.result as string;

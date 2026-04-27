@@ -2,6 +2,7 @@
 
 import LoadingOverlay from "@/components/LoadingOverlay";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import { Bell, Globe, Save, Settings, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -42,6 +43,7 @@ interface PracticeSubscriptionSettings {
 }
 
 export default function AdminSettings() {
+  const { user: currentUser } = useAuth();
   const [settings, setSettings] = useState<AdminSettings>({
     system: {
       maintenanceMode: false,
@@ -79,11 +81,15 @@ export default function AdminSettings() {
       availableSeats: 5,
     });
   const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
+  const hasPracticeSubscriptionAccess =
+    currentUser?.role === "ADMIN" || currentUser?.role === "LAWYER";
 
   useEffect(() => {
     loadAdminSettings();
-    loadPracticeSubscriptionSettings();
-  }, []);
+    if (hasPracticeSubscriptionAccess) {
+      loadPracticeSubscriptionSettings();
+    }
+  }, [hasPracticeSubscriptionAccess]);
 
   const loadAdminSettings = async () => {
     try {
@@ -189,6 +195,10 @@ export default function AdminSettings() {
 
   const handleSaveSubscription = async () => {
     try {
+      if (!hasPracticeSubscriptionAccess) {
+        return;
+      }
+
       setIsSaving(true);
 
       await apiClient.updatePracticeSubscriptionSettings({
@@ -329,17 +339,19 @@ export default function AdminSettings() {
                       <Globe className="w-5 h-5" />
                       <span>Integrations</span>
                     </button>
-                    <button
-                      onClick={() => setActiveTab("subscription")}
-                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
-                        activeTab === "subscription"
-                          ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                          : "text-muted-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <Settings className="w-5 h-5" />
-                      <span>Subscription</span>
-                    </button>
+                    {hasPracticeSubscriptionAccess && (
+                      <button
+                        onClick={() => setActiveTab("subscription")}
+                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                          activeTab === "subscription"
+                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                            : "text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <Settings className="w-5 h-5" />
+                        <span>Subscription</span>
+                      </button>
+                    )}
                   </nav>
                 </div>
               </div>
@@ -813,7 +825,8 @@ export default function AdminSettings() {
                   )}
 
                   {/* Subscription Tab */}
-                  {activeTab === "subscription" && (
+                  {activeTab === "subscription" &&
+                    hasPracticeSubscriptionAccess && (
                     <div>
                       <h2 className="text-xl font-semibold text-foreground mb-6">
                         Practice Subscription
