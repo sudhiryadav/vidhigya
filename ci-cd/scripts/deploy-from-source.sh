@@ -59,6 +59,22 @@ needs_backend_rebuild() {
   fi
 }
 
+needs_frontend_rebuild() {
+  local build_id_file="$REPO_DIR/apps/web/.next/BUILD_ID"
+  if [ ! -f "$build_id_file" ]; then
+    echo "yes"
+    return
+  fi
+
+  local latest_src
+  latest_src=$(find "$REPO_DIR/apps/web/src" -type f -newer "$build_id_file" 2>/dev/null | head -n 1)
+  if [ -n "$latest_src" ]; then
+    echo "yes"
+  else
+    echo "no"
+  fi
+}
+
 # Copy app-specific env files from server.
 # Expected server files:
 #   /home/ubuntu/prod.vidhigya.web.env
@@ -113,6 +129,14 @@ if [ "$BACKEND_CHANGED" != "true" ]; then
   if [ "$BACKEND_STALE" = "yes" ]; then
     echo "Backend dist is stale or missing - forcing backend deploy"
     BACKEND_CHANGED=true
+  fi
+fi
+
+if [ "$FRONTEND_CHANGED" != "true" ]; then
+  FRONTEND_STALE=$(needs_frontend_rebuild)
+  if [ "$FRONTEND_STALE" = "yes" ]; then
+    echo "Frontend build is stale or missing - forcing frontend deploy"
+    FRONTEND_CHANGED=true
   fi
 fi
 
