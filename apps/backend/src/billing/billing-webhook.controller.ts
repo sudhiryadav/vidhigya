@@ -16,9 +16,9 @@ export class BillingWebhookController {
   @HttpCode(HttpStatus.OK)
   async handleWebhook(
     @Body() body: unknown,
-    @Headers('x-razorpay-signature') signature?: string,
+    @Headers('paddle-signature') signature?: string,
   ) {
     const rawBody = JSON.stringify(body);
-    return this.billingService.handleRazorpayWebhook(rawBody, signature);
+    return this.billingService.handlePaddleWebhook(rawBody, signature);
   }
 }

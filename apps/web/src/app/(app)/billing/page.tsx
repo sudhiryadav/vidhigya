@@ -63,8 +63,8 @@ interface MySubscription {
   seatLimit: number;
   activeMembers: number;
   availableSeats: number;
-  razorpaySubscriptionId?: string | null;
-  razorpayConfigured?: boolean;
+  paddleSubscriptionId?: string | null;
+  paddleConfigured?: boolean;
 }
 
 export default function BillingPage() {
@@ -137,36 +137,13 @@ export default function BillingPage() {
   const startSubscriptionCheckout = async () => {
     try {
       const response = (await apiClient.createSubscriptionCheckout()) as {
-        keyId: string;
+        checkoutUrl: string;
+        transactionId: string;
         subscriptionId: string;
       };
-
-      const win = window as Window & {
-        Razorpay?: new (options: Record<string, unknown>) => {
-          open: () => void;
-        };
-      };
-
-      if (!win.Razorpay) {
-        toast.error(
-          "Razorpay checkout script is not loaded. Please add it in app layout."
-        );
-        return;
-      }
-
-      const rz = new win.Razorpay({
-        key: response.keyId,
-        subscription_id: response.subscriptionId,
-        name: "Vidhigya",
-        description: "Subscription checkout",
-        handler: async () => {
-          await fetchSubscription();
-          toast.success("Subscription checkout completed.");
-        },
-      });
-      rz.open();
+      window.location.href = response.checkoutUrl;
     } catch (error) {
-      toast.error("Unable to start Razorpay checkout.");
+      toast.error("Unable to start Paddle checkout.");
     }
   };
 
@@ -559,9 +536,9 @@ export default function BillingPage() {
                       Seats: {subscription.activeMembers}/{subscription.seatLimit}{" "}
                       used ({subscription.availableSeats} left)
                     </p>
-                    {subscription.razorpaySubscriptionId && (
+                    {subscription.paddleSubscriptionId && (
                       <p>
-                        Razorpay Sub ID: {subscription.razorpaySubscriptionId}
+                        Paddle Sub ID: {subscription.paddleSubscriptionId}
                       </p>
                     )}
                   </div>
@@ -577,7 +554,7 @@ export default function BillingPage() {
                       is <span className="uppercase">{subscription?.status}</span>.
                     </p>
                     <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                      Complete or resume Razorpay subscription to reactivate seats
+                      Complete or resume Paddle subscription to reactivate seats
                       and allow new user invites.
                     </p>
                   </div>
@@ -595,11 +572,11 @@ export default function BillingPage() {
                   onClick={startSubscriptionCheckout}
                   className="btn-primary"
                   type="button"
-                  disabled={!subscription?.razorpayConfigured}
+                  disabled={!subscription?.paddleConfigured}
                 >
                   {showSubscriptionActionBanner
-                    ? "Resume Razorpay Subscription"
-                    : "Start Razorpay Subscription"}
+                    ? "Resume Paddle Subscription"
+                    : "Start Paddle Subscription"}
                 </button>
               </div>
             </div>

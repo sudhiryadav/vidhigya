@@ -501,6 +501,10 @@ class ApiClient {
     return this.request("/billing/subscriptions/overview");
   }
 
+  async getSubscriptionWebhookDebug() {
+    return this.request("/billing/subscriptions/webhook-debug");
+  }
+
   // Cases endpoints
   async getCases(filters?: {
     status?: string;

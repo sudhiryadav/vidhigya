@@ -130,14 +130,12 @@ export function getPracticeSeatLimitKey(practiceId: string): string {
   return `practice.${practiceId}.subscription.seat_limit`;
 }
 
-export function getPracticeRazorpayCustomerIdKey(practiceId: string): string {
-  return `practice.${practiceId}.subscription.razorpay_customer_id`;
+export function getPracticePaddleCustomerIdKey(practiceId: string): string {
+  return `practice.${practiceId}.subscription.paddle_customer_id`;
 }
 
-export function getPracticeRazorpaySubscriptionIdKey(
-  practiceId: string,
-): string {
-  return `practice.${practiceId}.subscription.razorpay_subscription_id`;
+export function getPracticePaddleSubscriptionIdKey(practiceId: string): string {
+  return `practice.${practiceId}.subscription.paddle_subscription_id`;
 }
 
 export function getPracticeSubscriptionStatusKey(practiceId: string): string {

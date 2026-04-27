@@ -76,13 +76,19 @@ export class BillingController {
     @Request() req: AuthenticatedRequest,
     @Body() data: { plan?: string },
   ) {
-    return this.billingService.createRazorpayCheckout(req.user.sub, data?.plan);
+    return this.billingService.createPaddleCheckout(req.user.sub, data?.plan);
   }
 
   @Get('subscriptions/overview')
   @Roles(UserRole.SUPER_ADMIN)
   getSubscriptionsOverview() {
     return this.billingService.getSubscriptionsOverview();
+  }
+
+  @Get('subscriptions/webhook-debug')
+  @Roles(UserRole.SUPER_ADMIN)
+  getSubscriptionWebhookDebug() {
+    return this.billingService.getPaddleWebhookDebugStats();
   }
 
   @Get(':id')

@@ -1,5 +1,4 @@
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import type { Metadata } from "next";
 import "./globals.css";
 import { seoConfig } from "@/lib/seo";
@@ -59,7 +58,6 @@ export default function RootLayout({
         <meta name="color-scheme" content="light dark" />
       </head>
       <body className={inter.className}>
-        <Script src="https://checkout.razorpay.com/v1/checkout.js" />
         {children}
       </body>
     </html>

@@ -17,11 +17,25 @@ interface PracticeSubscriptionRow {
   seatLimit: number;
   activeMembers: number;
   availableSeats: number;
-  razorpaySubscriptionId?: string | null;
+  paddleSubscriptionId?: string | null;
+}
+
+interface WebhookDebugSnapshot {
+  sourceApp: string;
+  productTag: string;
+  processedCount: number;
+  ignoredCount: number;
+  lastEvent: string | null;
+  lastTag: string | null;
+  lastIgnoredReason: string | null;
+  updatedAt: string | null;
 }
 
 export default function AdminSubscriptionsPage() {
   const [rows, setRows] = useState<PracticeSubscriptionRow[]>([]);
+  const [webhookDebug, setWebhookDebug] = useState<WebhookDebugSnapshot | null>(
+    null,
+  );
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +45,11 @@ export default function AdminSubscriptionsPage() {
       const response = (await apiClient.getSubscriptionsOverview()) as
         | PracticeSubscriptionRow[]
         | undefined;
+      const debugResponse = (await apiClient.getSubscriptionWebhookDebug()) as
+        | WebhookDebugSnapshot
+        | undefined;
       setRows(response || []);
+      setWebhookDebug(debugResponse || null);
     } finally {
       setLoading(false);
     }
@@ -48,7 +66,7 @@ export default function AdminSubscriptionsPage() {
       (row) =>
         row.practiceName.toLowerCase().includes(q) ||
         row.plan.toLowerCase().includes(q) ||
-        (row.razorpaySubscriptionId || "").toLowerCase().includes(q),
+        (row.paddleSubscriptionId || "").toLowerCase().includes(q),
     );
   }, [rows, search]);
 
@@ -58,7 +76,7 @@ export default function AdminSubscriptionsPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Subscriptions</h1>
           <p className="text-muted-foreground">
-            Super admin view for practice subscription health and Razorpay linkage.
+            Super admin view for practice subscription health and Paddle linkage.
           </p>
         </div>
         <Button onClick={load} disabled={loading}>
@@ -72,10 +90,70 @@ export default function AdminSubscriptionsPage() {
           <CardTitle>Quick Help</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>1) Configure Razorpay env keys and plan IDs in backend environment.</p>
+          <p>1) Configure Paddle env keys and price IDs in backend environment.</p>
           <p>2) Practice owner starts checkout from billing page subscription card.</p>
-          <p>3) Razorpay webhook updates subscription status automatically.</p>
+          <p>3) Paddle webhook updates subscription status automatically.</p>
           <p>4) Seat limits are enforced on user creation for each practice.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Paddle Webhook Debug</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          {!webhookDebug ? (
+            <p className="text-muted-foreground">
+              Webhook debug snapshot unavailable.
+            </p>
+          ) : (
+            <>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Source App</div>
+                  <div className="font-medium">{webhookDebug.sourceApp}</div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Product Tag</div>
+                  <div className="font-medium">{webhookDebug.productTag}</div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Processed</div>
+                  <div className="font-medium">{webhookDebug.processedCount}</div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Ignored</div>
+                  <div className="font-medium">{webhookDebug.ignoredCount}</div>
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Last Event</div>
+                  <div className="font-medium">
+                    {webhookDebug.lastEvent || "N/A"}
+                  </div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Last Tag</div>
+                  <div className="font-medium">
+                    {webhookDebug.lastTag || "N/A"}
+                  </div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Last Reason</div>
+                  <div className="font-medium">
+                    {webhookDebug.lastIgnoredReason || "processed"}
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Updated:{" "}
+                {webhookDebug.updatedAt
+                  ? new Date(webhookDebug.updatedAt).toLocaleString()
+                  : "N/A"}
+              </p>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -93,7 +171,7 @@ export default function AdminSubscriptionsPage() {
                 className="pl-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search practice, plan, or Razorpay subscription ID"
+                placeholder="Search practice, plan, or Paddle subscription ID"
               />
             </div>
           </div>
@@ -115,7 +193,7 @@ export default function AdminSubscriptionsPage() {
                     Seats
                   </th>
                   <th className="text-left py-2 px-3 text-xs text-muted-foreground uppercase">
-                    Razorpay
+                    Paddle
                   </th>
                 </tr>
               </thead>
@@ -138,7 +216,7 @@ export default function AdminSubscriptionsPage() {
                     <td className="py-2 px-3 text-xs text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <CreditCard className="w-4 h-4" />
-                        {row.razorpaySubscriptionId || "Not linked"}
+                        {row.paddleSubscriptionId || "Not linked"}
                       </div>
                     </td>
                   </tr>

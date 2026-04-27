@@ -13,8 +13,8 @@ import {
   DEFAULT_SEAT_LIMIT_BY_PLAN,
   PLAN_ENTITLEMENTS_BY_PLAN,
   getPracticePlanKey,
-  getPracticeRazorpayCustomerIdKey,
-  getPracticeRazorpaySubscriptionIdKey,
+  getPracticePaddleCustomerIdKey,
+  getPracticePaddleSubscriptionIdKey,
   getPracticeSeatLimitKey,
   getPracticeSubscriptionStatusKey,
 } from '../common/policies/account-policy';
@@ -48,39 +48,145 @@ interface BillingAccessContext {
   practiceIds: string[];
 }
 
+interface PaddleWebhookDebugSnapshot {
+  processedCount: number;
+  ignoredCount: number;
+  lastEvent: string | null;
+  lastTag: string | null;
+  lastIgnoredReason: string | null;
+  updatedAt: string | null;
+}
+
 @Injectable()
 export class BillingService {
+  private readonly paddleWebhookDebug: PaddleWebhookDebugSnapshot = {
+    processedCount: 0,
+    ignoredCount: 0,
+    lastEvent: null,
+    lastTag: null,
+    lastIgnoredReason: null,
+    updatedAt: null,
+  };
+
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {}
 
-  private getRazorpayConfig() {
+  private getPaddleConfig() {
+    const sourceApp =
+      this.configService.get<string>('PADDLE_SOURCE_APP') || 'vidhigya';
+    const productTag =
+      this.configService.get<string>('PADDLE_PRODUCT_TAG') || sourceApp;
+
     return {
-      keyId: this.configService.get<string>('RAZORPAY_KEY_ID') || '',
-      keySecret: this.configService.get<string>('RAZORPAY_KEY_SECRET') || '',
+      apiKey: this.configService.get<string>('PADDLE_API_KEY') || '',
       webhookSecret:
-        this.configService.get<string>('RAZORPAY_WEBHOOK_SECRET') || '',
+        this.configService.get<string>('PADDLE_WEBHOOK_SECRET') || '',
+      apiBaseUrl:
+        this.configService.get<string>('PADDLE_API_BASE_URL') ||
+        'https://api.paddle.com',
+      webhookVersion:
+        this.configService.get<string>('PADDLE_WEBHOOK_VERSION') || '1',
+      sourceApp,
+      productTag,
       planMap: {
-        SOLO: this.configService.get<string>('RAZORPAY_PLAN_SOLO') || '',
+        SOLO: this.configService.get<string>('PADDLE_PRICE_SOLO') || '',
         FIRM_STARTER:
-          this.configService.get<string>('RAZORPAY_PLAN_FIRM_STARTER') || '',
+          this.configService.get<string>('PADDLE_PRICE_FIRM_STARTER') || '',
         FIRM_GROWTH:
-          this.configService.get<string>('RAZORPAY_PLAN_FIRM_GROWTH') || '',
+          this.configService.get<string>('PADDLE_PRICE_FIRM_GROWTH') || '',
         FIRM_SCALE:
-          this.configService.get<string>('RAZORPAY_PLAN_FIRM_SCALE') || '',
+          this.configService.get<string>('PADDLE_PRICE_FIRM_SCALE') || '',
       },
     };
   }
 
-  private getRazorpayBasicAuthHeader(): string {
-    const { keyId, keySecret } = this.getRazorpayConfig();
-    if (!keyId || !keySecret) {
+  private buildPaddleMetadata(
+    baseNotes: Record<string, string>,
+  ): Record<string, string> {
+    const { sourceApp, productTag } = this.getPaddleConfig();
+    return {
+      ...baseNotes,
+      app: sourceApp,
+      sourceApp,
+      product: productTag,
+    };
+  }
+
+  private belongsToCurrentPaddleProductTag(notes?: unknown): boolean {
+    const { productTag, sourceApp } = this.getPaddleConfig();
+    const normalizedProductTag = (productTag || '').trim().toLowerCase();
+    if (!normalizedProductTag) return true;
+
+    if (!notes || typeof notes !== 'object') return false;
+
+    const metadata = notes as Record<string, unknown>;
+    const candidates = [
+      metadata.product,
+      metadata.sourceApp,
+      metadata.app,
+      sourceApp,
+    ]
+      .map((value) =>
+        typeof value === 'string' ? value.trim().toLowerCase() : '',
+      )
+      .filter(Boolean);
+
+    return candidates.includes(normalizedProductTag);
+  }
+
+  private extractWebhookTag(notes?: unknown): string | null {
+    if (!notes || typeof notes !== 'object') {
+      return null;
+    }
+
+    const metadata = notes as Record<string, unknown>;
+    for (const key of ['product', 'sourceApp', 'app']) {
+      const value = metadata[key];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+    return null;
+  }
+
+  private markWebhookDebug(
+    data: Partial<PaddleWebhookDebugSnapshot> & { ignored?: boolean },
+  ) {
+    if (data.ignored) {
+      this.paddleWebhookDebug.ignoredCount += 1;
+    } else {
+      this.paddleWebhookDebug.processedCount += 1;
+    }
+
+    this.paddleWebhookDebug.lastEvent = data.lastEvent ?? null;
+    this.paddleWebhookDebug.lastTag = data.lastTag ?? null;
+    this.paddleWebhookDebug.lastIgnoredReason = data.lastIgnoredReason ?? null;
+    this.paddleWebhookDebug.updatedAt = new Date().toISOString();
+  }
+
+  getPaddleWebhookDebugStats() {
+    const { sourceApp, productTag } = this.getPaddleConfig();
+    return {
+      sourceApp,
+      productTag,
+      ...this.paddleWebhookDebug,
+    };
+  }
+
+  private getPaddleAuthHeaders(): Record<string, string> {
+    const { apiKey, webhookVersion } = this.getPaddleConfig();
+    if (!apiKey) {
       throw new BadRequestException(
-        'Razorpay is not configured. Please set Razorpay credentials.',
+        'Paddle is not configured. Please set Paddle credentials.',
       );
     }
-    return `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString('base64')}`;
+    return {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'Paddle-Version': webhookVersion,
+    };
   }
 
   private async resolveUserPracticeSummary(userId: string) {
@@ -188,24 +294,23 @@ export class BillingService {
 
   async getMySubscription(userId: string) {
     const { practice } = await this.resolveUserPracticeSummary(userId);
-    const [snapshot, razorpayCustomer, razorpaySubscription] =
-      await Promise.all([
-        this.readPracticeSubscription(practice.id),
-        this.prisma.systemSettings.findUnique({
-          where: { key: getPracticeRazorpayCustomerIdKey(practice.id) },
-          select: { value: true },
-        }),
-        this.prisma.systemSettings.findUnique({
-          where: { key: getPracticeRazorpaySubscriptionIdKey(practice.id) },
-          select: { value: true },
-        }),
-      ]);
+    const [snapshot, paddleCustomer, paddleSubscription] = await Promise.all([
+      this.readPracticeSubscription(practice.id),
+      this.prisma.systemSettings.findUnique({
+        where: { key: getPracticePaddleCustomerIdKey(practice.id) },
+        select: { value: true },
+      }),
+      this.prisma.systemSettings.findUnique({
+        where: { key: getPracticePaddleSubscriptionIdKey(practice.id) },
+        select: { value: true },
+      }),
+    ]);
 
     return {
       ...snapshot,
-      razorpayCustomerId: razorpayCustomer?.value || null,
-      razorpaySubscriptionId: razorpaySubscription?.value || null,
-      razorpayConfigured: !!this.getRazorpayConfig().keyId,
+      paddleCustomerId: paddleCustomer?.value || null,
+      paddleSubscriptionId: paddleSubscription?.value || null,
+      paddleConfigured: !!this.getPaddleConfig().apiKey,
     };
   }
 
@@ -218,26 +323,27 @@ export class BillingService {
 
     return Promise.all(
       practices.map(async (practice) => {
-        const [snapshot, razorpaySub] = await Promise.all([
+        const [snapshot, paddleSub] = await Promise.all([
           this.readPracticeSubscription(practice.id),
           this.prisma.systemSettings.findUnique({
-            where: { key: getPracticeRazorpaySubscriptionIdKey(practice.id) },
+            where: { key: getPracticePaddleSubscriptionIdKey(practice.id) },
             select: { value: true },
           }),
         ]);
         return {
           ...snapshot,
-          razorpaySubscriptionId: razorpaySub?.value || null,
+          paddleSubscriptionId: paddleSub?.value || null,
         };
       }),
     );
   }
 
-  async createRazorpayCheckout(
+  async createPaddleCheckout(
     userId: string,
     requestedPlan?: string,
   ): Promise<{
-    keyId: string;
+    checkoutUrl: string;
+    transactionId: string;
     subscriptionId: string;
     plan: string;
     status: string;
@@ -245,94 +351,80 @@ export class BillingService {
     const { user, practice } = await this.resolveUserPracticeSummary(userId);
     const subscription = await this.readPracticeSubscription(practice.id);
     const targetPlan = requestedPlan || subscription.plan;
-    const { keyId, planMap } = this.getRazorpayConfig();
-    const planId = planMap[targetPlan as keyof typeof planMap];
+    const { planMap, apiBaseUrl } = this.getPaddleConfig();
+    const priceId = planMap[targetPlan as keyof typeof planMap];
 
-    if (!planId) {
+    if (!priceId) {
       throw new BadRequestException(
-        `No Razorpay plan mapping found for plan ${targetPlan}`,
+        `No Paddle price mapping found for plan ${targetPlan}`,
       );
     }
 
-    const authHeader = this.getRazorpayBasicAuthHeader();
-
-    const customerResp = await fetch('https://api.razorpay.com/v1/customers', {
+    const checkoutResp = await fetch(`${apiBaseUrl}/transactions`, {
       method: 'POST',
-      headers: {
-        Authorization: authHeader,
-        'Content-Type': 'application/json',
-      },
+      headers: this.getPaddleAuthHeaders(),
       body: JSON.stringify({
-        name: user.name,
-        email: user.email,
-        notes: { practiceId: practice.id, app: 'vidhigya' },
+        items: [{ price_id: priceId, quantity: 1 }],
+        customer: { email: user.email },
+        custom_data: this.buildPaddleMetadata({
+          practiceId: practice.id,
+          plan: targetPlan,
+        }),
       }),
     });
 
-    if (!customerResp.ok) {
-      throw new BadRequestException('Failed to create Razorpay customer');
+    if (!checkoutResp.ok) {
+      throw new BadRequestException('Failed to create Paddle checkout session');
     }
 
-    const customerData = (await customerResp.json()) as { id: string };
-
-    const subscriptionResp = await fetch(
-      'https://api.razorpay.com/v1/subscriptions',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          plan_id: planId,
-          total_count: 12,
-          customer_notify: 1,
-          customer_id: customerData.id,
-          notes: { practiceId: practice.id, app: 'vidhigya', plan: targetPlan },
-        }),
-      },
-    );
-
-    if (!subscriptionResp.ok) {
-      throw new BadRequestException('Failed to create Razorpay subscription');
-    }
-
-    const razorpaySubscription = (await subscriptionResp.json()) as {
-      id: string;
-      status: string;
+    const checkoutData = (await checkoutResp.json()) as {
+      data?: {
+        id?: string;
+        status?: string;
+        checkout?: { url?: string };
+        customer_id?: string;
+        subscription_id?: string;
+      };
     };
+    const checkoutUrl = checkoutData.data?.checkout?.url;
+    const transactionId = checkoutData.data?.id;
+    const paddleCustomerId = checkoutData.data?.customer_id || '';
+    const paddleSubscriptionId = checkoutData.data?.subscription_id || '';
+    if (!checkoutUrl || !transactionId) {
+      throw new BadRequestException('Paddle checkout response missing data');
+    }
 
     await Promise.all([
       this.prisma.systemSettings.upsert({
-        where: { key: getPracticeRazorpayCustomerIdKey(practice.id) },
+        where: { key: getPracticePaddleCustomerIdKey(practice.id) },
         create: {
-          key: getPracticeRazorpayCustomerIdKey(practice.id),
-          value: customerData.id,
+          key: getPracticePaddleCustomerIdKey(practice.id),
+          value: paddleCustomerId,
           category: 'subscription',
           isActive: true,
         },
-        update: { value: customerData.id, isActive: true },
+        update: { value: paddleCustomerId, isActive: true },
       }),
       this.prisma.systemSettings.upsert({
-        where: { key: getPracticeRazorpaySubscriptionIdKey(practice.id) },
+        where: { key: getPracticePaddleSubscriptionIdKey(practice.id) },
         create: {
-          key: getPracticeRazorpaySubscriptionIdKey(practice.id),
-          value: razorpaySubscription.id,
+          key: getPracticePaddleSubscriptionIdKey(practice.id),
+          value: paddleSubscriptionId,
           category: 'subscription',
           isActive: true,
         },
-        update: { value: razorpaySubscription.id, isActive: true },
+        update: { value: paddleSubscriptionId, isActive: true },
       }),
       this.prisma.systemSettings.upsert({
         where: { key: getPracticeSubscriptionStatusKey(practice.id) },
         create: {
           key: getPracticeSubscriptionStatusKey(practice.id),
-          value: razorpaySubscription.status || 'created',
+          value: checkoutData.data?.status || 'created',
           category: 'subscription',
           isActive: true,
         },
         update: {
-          value: razorpaySubscription.status || 'created',
+          value: checkoutData.data?.status || 'created',
           isActive: true,
         },
       }),
@@ -349,50 +441,77 @@ export class BillingService {
     ]);
 
     return {
-      keyId,
-      subscriptionId: razorpaySubscription.id,
+      checkoutUrl,
+      transactionId,
+      subscriptionId: paddleSubscriptionId || transactionId,
       plan: targetPlan,
-      status: razorpaySubscription.status || 'created',
+      status: checkoutData.data?.status || 'created',
     };
   }
 
-  async handleRazorpayWebhook(rawBody: string, signature?: string) {
-    const { webhookSecret } = this.getRazorpayConfig();
+  async handlePaddleWebhook(rawBody: string, signature?: string) {
+    const { webhookSecret } = this.getPaddleConfig();
     if (!webhookSecret) {
-      throw new BadRequestException(
-        'Razorpay webhook secret is not configured',
-      );
+      throw new BadRequestException('Paddle webhook secret is not configured');
     }
 
-    const expectedSignature = createHmac('sha256', webhookSecret)
-      .update(rawBody)
-      .digest('hex');
-
-    if (!signature || signature !== expectedSignature) {
-      throw new ForbiddenException('Invalid Razorpay webhook signature');
+    const normalizedSignature = signature || '';
+    const timestamp = normalizedSignature
+      .split(';')
+      .find((part) => part.startsWith('ts='))
+      ?.split('=')[1];
+    const hash = normalizedSignature
+      .split(';')
+      .find((part) => part.startsWith('h1='))
+      ?.split('=')[1];
+    const expectedSignature =
+      timestamp &&
+      createHmac('sha256', webhookSecret)
+        .update(`${timestamp}:${rawBody}`)
+        .digest('hex');
+    if (!expectedSignature || !hash || hash !== expectedSignature) {
+      throw new ForbiddenException('Invalid Paddle webhook signature');
     }
 
     const payload = JSON.parse(rawBody) as {
-      event: string;
-      payload?: {
-        subscription?: {
-          entity?: { id?: string; status?: string; notes?: any };
-        };
+      event_type?: string;
+      data?: {
+        id?: string;
+        status?: string;
+        custom_data?: Record<string, unknown>;
+        subscription_id?: string;
       };
     };
 
-    const webhookEvent = payload.event;
-    const subscriptionEntity = payload.payload?.subscription?.entity;
-    const razorpaySubscriptionId = subscriptionEntity?.id;
-    const subscriptionStatus = this.mapRazorpayEventToStatus(
-      webhookEvent,
-      subscriptionEntity?.status,
-    );
-    const practiceId = subscriptionEntity?.notes?.practiceId as
-      | string
-      | undefined;
+    const webhookEvent = payload.event_type || '';
+    const eventData = payload.data;
+    const eventNotes = eventData?.custom_data;
+    const detectedTag = this.extractWebhookTag(eventNotes);
 
-    if (!razorpaySubscriptionId) {
+    if (!this.belongsToCurrentPaddleProductTag(eventNotes)) {
+      this.markWebhookDebug({
+        ignored: true,
+        lastEvent: webhookEvent,
+        lastTag: detectedTag,
+        lastIgnoredReason: 'app_tag_mismatch',
+      });
+      return { ok: true, ignored: true, reason: 'app_tag_mismatch' };
+    }
+
+    const paddleSubscriptionId = eventData?.subscription_id || eventData?.id;
+    const subscriptionStatus = this.mapPaddleEventToStatus(
+      webhookEvent,
+      eventData?.status,
+    );
+    const practiceId = eventNotes?.practiceId as string | undefined;
+
+    if (!paddleSubscriptionId) {
+      this.markWebhookDebug({
+        ignored: true,
+        lastEvent: webhookEvent,
+        lastTag: detectedTag,
+        lastIgnoredReason: 'missing_subscription_id',
+      });
       return { ok: true, ignored: true };
     }
 
@@ -400,8 +519,8 @@ export class BillingService {
     if (!resolvedPracticeId) {
       const mapped = await this.prisma.systemSettings.findFirst({
         where: {
-          key: { contains: '.subscription.razorpay_subscription_id' },
-          value: razorpaySubscriptionId,
+          key: { contains: '.subscription.paddle_subscription_id' },
+          value: paddleSubscriptionId,
         },
         select: { key: true },
       });
@@ -411,6 +530,12 @@ export class BillingService {
     }
 
     if (!resolvedPracticeId) {
+      this.markWebhookDebug({
+        ignored: true,
+        lastEvent: webhookEvent,
+        lastTag: detectedTag,
+        lastIgnoredReason: 'unmapped_practice',
+      });
       return { ok: true, ignored: true };
     }
 
@@ -440,6 +565,13 @@ export class BillingService {
       });
     }
 
+    this.markWebhookDebug({
+      ignored: false,
+      lastEvent: webhookEvent,
+      lastTag: detectedTag,
+      lastIgnoredReason: null,
+    });
+
     return {
       ok: true,
       practiceId: resolvedPracticeId,
@@ -448,19 +580,21 @@ export class BillingService {
     };
   }
 
-  private mapRazorpayEventToStatus(
+  private mapPaddleEventToStatus(
     event: string,
     fallbackStatus?: string,
   ): string {
     const normalizedEvent = (event || '').toLowerCase();
     if (normalizedEvent === 'subscription.activated') return 'active';
-    if (normalizedEvent === 'subscription.authenticated')
-      return 'authenticated';
-    if (normalizedEvent === 'subscription.halted') return 'halted';
-    if (normalizedEvent === 'subscription.cancelled') return 'cancelled';
-    if (normalizedEvent === 'subscription.completed') return 'completed';
-    if (normalizedEvent === 'subscription.expired') return 'expired';
-    if (normalizedEvent === 'payment.failed') return 'payment_failed';
+    if (normalizedEvent === 'subscription.created') return 'created';
+    if (normalizedEvent === 'subscription.updated')
+      return (fallbackStatus || 'active').toLowerCase();
+    if (normalizedEvent === 'subscription.paused') return 'halted';
+    if (normalizedEvent === 'subscription.canceled') return 'cancelled';
+    if (normalizedEvent === 'subscription.trialing') return 'active';
+    if (normalizedEvent === 'transaction.payment_failed')
+      return 'payment_failed';
+    if (normalizedEvent === 'subscription.past_due') return 'payment_failed';
     return (fallbackStatus || event || 'pending_activation').toLowerCase();
   }
 

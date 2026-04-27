@@ -78,13 +78,16 @@ const envSchema = z
 
     PUPPETEER_HEADLESS: z.string().optional(),
 
-    RAZORPAY_KEY_ID: z.string().optional(),
-    RAZORPAY_KEY_SECRET: z.string().optional(),
-    RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
-    RAZORPAY_PLAN_SOLO: z.string().optional(),
-    RAZORPAY_PLAN_FIRM_STARTER: z.string().optional(),
-    RAZORPAY_PLAN_FIRM_GROWTH: z.string().optional(),
-    RAZORPAY_PLAN_FIRM_SCALE: z.string().optional(),
+    PADDLE_API_KEY: z.string().optional(),
+    PADDLE_WEBHOOK_SECRET: z.string().optional(),
+    PADDLE_API_BASE_URL: z.string().optional(),
+    PADDLE_WEBHOOK_VERSION: z.string().optional(),
+    PADDLE_SOURCE_APP: z.string().optional(),
+    PADDLE_PRODUCT_TAG: z.string().optional(),
+    PADDLE_PRICE_SOLO: z.string().optional(),
+    PADDLE_PRICE_FIRM_STARTER: z.string().optional(),
+    PADDLE_PRICE_FIRM_GROWTH: z.string().optional(),
+    PADDLE_PRICE_FIRM_SCALE: z.string().optional(),
 
     SMTP_HOST: z.string().optional(),
     SMTP_PORT: z.string().optional(),
