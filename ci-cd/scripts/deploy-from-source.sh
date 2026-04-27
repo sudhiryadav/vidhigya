@@ -132,10 +132,11 @@ fi
 if [ "$BACKEND_CHANGED" = "true" ]; then
   echo "Deploying backend..."
   cd "$REPO_DIR"
-  PKG_CHANGED=$(packages_changed "apps/backend")
-  [ ! -d "node_modules" ] || [ "$PKG_CHANGED" = "yes" ] && yarn install --frozen-lockfile
+  # Always refresh dependencies before backend build to avoid stale node_modules
+  # when backend deploy is forced (e.g. stale dist) without package diff.
+  yarn install --frozen-lockfile
   cd "$REPO_DIR/apps/backend"
-  [ ! -d "node_modules" ] || [ "$PKG_CHANGED" = "yes" ] && yarn install --frozen-lockfile
+  yarn install --frozen-lockfile
   npx prisma generate
   npx prisma migrate deploy 2>/dev/null || npx prisma db push 2>/dev/null || true
   yarn build
