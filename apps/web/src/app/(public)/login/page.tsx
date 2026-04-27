@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
+  const showDemoAccounts = process.env.NODE_ENV !== "production";
   const router = useRouter();
   const { login } = useAuth();
 
@@ -224,43 +225,44 @@ export default function LoginPage() {
               </button>
 
               {/* Demo Login Section */}
-              <div className="mt-6">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-border" />
+              {showDemoAccounts && (
+                <div className="mt-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">
+                        Demo Accounts
+                      </span>
+                    </div>
                   </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">
-                      Demo Accounts
-                    </span>
-                  </div>
-                </div>
 
-                <div className="mt-4 grid grid-cols-1 gap-3">
-                  {/* Super Admin Demo */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleDemoLogin("admin@vidhigya.com", "admin123")
-                    }
-                    disabled={demoLoading === "admin@vidhigya.com"}
-                    className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {demoLoading === "admin@vidhigya.com" ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Signing in...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <span className="mr-2">👑</span>
-                        Super Admin Demo
-                      </>
-                    )}
-                  </button>
+                  <div className="mt-4 grid grid-cols-1 gap-3">
+                    {/* Super Admin Demo */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleDemoLogin("admin@vidhigya.com", "admin123")
+                      }
+                      disabled={demoLoading === "admin@vidhigya.com"}
+                      className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {demoLoading === "admin@vidhigya.com" ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Signing in...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="mr-2">👑</span>
+                          Super Admin Demo
+                        </>
+                      )}
+                    </button>
 
-                  {/* Firm Owner Demo */}
-                  <button
+                    {/* Firm Owner Demo */}
+                    <button
                     type="button"
                     onClick={() =>
                       handleDemoLogin("johnson@johnsonlaw.com", "firm123")
@@ -279,10 +281,10 @@ export default function LoginPage() {
                         Firm Owner Demo
                       </>
                     )}
-                  </button>
+                    </button>
 
-                  {/* Firm Partner Demo */}
-                  <button
+                    {/* Firm Partner Demo */}
+                    <button
                     type="button"
                     onClick={() =>
                       handleDemoLogin("patel@johnsonlaw.com", "partner123")
@@ -301,10 +303,10 @@ export default function LoginPage() {
                         Firm Partner Demo
                       </>
                     )}
-                  </button>
+                    </button>
 
-                  {/* Firm Associate Demo */}
-                  <button
+                    {/* Firm Associate Demo */}
+                    <button
                     type="button"
                     onClick={() =>
                       handleDemoLogin("kumar@johnsonlaw.com", "associate123")
@@ -323,10 +325,10 @@ export default function LoginPage() {
                         Firm Associate Demo
                       </>
                     )}
-                  </button>
+                    </button>
 
-                  {/* Firm Paralegal Demo */}
-                  <button
+                    {/* Firm Paralegal Demo */}
+                    <button
                     type="button"
                     onClick={() =>
                       handleDemoLogin("sharma@johnsonlaw.com", "paralegal123")
@@ -345,10 +347,10 @@ export default function LoginPage() {
                         Firm Paralegal Demo
                       </>
                     )}
-                  </button>
+                    </button>
 
-                  {/* Individual Lawyer Demo */}
-                  <button
+                    {/* Individual Lawyer Demo */}
+                    <button
                     type="button"
                     onClick={() =>
                       handleDemoLogin("sarah@wilsonlaw.com", "individual123")
@@ -367,18 +369,19 @@ export default function LoginPage() {
                         Individual Lawyer Demo
                       </>
                     )}
-                  </button>
-                </div>
+                    </button>
+                  </div>
 
-                <div className="mt-4 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    Click any demo button above to automatically sign in
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    All demo accounts are pre-configured with sample data
-                  </p>
+                  <div className="mt-4 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      Click any demo button above to automatically sign in
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      All demo accounts are pre-configured with sample data
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
             </form>
           </div>
         </div>

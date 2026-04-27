@@ -6,7 +6,9 @@ import DocumentViewer from "@/components/DocumentViewer";
 import ModalDialog from "@/components/ui/ModalDialog";
 import CustomSelect from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCanCreate } from "@/contexts/PermissionContext";
 import { apiClient } from "@/services/api";
+import { PermissionResource } from "@/types/permissions";
 import {
   type DocumentSearchHit,
   extractDocumentSearchHits,
@@ -744,7 +746,8 @@ export default function DocumentsPage() {
   const isAdmin = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
 
   // Only lawyers and admins can upload documents
-  const canUploadDocuments = isLawyer || isAdmin;
+  const canCreateDocuments = useCanCreate(PermissionResource.DOCUMENT);
+  const canUploadDocuments = (isLawyer || isAdmin) && canCreateDocuments;
 
   useEffect(() => {
     if (user) {
@@ -1241,6 +1244,16 @@ export default function DocumentsPage() {
                 ? "Try adjusting your search or filters"
                 : "Get started by uploading your first document"}
             </p>
+            {!hasActiveFilters && canUploadDocuments && (
+              <button
+                type="button"
+                onClick={() => setShowUploadModal(true)}
+                className="mt-4 inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors duration-200"
+              >
+                <Upload className="w-4 h-4" />
+                Upload Document
+              </button>
+            )}
           </div>
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">

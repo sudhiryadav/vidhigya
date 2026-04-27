@@ -238,6 +238,14 @@ class SocketService {
     }
   }
 
+  private navigateInApp(path: string) {
+    window.dispatchEvent(
+      new CustomEvent("app:navigate", {
+        detail: { path },
+      })
+    );
+  }
+
   private handleChatNotification(notification: ChatNotification) {
     const currentPath = window.location.pathname;
     const isOnChatPage =
@@ -306,7 +314,7 @@ class SocketService {
               const chatPath = currentPath.includes("/lawyer/")
                 ? `/lawyer/chat/${notification.chatId}`
                 : `/client/chat/${notification.chatId}`;
-              window.location.href = chatPath;
+              this.navigateInApp(chatPath);
             }
           });
         }

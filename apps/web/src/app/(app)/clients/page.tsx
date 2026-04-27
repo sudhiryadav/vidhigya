@@ -3,8 +3,10 @@
 import { AccessDenied } from "@/components/AccessDenied";
 import ModalDialog from "@/components/ui/ModalDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCanCreate } from "@/contexts/PermissionContext";
 import { usePractice } from "@/contexts/PracticeContext";
 import { apiClient } from "@/services/api";
+import { PermissionResource } from "@/types/permissions";
 import {
   Briefcase,
   Calendar,
@@ -81,6 +83,7 @@ export default function ClientsPage() {
     user?.role === "ASSOCIATE" ||
     user?.role === "PARALEGAL";
   const isClient = user?.role === "CLIENT";
+  const canCreateClients = useCanCreate(PermissionResource.CLIENT);
   const canManageClients = isLawyer; // Only lawyers can manage clients
   const canViewClients = isLawyer || isClient; // Both lawyers and clients can view
 
@@ -266,7 +269,7 @@ export default function ClientsPage() {
                   : "View client information and case details"}
               </p>
             </div>
-            {canManageClients && (
+            {canManageClients && canCreateClients && (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="btn-primary flex items-center"
@@ -362,6 +365,16 @@ export default function ClientsPage() {
                     ? "Get started by adding your first client"
                     : "No clients are currently available"}
               </p>
+              {!searchTerm && statusFilter === "all" && canManageClients && (
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(true)}
+                  className="mt-4 inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors duration-200"
+                >
+                  <Plus className="w-4 h-4" />
+                  New Client
+                </button>
+              )}
             </div>
           ) : (
             filteredClients.map((client) => (
@@ -535,7 +548,7 @@ export default function ClientsPage() {
       </div>
 
       {/* Create Client Modal */}
-      {canManageClients && (
+      {canManageClients && canCreateClients && (
         <ModalDialog
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}

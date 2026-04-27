@@ -16,6 +16,7 @@ import {
   Trash2,
   Video,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 interface Notification {
@@ -31,6 +32,7 @@ interface Notification {
 export default function NotificationsPage() {
   const { user } = useAuth();
   const { getSetting } = useSettings();
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -195,7 +197,7 @@ export default function NotificationsPage() {
         const url = notification.actionUrl.startsWith("/client")
           ? notification.actionUrl
           : `/client${notification.actionUrl}`;
-        window.location.href = url;
+        router.push(url);
       } else if (
         (user?.role === "LAWYER" ||
           user?.role === "ASSOCIATE" ||
@@ -206,9 +208,13 @@ export default function NotificationsPage() {
         const url = notification.actionUrl.startsWith("/lawyer")
           ? notification.actionUrl
           : `/lawyer${notification.actionUrl}`;
-        window.location.href = url;
+        router.push(url);
       } else {
-        window.location.href = notification.actionUrl;
+        if (notification.actionUrl.startsWith("/")) {
+          router.push(notification.actionUrl);
+        } else {
+          window.location.href = notification.actionUrl;
+        }
       }
     }
   };

@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/api";
 import { MessageCircle, Search, Send, User } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -34,6 +35,7 @@ interface AssociatedUser {
 
 export default function ChatPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [loading, setLoading] = useState(true);
@@ -132,7 +134,7 @@ export default function ChatPage() {
       const response = await apiClient.startChatWithUser(userId);
       if (response && typeof response === "object" && "id" in response) {
         // Navigate to the new chat
-        window.location.href = `/chat/${(response as any).id}`;
+        router.push(`/chat/${(response as any).id}`);
       }
     } catch (error) {
       console.error("Error starting chat:", error);

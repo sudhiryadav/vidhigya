@@ -11,9 +11,11 @@ import LoadingOverlay from "@/components/LoadingOverlay";
 import ScheduleEventModal from "@/components/ScheduleEventModal";
 import UploadDocumentModal from "@/components/UploadDocumentModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCanCreate } from "@/contexts/PermissionContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useVideoCall } from "@/contexts/VideoCallContext";
 import { apiClient } from "@/services/api";
+import { PermissionResource } from "@/types/permissions";
 import { formatCurrency } from "@/utils/currency";
 import {
   AlertCircle,
@@ -196,6 +198,7 @@ export default function Dashboard() {
     user?.role === "PARALEGAL";
   const isClient = user?.role === "CLIENT";
   const isAdmin = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
+  const canCreateCase = useCanCreate(PermissionResource.CASE);
 
   useEffect(() => {
     fetchDashboardData();
@@ -384,20 +387,22 @@ export default function Dashboard() {
                   {title}
                 </dt>
                 <dd>
-                  <div className="text-lg font-medium text-foreground">
-                    {value.toLocaleString()}
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <div className="text-lg font-medium text-foreground">
+                      {value.toLocaleString()}
+                    </div>
+                    {change && (
+                      <span
+                        className={`text-sm font-medium whitespace-nowrap ${getChangeColor(change)}`}
+                      >
+                        {change}
+                      </span>
+                    )}
                   </div>
                 </dd>
               </dl>
             </div>
           </div>
-          {change && (
-            <div className="mt-2">
-              <span className={`text-sm font-medium ${getChangeColor(change)}`}>
-                {change}
-              </span>
-            </div>
-          )}
         </div>
       </button>
     );
@@ -683,8 +688,18 @@ export default function Dashboard() {
                       <p className="text-sm text-blue-700 dark:text-blue-300">
                         {user?.role === "ADMIN" || user?.role === "SUPER_ADMIN"
                           ? "No cases, clients, or documents found in your practice yet. Start by creating your first case or adding a client."
-                          : "No cases assigned to you yet. Contact your administrator to get assigned to cases."}
+                          : "No cases assigned to you yet."}
                       </p>
+                      {canCreateCase && (
+                        <button
+                          type="button"
+                          onClick={() => setShowCreateCaseModal(true)}
+                          className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors duration-200"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Create Case
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
