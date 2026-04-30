@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useVideoCall } from "@/contexts/VideoCallContext";
 import { apiClient } from "@/services/api";
+import { getSocketService } from "@/services/socket";
 import {
   AlertCircle,
   Bell,
@@ -270,16 +271,26 @@ export default function NotificationBell() {
     if (user) {
       fetchNotifications();
       fetchUnreadCount();
-    }
-  }, [user]);
 
-  useEffect(() => {
-    if (user) {
-      const interval = setInterval(() => {
-        fetchUnreadCount();
-      }, 30000); // Refresh every 30 seconds
+      const socketService = getSocketService();
+      if (socketService.isSocketConnected()) {
+        socketService.joinPersonalRoom(user.id);
+      }
 
-      return () => clearInterval(interval);
+      const handleUnreadCountUpdate = (event: Event) => {
+        const customEvent = event as CustomEvent<{ unreadCount?: number }>;
+        if (typeof customEvent.detail?.unreadCount === "number") {
+          setUnreadCount(customEvent.detail.unreadCount);
+        }
+      };
+
+      window.addEventListener("notificationUnreadCount", handleUnreadCountUpdate);
+      return () => {
+        window.removeEventListener(
+          "notificationUnreadCount",
+          handleUnreadCountUpdate
+        );
+      };
     }
   }, [user]);
 

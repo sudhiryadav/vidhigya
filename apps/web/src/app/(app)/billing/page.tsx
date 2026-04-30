@@ -96,6 +96,9 @@ export default function BillingPage() {
     caseId: "",
     description: "",
   });
+  const [formErrors, setFormErrors] = useState<
+    Partial<Record<"amount" | "dueDate" | "description" | "clientId", string>>
+  >({});
 
   // Role-based access control
   const isLawyer =
@@ -300,11 +303,23 @@ export default function BillingPage() {
   const handleCreateBill = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Validate required fields
-      if (!formData.amount || !formData.description || !formData.dueDate) {
-        toast.error("Please fill in all required fields");
+      const nextErrors: Partial<
+        Record<"amount" | "dueDate" | "description" | "clientId", string>
+      > = {};
+      if (!formData.amount.trim()) nextErrors.amount = "Amount is required";
+      if (formData.amount.trim() && Number(formData.amount) <= 0) {
+        nextErrors.amount = "Amount must be greater than 0";
+      }
+      if (!formData.description.trim()) {
+        nextErrors.description = "Description is required";
+      }
+      if (!formData.dueDate.trim()) nextErrors.dueDate = "Due date is required";
+      if (!formData.clientId.trim()) nextErrors.clientId = "Client is required";
+      if (Object.keys(nextErrors).length > 0) {
+        setFormErrors(nextErrors);
         return;
       }
+      setFormErrors({});
 
       // Prepare bill data
       const billData = {
@@ -345,6 +360,7 @@ export default function BillingPage() {
       caseId: "",
       description: "",
     });
+    setFormErrors({});
   };
 
   const handleViewBill = (bill: BillingRecord) => {
@@ -397,11 +413,22 @@ export default function BillingPage() {
     if (!selectedBill) return;
 
     try {
-      // Validate required fields
-      if (!formData.amount || !formData.description || !formData.dueDate) {
-        toast.error("Please fill in all required fields");
+      const nextErrors: Partial<
+        Record<"amount" | "dueDate" | "description" | "clientId", string>
+      > = {};
+      if (!formData.amount.trim()) nextErrors.amount = "Amount is required";
+      if (formData.amount.trim() && Number(formData.amount) <= 0) {
+        nextErrors.amount = "Amount must be greater than 0";
+      }
+      if (!formData.description.trim()) {
+        nextErrors.description = "Description is required";
+      }
+      if (!formData.dueDate.trim()) nextErrors.dueDate = "Due date is required";
+      if (Object.keys(nextErrors).length > 0) {
+        setFormErrors(nextErrors);
         return;
       }
+      setFormErrors({});
 
       // Prepare update data
       const updateData = {
@@ -1019,16 +1046,24 @@ export default function BillingPage() {
                     min="0"
                     required
                     value={formData.amount}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setFormData({
                         ...formData,
                         amount: e.target.value,
-                      })
-                    }
-                    className="w-full pl-8 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                      });
+                      if (formErrors.amount && e.target.value.trim()) {
+                        setFormErrors((prev) => ({ ...prev, amount: undefined }));
+                      }
+                    }}
+                    className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                      formErrors.amount ? "border-red-500" : "border-border"
+                    }`}
                     placeholder="0.00"
                   />
                 </div>
+                {formErrors.amount && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.amount}</p>
+                )}
               </div>
               <div>
                 <label
@@ -1066,14 +1101,22 @@ export default function BillingPage() {
                   type="date"
                   required
                   value={formData.dueDate}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       dueDate: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground min-h-[42px]"
+                    });
+                    if (formErrors.dueDate && e.target.value.trim()) {
+                      setFormErrors((prev) => ({ ...prev, dueDate: undefined }));
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground min-h-[42px] ${
+                    formErrors.dueDate ? "border-red-500" : "border-border"
+                  }`}
                 />
+                {formErrors.dueDate && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.dueDate}</p>
+                )}
               </div>
               <div>
                 <label
@@ -1085,13 +1128,18 @@ export default function BillingPage() {
                 <select
                   id="create-bill-client"
                   value={formData.clientId}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       clientId: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground min-h-[42px]"
+                    });
+                    if (formErrors.clientId && e.target.value.trim()) {
+                      setFormErrors((prev) => ({ ...prev, clientId: undefined }));
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground min-h-[42px] ${
+                    formErrors.clientId ? "border-red-500" : "border-border"
+                  }`}
                   required
                 >
                   <option value="">Select a client</option>
@@ -1101,6 +1149,11 @@ export default function BillingPage() {
                     </option>
                   ))}
                 </select>
+                {formErrors.clientId && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {formErrors.clientId}
+                  </p>
+                )}
               </div>
               <div className="md:col-span-2">
                 <label
@@ -1139,16 +1192,29 @@ export default function BillingPage() {
               <textarea
                 required
                 value={formData.description}
-                onChange={(e) =>
+                onChange={(e) => {
                   setFormData({
                     ...formData,
                     description: e.target.value,
-                  })
-                }
+                  });
+                  if (formErrors.description && e.target.value.trim()) {
+                    setFormErrors((prev) => ({
+                      ...prev,
+                      description: undefined,
+                    }));
+                  }
+                }}
                 rows={4}
-                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                  formErrors.description ? "border-red-500" : "border-border"
+                }`}
                 placeholder="Enter bill description"
               />
+              {formErrors.description && (
+                <p className="mt-1 text-sm text-red-600">
+                  {formErrors.description}
+                </p>
+              )}
             </div>
           </form>
         </ModalDialog>
@@ -1330,16 +1396,24 @@ export default function BillingPage() {
                     min="0"
                     required
                     value={formData.amount}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setFormData({
                         ...formData,
                         amount: e.target.value,
-                      })
-                    }
-                    className="w-full pl-8 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                      });
+                      if (formErrors.amount && e.target.value.trim()) {
+                        setFormErrors((prev) => ({ ...prev, amount: undefined }));
+                      }
+                    }}
+                    className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                      formErrors.amount ? "border-red-500" : "border-border"
+                    }`}
                     placeholder="0.00"
                   />
                 </div>
+                {formErrors.amount && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.amount}</p>
+                )}
               </div>
               <div>
                 <select
@@ -1369,14 +1443,22 @@ export default function BillingPage() {
                   type="date"
                   required
                   value={formData.dueDate}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       dueDate: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                    });
+                    if (formErrors.dueDate && e.target.value.trim()) {
+                      setFormErrors((prev) => ({ ...prev, dueDate: undefined }));
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                    formErrors.dueDate ? "border-red-500" : "border-border"
+                  }`}
                 />
+                {formErrors.dueDate && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.dueDate}</p>
+                )}
               </div>
               <div>
                 <select
@@ -1405,16 +1487,29 @@ export default function BillingPage() {
               <textarea
                 required
                 value={formData.description}
-                onChange={(e) =>
+                onChange={(e) => {
                   setFormData({
                     ...formData,
                     description: e.target.value,
-                  })
-                }
+                  });
+                  if (formErrors.description && e.target.value.trim()) {
+                    setFormErrors((prev) => ({
+                      ...prev,
+                      description: undefined,
+                    }));
+                  }
+                }}
                 rows={4}
-                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                  formErrors.description ? "border-red-500" : "border-border"
+                }`}
                 placeholder="Enter bill description"
               />
+              {formErrors.description && (
+                <p className="mt-1 text-sm text-red-600">
+                  {formErrors.description}
+                </p>
+              )}
             </div>
           </form>
         </ModalDialog>

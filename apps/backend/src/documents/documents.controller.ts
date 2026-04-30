@@ -25,6 +25,7 @@ import {
 import { randomUUID } from 'crypto';
 import { Response } from 'express';
 import { memoryStorage } from 'multer';
+import { extname } from 'path';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import {
@@ -39,6 +40,7 @@ import { ConversationContextService } from '../common/services/conversation-cont
 import { QdrantService } from '../config/qdrant.service';
 import { S3Service } from '../config/s3.config';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationEmitterService } from '../notifications/notification-emitter.service';
 import { CreateDocumentDto, DocumentsService } from './documents.service';
 import { QueryType } from './dto/create-document-query.dto';
 import { AuthenticatedRequest } from '../auth/types/authenticated-request.interface';
@@ -56,6 +58,8 @@ interface QueryRequest {
   mode?: 'search' | 'qa';
   context?: string;
   limit?: number;
+  caseId?: string;
+  documentId?: string;
   conversationHistory?: Array<{
     question: string;
     answer: string;
@@ -100,6 +104,27 @@ interface UploadDocumentBody {
   caseId?: string;
 }
 
+const HARD_UPLOAD_SIZE_LIMIT_BYTES = 25 * 1024 * 1024;
+const ALLOWED_DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+];
+const ALLOWED_DOCUMENT_EXTENSIONS = [
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.txt',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.gif',
+];
+
 @Controller('documents')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionGuard)
 export class DocumentsController {
@@ -115,6 +140,7 @@ export class DocumentsController {
     private readonly configService: ConfigService,
     private readonly qdrantService: QdrantService,
     private readonly prisma: PrismaService,
+    private readonly notificationEmitter: NotificationEmitterService,
     private readonly conversationContextService: ConversationContextService,
     private readonly googleOcrService: GoogleOcrService,
   ) {}
@@ -180,18 +206,46 @@ export class DocumentsController {
 
   private getGoogleQueryModel(): string {
     return (
-      this.configService.get<string>('GOOGLE_QUERY_MODEL') || 'gemini-2.0-flash'
+      this.configService.get<string>('GOOGLE_QUERY_MODEL') || 'gemini-2.5-flash'
     );
   }
 
-  private useCurrentFallbackForGoogleQuery429(): boolean {
-    const raw = (
-      this.configService.get<string>('GOOGLE_QUERY_FALLBACK_TO_CURRENT') ||
-      'true'
-    )
-      .trim()
-      .toLowerCase();
-    return raw === '1' || raw === 'true' || raw === 'yes';
+  private getGoogleQueryFallbackModels(): string[] {
+    const raw =
+      this.configService.get<string>('GOOGLE_QUERY_FALLBACK_MODELS') ||
+      'gemini-2.5-flash-lite,gemini-1.5-flash';
+    return raw
+      .split(',')
+      .map((m) => m.trim())
+      .filter(Boolean);
+  }
+
+  private getGoogleQueryCandidateModels(): string[] {
+    return [
+      ...new Set([
+        this.getGoogleQueryModel(),
+        ...this.getGoogleQueryFallbackModels(),
+      ]),
+    ];
+  }
+
+  private shouldTryNextGoogleModel(
+    status: number,
+    payload: {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+      }>;
+      error?: { message?: string };
+    } | null,
+  ): boolean {
+    if (status !== 404) return false;
+    const message = (payload?.error?.message || '').toLowerCase();
+    return (
+      message.includes('no longer available') ||
+      message.includes('not found') ||
+      message.includes('not supported') ||
+      message.length === 0
+    );
   }
 
   private getGoogleQueryMaxChunks(): number {
@@ -214,14 +268,190 @@ export class DocumentsController {
     return Math.max(4_000, Math.min(Math.floor(raw), 60_000));
   }
 
-  private useGoogleOcrPrepassForGoogleAi(): boolean {
-    const raw = (
-      this.configService.get<string>('GOOGLE_OCR_PREPASS_FOR_GOOGLE_AI') ||
-      'false'
-    )
-      .trim()
-      .toLowerCase();
-    return raw === '1' || raw === 'true' || raw === 'yes';
+  private detectGoogleQueryIntent(
+    query: string,
+  ): 'case_brief' | 'summary' | 'fact_lookup' | 'general' {
+    const q = (query || '').toLowerCase();
+    if (!q.trim()) return 'general';
+    if (
+      /\b(case\s*brief|brief\s+the\s+case|prepare\s+case\s+brief|draft\s+case\s+brief)\b/i.test(
+        q,
+      )
+    ) {
+      return 'case_brief';
+    }
+    if (/\b(summary|summari[sz]e|overview|tldr|gist|key\s+points)\b/i.test(q)) {
+      return 'summary';
+    }
+    if (
+      /\b(who|when|where|what|which|name|party|petitioner|respondent|section|date|amount)\b/i.test(
+        q,
+      )
+    ) {
+      return 'fact_lookup';
+    }
+    return 'general';
+  }
+
+  private parseIntentFromText(
+    raw: string | undefined,
+  ): 'case_brief' | 'summary' | 'fact_lookup' | 'general' | null {
+    const text = (raw || '').toLowerCase();
+    if (!text) return null;
+    if (text.includes('case_brief')) return 'case_brief';
+    if (text.includes('fact_lookup')) return 'fact_lookup';
+    if (text.includes('summary')) return 'summary';
+    if (text.includes('general')) return 'general';
+    return null;
+  }
+
+  private async classifyIntentWithGoogle(
+    query: string,
+    apiKey: string,
+  ): Promise<'case_brief' | 'summary' | 'fact_lookup' | 'general' | null> {
+    if (!query.trim()) return null;
+    const model = this.getGoogleQueryModel();
+    const endpoint =
+      `https://generativelanguage.googleapis.com/v1beta/models/` +
+      `${encodeURIComponent(model)}:generateContent?key=${apiKey}`;
+    const body = JSON.stringify({
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text:
+                'Classify the user query intent into exactly one label: ' +
+                'case_brief | summary | fact_lookup | general. ' +
+                'Respond with ONLY the label and nothing else.',
+            },
+            { text: `Query: ${query}` },
+          ],
+        },
+      ],
+    });
+    try {
+      const result = await this.callGoogleGenerateContent(endpoint, body);
+      if (result.status !== 200) return null;
+      const raw =
+        result.payload?.candidates?.[0]?.content?.parts
+          ?.map((p) => p.text || '')
+          .join(' ')
+          .trim() || '';
+      return this.parseIntentFromText(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  private buildGoogleInstructionByIntent(
+    intent: 'case_brief' | 'summary' | 'fact_lookup' | 'general',
+  ): string {
+    const base =
+      'You are a legal document assistant. Use ONLY the provided retrieved source snippets. ' +
+      'Do not invent names, dates, values, or roles. If snippets are insufficient, explicitly say what is missing.';
+
+    if (intent === 'case_brief') {
+      return (
+        `${base} ` +
+        'The user asked for a case brief. Write a concise, professional brief (not a full rephrasing of the whole document). ' +
+        'Cover the key parties, core facts, issue in dispute, and relief sought when available. ' +
+        'Keep it crisp and to the point (about 120-180 words unless the user asks otherwise). ' +
+        'Use citations like [Source N] after factual statements.'
+      );
+    }
+    if (intent === 'summary') {
+      return (
+        `${base} ` +
+        'Provide a concise summary tuned to the question, avoiding repetition and unnecessary detail. ' +
+        'Use citations like [Source N].'
+      );
+    }
+    if (intent === 'fact_lookup') {
+      return (
+        `${base} ` +
+        'Answer directly with short factual statements and include citations like [Source N].'
+      );
+    }
+    return (
+      `${base} ` +
+      'Answer naturally and professionally, matching user intent and requested depth. ' +
+      'Use citations like [Source N] when asserting facts.'
+    );
+  }
+
+  private inferCaseFromQuery(
+    query: string,
+    options: Array<{
+      caseId: string;
+      caseTitle: string;
+      caseNumber: string | null;
+      docIds: string[];
+      docCount: number;
+    }>,
+  ): string | null {
+    const q = (query || '').toLowerCase();
+    if (!q.trim()) return null;
+
+    const matched = options.filter((opt) => {
+      const title = (opt.caseTitle || '').toLowerCase();
+      const number = (opt.caseNumber || '').toLowerCase();
+      return (
+        (title.length >= 4 && q.includes(title)) ||
+        (number.length >= 3 && q.includes(number))
+      );
+    });
+    if (matched.length === 1) {
+      return matched[0].caseId;
+    }
+    return null;
+  }
+
+  private extractIntentTerms(query: string): string[] {
+    const stop = new Set([
+      'the',
+      'a',
+      'an',
+      'about',
+      'case',
+      'matter',
+      'tell',
+      'me',
+      'of',
+      'for',
+      'and',
+      'vs',
+      'v',
+      'v.',
+      'state',
+      'please',
+      'prepare',
+      'brief',
+      'summary',
+      'document',
+      'documents',
+    ]);
+    return (query || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length >= 3 && !stop.has(t));
+  }
+
+  private scoreQueryAgainstText(
+    queryTerms: string[],
+    haystack: string,
+  ): number {
+    if (!queryTerms.length || !haystack) return 0;
+    const h = haystack.toLowerCase();
+    let score = 0;
+    for (const term of queryTerms) {
+      if (h.includes(term)) {
+        score += term.length >= 6 ? 3 : 2;
+      }
+    }
+    return score;
   }
 
   @Post('upload')
@@ -229,18 +459,19 @@ export class DocumentsController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(), // Use memory storage to get file.buffer
-      // No fileSize limit - let runtime validation handle it with proper error messages
+      limits: {
+        fileSize: HARD_UPLOAD_SIZE_LIMIT_BYTES,
+        files: 1,
+      },
       fileFilter: (req, file, cb) => {
-        const allowedMimes = [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'text/plain',
-          'image/jpeg',
-          'image/png',
-          'image/gif',
-        ];
-        if (allowedMimes.includes(file.mimetype)) {
+        const extension = extname(file.originalname || '').toLowerCase();
+        const isAllowedMime = ALLOWED_DOCUMENT_MIME_TYPES.includes(
+          file.mimetype,
+        );
+        const isAllowedExtension =
+          extension.length > 0 &&
+          ALLOWED_DOCUMENT_EXTENSIONS.includes(extension);
+        if (isAllowedMime && isAllowedExtension) {
           cb(null, true);
         } else {
           cb(new BadRequestException('Invalid file type'), false);
@@ -309,7 +540,7 @@ export class DocumentsController {
         fileSize: file.size,
         category: (body.category as DocumentCategory) || DocumentCategory.OTHER,
         status: DocumentStatus.PROCESSING,
-        caseId: body.caseId || undefined,
+        caseId: body.caseId?.trim() || undefined,
         uploadedById: req.user.sub,
         aiDocumentId: randomUUID(),
         practiceId,
@@ -367,6 +598,65 @@ export class DocumentsController {
     const aiProvider = this.getAiProvider();
 
     if (aiProvider === 'google') {
+      // In Google mode we still rely on AI-service for embeddings/background
+      // ingestion. Prefer live AI-service status when available, and only then
+      // fall back to local/backend checkpoints.
+      if (!aiDocumentId.startsWith('files/')) {
+        try {
+          const response = await fetch(
+            `${this.configService.get('AI_SERVICE_URL')}/api/v1/admin/documents/status/${aiDocumentId}`,
+            {
+              method: 'GET',
+              headers: {
+                'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+              },
+            },
+          );
+
+          if (response.ok) {
+            const result = (await response.json()) as {
+              status: { status: string };
+            };
+
+            if (result.status?.status === 'COMPLETED') {
+              await this.prisma.legalDocument.updateMany({
+                where: {
+                  aiDocumentId,
+                  uploadedById: req.user.sub,
+                },
+                data: {
+                  status: 'PROCESSED',
+                },
+              });
+            } else if (result.status?.status === 'CANCELLED') {
+              await this.prisma.legalDocument.updateMany({
+                where: {
+                  aiDocumentId,
+                  uploadedById: req.user.sub,
+                },
+                data: {
+                  status: 'DRAFT',
+                },
+              });
+            }
+
+            return {
+              status: result.status,
+              diagnostics: {
+                statusSource: 'ai-service',
+                ocrProvider,
+                note: 'Google mode is using live AI-service processing status.',
+              } satisfies ProcessingDiagnostics,
+            };
+          }
+        } catch (error) {
+          this.logger.warn(
+            'Google mode AI-service status lookup failed; using backend fallback status.',
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      }
+
       const fallback = await this.buildFallbackProcessingStatus(
         aiDocumentId,
         req.user.sub,
@@ -556,6 +846,8 @@ export class DocumentsController {
           queryDto.query,
           req.user.sub,
           queryDto.limit ?? 10,
+          queryDto.caseId,
+          queryDto.documentId,
         );
         return {
           ...googleResult,
@@ -1417,11 +1709,29 @@ export class DocumentsController {
     return `${fileName.slice(0, idx)}${newExtension}`;
   }
 
+  private buildGoogleOcrIngestionText(
+    fullText: string,
+    pageTexts?: string[],
+  ): string {
+    const normalizedPages = (pageTexts || [])
+      .map((p) => (typeof p === 'string' ? p.trim() : ''))
+      .filter((p) => p.length > 0);
+
+    if (!normalizedPages.length) {
+      return fullText;
+    }
+
+    return normalizedPages
+      .map((pageText, index) => `[[PAGE_${index + 1}]]\n${pageText}`)
+      .join('\n\n');
+  }
+
   private async prepareIngestionPayload(params: {
     aiDocumentId: string;
     fileBuffer: Buffer;
     mimeType: string;
     originalFilename: string;
+    userId?: string;
   }): Promise<{
     fileBuffer: Buffer;
     mimeType: string;
@@ -1431,60 +1741,48 @@ export class DocumentsController {
     const ocrProvider = this.getOcrProvider();
 
     if (ocrProvider !== 'google') {
-      this.setLocalProcessingStatus(aiDocumentId, {
-        status: 'PROCESSING',
-        details: 'Upload complete. Processing/training started in background.',
-        progress: 0,
-      });
+      this.setLocalProcessingStatus(
+        aiDocumentId,
+        {
+          status: 'PROCESSING',
+          details:
+            'Upload complete. Processing/training started in background.',
+          progress: 0,
+        },
+        params.userId,
+      );
       return { fileBuffer, mimeType, originalFilename };
     }
 
     if (!this.googleOcrService.isConfigured()) {
-      this.logger.warn(
-        'OCR_PROVIDER=google but GOOGLE_GENERATIVE_AI_API_KEY is not configured. Falling back to current OCR.',
+      throw new Error(
+        'Google OCR is required but not configured. Please set GOOGLE_GENERATIVE_AI_API_KEY and retry.',
       );
-      this.setLocalProcessingStatus(aiDocumentId, {
-        status: 'PROCESSING',
-        details:
-          'Google OCR key missing. Falling back to current OCR pipeline.',
-        progress: 0,
-      });
-      return { fileBuffer, mimeType, originalFilename };
     }
 
     if (!this.supportsGoogleOcrMime(mimeType)) {
-      this.logger.warn(
-        `Google OCR unsupported mime type (${mimeType}). Falling back to current OCR.`,
+      throw new Error(
+        `Google OCR does not support this file type (${mimeType}). Please upload a PDF or image file.`,
       );
-      this.setLocalProcessingStatus(aiDocumentId, {
-        status: 'PROCESSING',
-        details:
-          'Google OCR not supported for this file type. Using fallback OCR.',
-        progress: 0,
-      });
-      return { fileBuffer, mimeType, originalFilename };
     }
 
     const maxInlineBytes = this.getGoogleOcrMaxInlineBytes();
     if (fileBuffer.length > maxInlineBytes) {
-      this.logger.warn(
-        `File size ${fileBuffer.length} exceeds GOOGLE_OCR_MAX_INLINE_BYTES (${maxInlineBytes}). Falling back to current OCR.`,
+      throw new Error(
+        `File size exceeds Google OCR inline limit (${Math.round(maxInlineBytes / 1024 / 1024)}MB). Please upload a smaller file.`,
       );
-      this.setLocalProcessingStatus(aiDocumentId, {
-        status: 'PROCESSING',
-        details:
-          'File is too large for inline Google OCR. Using fallback OCR pipeline.',
-        progress: 0,
-      });
-      return { fileBuffer, mimeType, originalFilename };
     }
 
     try {
-      this.setLocalProcessingStatus(aiDocumentId, {
-        status: 'PROCESSING',
-        details: 'Google OCR is reading your document...',
-        progress: 10,
-      });
+      this.setLocalProcessingStatus(
+        aiDocumentId,
+        {
+          status: 'PROCESSING',
+          details: 'Google OCR is reading your document...',
+          progress: 10,
+        },
+        params.userId,
+      );
 
       const extraction = await this.googleOcrService.extractTextFromPdf({
         fileBuffer,
@@ -1494,27 +1792,28 @@ export class DocumentsController {
       });
 
       if (!extraction.text?.trim()) {
-        this.logger.warn(
-          'Google OCR returned empty text. Falling back to current OCR.',
+        throw new Error(
+          'Google OCR did not return readable text for this file. Please retry or upload a clearer document.',
         );
-        this.setLocalProcessingStatus(aiDocumentId, {
-          status: 'PROCESSING',
-          details:
-            'Google OCR returned empty text. Using fallback OCR pipeline.',
-          progress: 0,
-        });
-        return { fileBuffer, mimeType, originalFilename };
       }
 
-      const textBuffer = Buffer.from(extraction.text, 'utf8');
+      const textForIngestion = this.buildGoogleOcrIngestionText(
+        extraction.text,
+        extraction.pageTexts,
+      );
+      const textBuffer = Buffer.from(textForIngestion, 'utf8');
       this.logger.log(
         `Google OCR succeeded (${textBuffer.length} bytes text). Sending extracted text to ingestion.`,
       );
-      this.setLocalProcessingStatus(aiDocumentId, {
-        status: 'PROCESSING',
-        details: 'Google OCR completed. Starting embeddings and indexing...',
-        progress: 55,
-      });
+      this.setLocalProcessingStatus(
+        aiDocumentId,
+        {
+          status: 'PROCESSING',
+          details: 'Google OCR completed. Starting embeddings and indexing...',
+          progress: 55,
+        },
+        params.userId,
+      );
 
       return {
         fileBuffer: textBuffer,
@@ -1523,15 +1822,14 @@ export class DocumentsController {
       };
     } catch (error) {
       this.logger.warn(
-        'Google OCR failed. Falling back to current OCR.',
+        'Google OCR failed.',
         error instanceof Error ? error.message : error,
       );
-      this.setLocalProcessingStatus(aiDocumentId, {
-        status: 'PROCESSING',
-        details: 'Google OCR failed. Switching to fallback OCR pipeline.',
-        progress: 0,
-      });
-      return { fileBuffer, mimeType, originalFilename };
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : 'Google OCR failed. Please retry later.',
+      );
     }
   }
 
@@ -1545,11 +1843,16 @@ export class DocumentsController {
     description?: string;
   }): Promise<void> {
     try {
-      this.setLocalProcessingStatus(params.aiDocumentId, {
-        status: 'PROCESSING',
-        details: 'Upload complete. Processing/training started in background.',
-        progress: 0,
-      });
+      this.setLocalProcessingStatus(
+        params.aiDocumentId,
+        {
+          status: 'PROCESSING',
+          details:
+            'Upload complete. Processing/training started in background.',
+          progress: 0,
+        },
+        params.userId,
+      );
 
       if (this.getAiProvider() === 'google') {
         await this.ingestWithGoogleAndUpdateLegalDocument(params);
@@ -1561,13 +1864,18 @@ export class DocumentsController {
         fileBuffer: params.fileBuffer,
         mimeType: params.mimeType,
         originalFilename: params.originalFilename,
+        userId: params.userId,
       });
 
-      this.setLocalProcessingStatus(params.aiDocumentId, {
-        status: 'PROCESSING',
-        details: 'Uploading processed content for embeddings...',
-        progress: 70,
-      });
+      this.setLocalProcessingStatus(
+        params.aiDocumentId,
+        {
+          status: 'PROCESSING',
+          details: 'Uploading processed content for embeddings...',
+          progress: 70,
+        },
+        params.userId,
+      );
 
       await this.ingestWithAiAndUpdateLegalDocument({
         legalDocumentId: params.legalDocumentId,
@@ -1579,12 +1887,16 @@ export class DocumentsController {
         description: params.description,
       });
     } catch (error) {
-      this.setLocalProcessingStatus(params.aiDocumentId, {
-        status: 'ERROR',
-        details: 'Background processing failed.',
-        error: error instanceof Error ? error.message : String(error),
-        progress: 0,
-      });
+      this.setLocalProcessingStatus(
+        params.aiDocumentId,
+        {
+          status: 'ERROR',
+          details: 'Background processing failed.',
+          error: error instanceof Error ? error.message : String(error),
+          progress: 0,
+        },
+        params.userId,
+      );
       this.logger.error(
         'Background document processing failed (upload already saved):',
         error instanceof Error ? error.message : error,
@@ -1601,39 +1913,37 @@ export class DocumentsController {
     aiDocumentId: string;
     description?: string;
   }): Promise<void> {
-    // Production default: keep Google OCR optional, but always build chunk embeddings
-    // in the current vector pipeline for scalable retrieval across large corpora.
-    let ingestionPayload: {
-      fileBuffer: Buffer;
-      mimeType: string;
-      originalFilename: string;
-    } = {
+    // For Google provider mode, always run OCR pre-processing decision here.
+    // If OCR_PROVIDER=google, this executes strict Google OCR without fallback.
+    // If OCR_PROVIDER=current, this passes through unchanged.
+    this.setLocalProcessingStatus(
+      params.aiDocumentId,
+      {
+        status: 'PROCESSING',
+        details: 'Preparing document text for indexing...',
+        progress: 40,
+      },
+      params.userId,
+    );
+    const ingestionPayload = await this.prepareIngestionPayload({
+      aiDocumentId: params.aiDocumentId,
       fileBuffer: params.fileBuffer,
       mimeType: params.mimeType,
       originalFilename: params.originalFilename,
-    };
-
-    if (this.useGoogleOcrPrepassForGoogleAi()) {
-      this.setLocalProcessingStatus(params.aiDocumentId, {
-        status: 'PROCESSING',
-        details: 'Google OCR pre-processing is enabled and running...',
-        progress: 40,
-      });
-      ingestionPayload = await this.prepareIngestionPayload({
-        aiDocumentId: params.aiDocumentId,
-        fileBuffer: params.fileBuffer,
-        mimeType: params.mimeType,
-        originalFilename: params.originalFilename,
-      });
-    }
-
-    this.setLocalProcessingStatus(params.aiDocumentId, {
-      status: 'PROCESSING',
-      details: 'Building searchable chunk embeddings for fast retrieval...',
-      progress: 80,
+      userId: params.userId,
     });
 
-    await this.ingestWithAiAndUpdateLegalDocument({
+    this.setLocalProcessingStatus(
+      params.aiDocumentId,
+      {
+        status: 'PROCESSING',
+        details: 'Building searchable chunk embeddings for fast retrieval...',
+        progress: 80,
+      },
+      params.userId,
+    );
+
+    const ingestionResult = await this.ingestWithAiAndUpdateLegalDocument({
       legalDocumentId: params.legalDocumentId,
       fileBuffer: ingestionPayload.fileBuffer,
       mimeType: ingestionPayload.mimeType,
@@ -1643,12 +1953,29 @@ export class DocumentsController {
       description: params.description,
     });
 
-    this.setLocalProcessingStatus(params.aiDocumentId, {
-      status: 'COMPLETED',
-      details:
-        'Embeddings indexed. Google answering will use retrieved chunks for low-cost, high-scale queries.',
-      progress: 100,
-    });
+    if (ingestionResult.isBackground) {
+      this.setLocalProcessingStatus(
+        params.aiDocumentId,
+        {
+          status: 'PROCESSING',
+          details: 'Embedding/indexing is running in the background...',
+          progress: 90,
+        },
+        params.userId,
+      );
+      return;
+    }
+
+    this.setLocalProcessingStatus(
+      params.aiDocumentId,
+      {
+        status: 'COMPLETED',
+        details:
+          'Embeddings indexed. Google answering will use retrieved chunks for low-cost, high-scale queries.',
+        progress: 100,
+      },
+      params.userId,
+    );
   }
 
   /**
@@ -1662,7 +1989,7 @@ export class DocumentsController {
     userId: string;
     aiDocumentId: string;
     description?: string | null;
-  }): Promise<void> {
+  }): Promise<{ isBackground: boolean }> {
     const {
       legalDocumentId,
       fileBuffer,
@@ -1729,11 +2056,15 @@ export class DocumentsController {
     if (result.processing_status === 'BACKGROUND') {
       const documentInfo = result.documents[0];
 
-      this.setLocalProcessingStatus(aiDocumentId, {
-        status: 'PROCESSING',
-        details: 'Embedding and indexing in progress...',
-        progress: 85,
-      });
+      this.setLocalProcessingStatus(
+        aiDocumentId,
+        {
+          status: 'PROCESSING',
+          details: 'Embedding and indexing in progress...',
+          progress: 85,
+        },
+        userId,
+      );
 
       this.logger.log(
         'Document uploaded and processing started in background:',
@@ -1751,6 +2082,13 @@ export class DocumentsController {
         },
       });
 
+      void this.watchBackgroundProcessing({
+        legalDocumentId,
+        aiServiceDocumentId: documentInfo.document_id,
+        streamAiDocumentId: aiDocumentId,
+        userId,
+      });
+
       this.logger.log(
         'Document uploaded successfully, processing in background:',
         {
@@ -1758,14 +2096,19 @@ export class DocumentsController {
           aiDocumentId: documentInfo.document_id,
         },
       );
+      return { isBackground: true };
     } else {
       const documentInfo = result.documents[0];
 
-      this.setLocalProcessingStatus(aiDocumentId, {
-        status: 'COMPLETED',
-        details: 'Processing completed successfully.',
-        progress: 100,
-      });
+      this.setLocalProcessingStatus(
+        aiDocumentId,
+        {
+          status: 'COMPLETED',
+          details: 'Processing completed successfully.',
+          progress: 100,
+        },
+        userId,
+      );
 
       this.logger.log('Document processed synchronously by FastAPI:', {
         documentId: documentInfo.document_id,
@@ -1788,7 +2131,127 @@ export class DocumentsController {
         chunks: documentInfo.chunks,
         contentLength: documentInfo.content?.length || 0,
       });
+      return { isBackground: false };
     }
+  }
+
+  private async watchBackgroundProcessing(params: {
+    legalDocumentId: string;
+    aiServiceDocumentId: string;
+    streamAiDocumentId: string;
+    userId: string;
+  }): Promise<void> {
+    const { legalDocumentId, aiServiceDocumentId, streamAiDocumentId, userId } =
+      params;
+
+    const attempts = 180; // ~15 minutes @ 5s
+    for (let i = 0; i < attempts; i++) {
+      try {
+        const response = await fetch(
+          `${this.configService.get('AI_SERVICE_URL')}/api/v1/admin/documents/status/${aiServiceDocumentId}`,
+          {
+            method: 'GET',
+            headers: {
+              'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+            },
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        if (!response.ok) {
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue;
+        }
+
+        const result = (await response.json()) as {
+          status?: {
+            status?: string;
+            details?: string;
+            error?: string;
+            progress?: number;
+          };
+        };
+        const s = result.status;
+        if (!s?.status) {
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue;
+        }
+
+        if (typeof s.progress === 'number') {
+          this.setLocalProcessingStatus(
+            streamAiDocumentId,
+            {
+              status: 'PROCESSING',
+              details: s.details || 'Background processing is running...',
+              progress: s.progress,
+            },
+            userId,
+          );
+        }
+
+        if (s.status === 'COMPLETED') {
+          await this.prisma.legalDocument.update({
+            where: { id: legalDocumentId },
+            data: { status: 'PROCESSED' },
+          });
+          this.setLocalProcessingStatus(
+            streamAiDocumentId,
+            {
+              status: 'COMPLETED',
+              details: 'Document processing completed.',
+              progress: 100,
+            },
+            userId,
+          );
+          return;
+        }
+
+        if (s.status === 'ERROR') {
+          this.setLocalProcessingStatus(
+            streamAiDocumentId,
+            {
+              status: 'ERROR',
+              details: s.details || 'Background processing failed.',
+              error: s.error || 'Processing failed',
+              progress: typeof s.progress === 'number' ? s.progress : 0,
+            },
+            userId,
+          );
+          return;
+        }
+
+        if (s.status === 'CANCELLED') {
+          await this.prisma.legalDocument.update({
+            where: { id: legalDocumentId },
+            data: { status: 'DRAFT' },
+          });
+          this.setLocalProcessingStatus(
+            streamAiDocumentId,
+            {
+              status: 'CANCELLED',
+              details: s.details || 'Background processing was cancelled.',
+              progress: typeof s.progress === 'number' ? s.progress : 0,
+            },
+            userId,
+          );
+          return;
+        }
+      } catch {
+        // continue polling
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+
+    this.setLocalProcessingStatus(
+      streamAiDocumentId,
+      {
+        status: 'PROCESSING',
+        details:
+          'Still processing in background. You can refresh later to see final state.',
+        progress: 95,
+      },
+      userId,
+    );
   }
 
   private async uploadFileToGoogle(
@@ -1978,7 +2441,9 @@ export class DocumentsController {
   private async queryDocumentsWithGoogle(
     query: string,
     userId: string,
-    limit: number,
+    _limit: number,
+    selectedCaseId?: string,
+    selectedDocumentId?: string,
   ): Promise<{
     question: string;
     answer: string;
@@ -2000,36 +2465,168 @@ export class DocumentsController {
       );
     }
 
+    const userDocs = await this.prisma.legalDocument.findMany({
+      where: {
+        uploadedById: userId,
+        status: 'PROCESSED',
+        aiDocumentId: { not: null },
+      },
+      select: {
+        id: true,
+        aiDocumentId: true,
+        title: true,
+        originalFilename: true,
+        caseId: true,
+        case: {
+          select: {
+            title: true,
+            caseNumber: true,
+          },
+        },
+      },
+    });
+
+    const caseMap = new Map<
+      string,
+      {
+        caseId: string;
+        caseTitle: string;
+        caseNumber: string | null;
+        docIds: string[];
+        docCount: number;
+      }
+    >();
+
+    for (const row of userDocs) {
+      const cid = row.caseId;
+      if (!cid) continue; // We use case entities for disambiguation UX.
+      const existing = caseMap.get(cid);
+      if (existing) {
+        existing.docIds.push(row.id);
+        existing.docCount += 1;
+        continue;
+      }
+      caseMap.set(cid, {
+        caseId: cid,
+        caseTitle: row.case?.title || 'Untitled case',
+        caseNumber: row.case?.caseNumber || null,
+        docIds: [row.id],
+        docCount: 1,
+      });
+    }
+
+    const caseOptions = Array.from(caseMap.values()).sort((a, b) =>
+      a.caseTitle.localeCompare(b.caseTitle),
+    );
+
+    let effectiveCaseId = selectedCaseId;
+    const effectiveDocumentId = selectedDocumentId;
+    if (effectiveDocumentId) {
+      const explicitDoc = userDocs.find((d) => d.id === effectiveDocumentId);
+      if (!explicitDoc) {
+        return {
+          question: query,
+          answer:
+            'The selected document is not available for this account. Please reselect the document and try again.',
+          sources: [],
+          confidence: 0.1,
+          generated_at: new Date().toISOString(),
+        };
+      }
+      if (explicitDoc.caseId) {
+        effectiveCaseId = explicitDoc.caseId;
+      }
+    }
+
+    if (!effectiveCaseId) {
+      const terms = this.extractIntentTerms(query);
+      const ranked = caseOptions
+        .map((opt) => {
+          const caseText = `${opt.caseTitle} ${opt.caseNumber || ''}`;
+          const linkedDocs = userDocs.filter((d) => d.caseId === opt.caseId);
+          const docText = linkedDocs
+            .map((d) => `${d.title || ''} ${d.originalFilename || ''}`)
+            .join(' ');
+          const score =
+            this.scoreQueryAgainstText(terms, caseText) * 2 +
+            this.scoreQueryAgainstText(terms, docText);
+          return { opt, score };
+        })
+        .sort((a, b) => b.score - a.score);
+
+      if (ranked.length > 0 && ranked[0].score > 0) {
+        const top = ranked[0];
+        const second = ranked[1];
+        // Auto-select only when confidence is clear to avoid silent wrong-case answers.
+        if (!second || top.score >= second.score + 2) {
+          effectiveCaseId = top.opt.caseId;
+        }
+      }
+
+      // Fallback exact includes match from prior helper.
+      if (!effectiveCaseId) {
+        effectiveCaseId =
+          this.inferCaseFromQuery(query, caseOptions) || undefined;
+      }
+    }
+
+    const intent =
+      (await this.classifyIntentWithGoogle(query, apiKey)) ||
+      this.detectGoogleQueryIntent(query);
+    const asksForCaseContext =
+      /\b(about|regarding|re|tell me about|brief|summary|status|background)\b/i.test(
+        query,
+      ) ||
+      intent === 'case_brief' ||
+      intent === 'summary';
+
+    if (
+      !effectiveDocumentId &&
+      !effectiveCaseId &&
+      caseOptions.length > 1 &&
+      asksForCaseContext
+    ) {
+      const list = caseOptions
+        .slice(0, 8)
+        .map(
+          (c, idx) =>
+            `${idx + 1}. ${c.caseTitle}${c.caseNumber ? ` (${c.caseNumber})` : ''} - ${c.docCount} document${c.docCount > 1 ? 's' : ''}`,
+        )
+        .join('\n');
+      return {
+        question: query,
+        answer:
+          'I found multiple cases in your workspace and this question could apply to more than one.\n\n' +
+          'Please tell me which case you mean (name or case number):\n' +
+          `${list}\n\n` +
+          'After you pick one, I will answer from that case documents only.',
+        sources: [],
+        confidence: 0.2,
+        generated_at: new Date().toISOString(),
+      };
+    }
+
+    const scopedDocIds = effectiveDocumentId
+      ? userDocs
+          .filter((d) => d.id === effectiveDocumentId)
+          .flatMap((d) =>
+            [d.id, d.aiDocumentId].filter((v): v is string => Boolean(v)),
+          )
+      : effectiveCaseId
+        ? userDocs
+            .filter((d) => d.caseId === effectiveCaseId)
+            .flatMap((d) =>
+              [d.id, d.aiDocumentId].filter((v): v is string => Boolean(v)),
+            )
+        : undefined;
+
     const searchResults = await this.qdrantService.searchDocuments(
       query,
       userId,
-      this.getGoogleQueryMaxChunks(),
+      Math.max(this.getGoogleQueryMaxChunks() * 2, 12),
+      scopedDocIds,
     );
     if (!searchResults || searchResults.length === 0) {
-      if (this.useCurrentFallbackForGoogleQuery429()) {
-        try {
-          const fallback = await this.queryDocumentsDirect(
-            query,
-            userId,
-            limit,
-          );
-          return {
-            ...fallback,
-            answer:
-              '[Using fallback provider because no indexed chunks were found for Google RAG]\n\n' +
-              fallback.answer,
-            confidence: Math.min(fallback.confidence, 0.6),
-          };
-        } catch (fallbackError) {
-          this.logger.warn(
-            `Fallback query failed with unavailable Google files: ${
-              fallbackError instanceof Error
-                ? fallbackError.message
-                : String(fallbackError)
-            }`,
-          );
-        }
-      }
       return {
         question: query,
         answer:
@@ -2040,20 +2637,40 @@ export class DocumentsController {
       };
     }
 
-    const model = this.getGoogleQueryModel();
-    const endpoint =
-      `https://generativelanguage.googleapis.com/v1beta/models/` +
-      `${encodeURIComponent(model)}:generateContent?key=${apiKey}`;
-
     const formattedSources = await this.documentsService.enrichVectorSearchHits(
       searchResults,
       userId,
     );
+    const scopedSources = effectiveCaseId
+      ? formattedSources.filter((source) => {
+          const doc = userDocs.find((d) => d.id === source.document_id);
+          return doc?.caseId === effectiveCaseId;
+        })
+      : formattedSources;
+
+    const documentScopedSources = effectiveDocumentId
+      ? scopedSources.filter(
+          (source) => source.document_id === effectiveDocumentId,
+        )
+      : scopedSources;
+
+    if (!documentScopedSources.length) {
+      return {
+        question: query,
+        answer: effectiveDocumentId
+          ? 'I could not find enough indexed snippets for the selected document. Please try rephrasing or choose another document.'
+          : 'I could not find enough indexed snippets for the selected case. Please try rephrasing, or choose another case/document.',
+        sources: [],
+        confidence: 0.1,
+        generated_at: new Date().toISOString(),
+      };
+    }
+
     const maxContextChars = this.getGoogleQueryMaxContextChars();
     let usedChars = 0;
-    const selectedSources: typeof formattedSources = [];
+    const selectedSources: typeof documentScopedSources = [];
 
-    for (const source of formattedSources) {
+    for (const source of documentScopedSources) {
       const normalized = (source.content || '').replace(/\s+/g, ' ').trim();
       if (!normalized) continue;
       const slice = normalized.slice(0, 1200);
@@ -2079,20 +2696,46 @@ export class DocumentsController {
 
     const parts: Array<Record<string, unknown>> = [
       {
-        text:
-          'You are a legal document assistant. Answer using ONLY the provided retrieved source snippets. ' +
-          'If the snippets are insufficient, explicitly say what is missing. Include citations as [Source N].',
+        text: this.buildGoogleInstructionByIntent(intent),
       },
       { text: `Question: ${query}` },
       { text: `Retrieved snippets:\n\n${contextText}` },
     ];
 
-    const { status, payload } = await this.callGoogleGenerateContent(
-      endpoint,
-      JSON.stringify({
-        contents: [{ role: 'user', parts }],
-      }),
-    );
+    const requestBody = JSON.stringify({
+      contents: [{ role: 'user', parts }],
+    });
+
+    const candidateModels = this.getGoogleQueryCandidateModels();
+    let status = 0;
+    let payload: {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+      }>;
+      error?: { message?: string };
+    } | null = null;
+
+    for (const model of candidateModels) {
+      const endpoint =
+        `https://generativelanguage.googleapis.com/v1beta/models/` +
+        `${encodeURIComponent(model)}:generateContent?key=${apiKey}`;
+      const result = await this.callGoogleGenerateContent(
+        endpoint,
+        requestBody,
+      );
+      status = result.status;
+      payload = result.payload;
+      if (status === 200) {
+        break;
+      }
+      if (this.shouldTryNextGoogleModel(status, payload)) {
+        this.logger.warn(
+          `Google query model ${model} unavailable. Trying next Google model.`,
+        );
+        continue;
+      }
+      break;
+    }
 
     const sources = selectedSources.map((source) => ({
       document_id: source.document_id,
@@ -2105,33 +2748,6 @@ export class DocumentsController {
 
     if (status !== 200) {
       if (status === 429) {
-        if (this.useCurrentFallbackForGoogleQuery429()) {
-          this.logger.warn(
-            'Google query is rate-limited (429). Trying current pipeline fallback.',
-          );
-          try {
-            const fallback = await this.queryDocumentsDirect(
-              query,
-              userId,
-              limit,
-            );
-            return {
-              ...fallback,
-              answer:
-                '[Using fallback provider due to temporary Google rate limit]\n\n' +
-                fallback.answer,
-              confidence: Math.min(fallback.confidence, 0.65),
-            };
-          } catch (fallbackError) {
-            this.logger.warn(
-              `Fallback query also failed: ${
-                fallbackError instanceof Error
-                  ? fallbackError.message
-                  : String(fallbackError)
-              }`,
-            );
-          }
-        }
         return {
           question: query,
           answer:
@@ -2142,33 +2758,6 @@ export class DocumentsController {
         };
       }
       if (status === 404) {
-        if (this.useCurrentFallbackForGoogleQuery429()) {
-          this.logger.warn(
-            `Google query returned 404 (likely model not found). Trying current pipeline fallback.`,
-          );
-          try {
-            const fallback = await this.queryDocumentsDirect(
-              query,
-              userId,
-              limit,
-            );
-            return {
-              ...fallback,
-              answer:
-                '[Using fallback provider because Google returned 404 for this query]\n\n' +
-                fallback.answer,
-              confidence: Math.min(fallback.confidence, 0.6),
-            };
-          } catch (fallbackError) {
-            this.logger.warn(
-              `Fallback query also failed after Google 404: ${
-                fallbackError instanceof Error
-                  ? fallbackError.message
-                  : String(fallbackError)
-              }`,
-            );
-          }
-        }
         return {
           question: query,
           answer:
@@ -2218,6 +2807,7 @@ export class DocumentsController {
       candidates?: Array<{
         content?: { parts?: Array<{ text?: string }> };
       }>;
+      error?: { message?: string };
     } | null;
   }> {
     let status = 0;
@@ -2225,6 +2815,7 @@ export class DocumentsController {
       candidates?: Array<{
         content?: { parts?: Array<{ text?: string }> };
       }>;
+      error?: { message?: string };
     } | null = null;
 
     const retryDelaysMs = [1200, 2500, 5000];
@@ -2240,6 +2831,7 @@ export class DocumentsController {
         candidates?: Array<{
           content?: { parts?: Array<{ text?: string }> };
         }>;
+        error?: { message?: string };
       } | null;
 
       if (response.ok) {
@@ -2262,11 +2854,56 @@ export class DocumentsController {
   private setLocalProcessingStatus(
     aiDocumentId: string,
     status: Omit<UiProcessingStatus, 'timestamp'>,
+    userId?: string,
   ): void {
-    this.localProcessingStatus.set(aiDocumentId, {
+    const previousStatus = this.localProcessingStatus.get(aiDocumentId);
+    const nextStatus: UiProcessingStatus = {
       ...status,
       timestamp: new Date().toISOString(),
-    });
+    };
+
+    const inFlightStates = new Set(['PROCESSING', 'PENDING']);
+    const terminalStates = new Set([
+      'COMPLETED',
+      'ERROR',
+      'NOT_FOUND',
+      'CANCELLED',
+    ]);
+
+    // Keep terminal states sticky to avoid accidental regressions from late updates.
+    if (
+      previousStatus &&
+      terminalStates.has(previousStatus.status) &&
+      previousStatus.status !== nextStatus.status
+    ) {
+      return;
+    }
+
+    // Enforce monotonic progress while document is still in-flight.
+    if (
+      previousStatus &&
+      inFlightStates.has(previousStatus.status) &&
+      inFlightStates.has(nextStatus.status) &&
+      typeof previousStatus.progress === 'number' &&
+      typeof nextStatus.progress === 'number' &&
+      nextStatus.progress < previousStatus.progress
+    ) {
+      nextStatus.progress = previousStatus.progress;
+    }
+
+    this.localProcessingStatus.set(aiDocumentId, nextStatus);
+
+    if (userId) {
+      this.notificationEmitter.emitDocumentStatusUpdate(
+        userId,
+        aiDocumentId,
+        nextStatus,
+        {
+          statusSource: 'backend-fallback',
+          ocrProvider: this.getOcrProvider(),
+        },
+      );
+    }
   }
 
   private async buildFallbackProcessingStatus(

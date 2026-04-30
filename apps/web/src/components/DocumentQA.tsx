@@ -14,7 +14,6 @@ import {
   ExternalLink,
   FileText,
   Loader2,
-  MessageSquare,
   Send,
   ThumbsDown,
   ThumbsUp,
@@ -58,6 +57,17 @@ interface Citation {
   content: string;
   quote: string;
   createdAt: string;
+}
+
+interface CaseOption {
+  id: string;
+  title: string;
+  caseNumber?: string;
+}
+
+interface DocumentOption {
+  id: string;
+  title: string;
 }
 interface WordCloudOverlayProps {
   suggestions: string[];
@@ -205,6 +215,32 @@ interface SourceTextViewerProps {
   startChar?: number;
   endChar?: number;
   onClose: () => void;
+}
+
+function renderInlineBold(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) => {
+    const boldMatch = part.match(/^\*\*([^*]+)\*\*$/);
+    if (boldMatch) {
+      return (
+        <strong key={`bold-${index}`} className="font-semibold">
+          {boldMatch[1]}
+        </strong>
+      );
+    }
+    return <React.Fragment key={`text-${index}`}>{part}</React.Fragment>;
+  });
+}
+
+function parseSourceNumbers(raw: string): number[] {
+  return raw
+    .split(",")
+    .map((n) => Number.parseInt(n.trim(), 10))
+    .filter((n) => Number.isInteger(n) && n > 0);
+}
+
+function hasInlineSourceCitations(content: string): boolean {
+  return /\[Source\s+[0-9,\s]+\]/i.test(content);
 }
 
 function SourceTextViewer({
@@ -463,7 +499,11 @@ function SourceTextViewer({
   );
 }
 
-export default function DocumentQA() {
+interface DocumentQAProps {
+  caseId?: string;
+}
+
+export default function DocumentQA({ caseId }: DocumentQAProps) {
   const [messages, setMessages] = useState<QAMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [context, setContext] = useState("");
@@ -484,6 +524,7 @@ export default function DocumentQA() {
     documentTitle: string;
     fileType: string;
     initialPage?: number;
+    initialSearchText?: string;
   } | null>(null);
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
@@ -502,6 +543,12 @@ export default function DocumentQA() {
   const [expandedSourcesByMessage, setExpandedSourcesByMessage] = useState<
     Record<string, boolean>
   >({});
+  const [availableCases, setAvailableCases] = useState<CaseOption[]>([]);
+  const [availableDocuments, setAvailableDocuments] = useState<DocumentOption[]>(
+    [],
+  );
+  const [selectedCaseId, setSelectedCaseId] = useState<string>(caseId || "");
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string>("");
 
   // Load chat history from localStorage and backend
   useEffect(() => {
@@ -526,6 +573,59 @@ export default function DocumentQA() {
 
     loadChatHistory();
   }, []);
+
+  useEffect(() => {
+    setSelectedCaseId(caseId || "");
+  }, [caseId]);
+
+  useEffect(() => {
+    const loadCaseOptions = async () => {
+      try {
+        const cases = (await apiClient.getCases()) as Array<{
+          id: string;
+          title?: string;
+          caseNumber?: string;
+        }>;
+        const opts = (cases || []).map((c) => ({
+          id: c.id,
+          title: c.title || "Untitled case",
+          caseNumber: c.caseNumber,
+        }));
+        setAvailableCases(opts);
+      } catch (error) {
+        console.error("Error loading case options:", error);
+        setAvailableCases([]);
+      }
+    };
+    loadCaseOptions();
+  }, []);
+
+  useEffect(() => {
+    const loadDocumentOptions = async () => {
+      try {
+        const docs = (await apiClient.getDocuments(
+          selectedCaseId || undefined,
+        )) as Array<{
+          id: string;
+          title?: string;
+          originalFilename?: string;
+        }>;
+        const opts = (docs || []).map((d) => ({
+          id: d.id,
+          title: d.title || d.originalFilename || "Untitled document",
+        }));
+        setAvailableDocuments(opts);
+        if (selectedDocumentId && !opts.some((d) => d.id === selectedDocumentId)) {
+          setSelectedDocumentId("");
+        }
+      } catch (error) {
+        console.error("Error loading document options:", error);
+        setAvailableDocuments([]);
+        setSelectedDocumentId("");
+      }
+    };
+    loadDocumentOptions();
+  }, [selectedCaseId]);
 
   // Load search history from localStorage
   useEffect(() => {
@@ -683,7 +783,9 @@ export default function DocumentQA() {
       const response = await apiClient.queryDocuments(
         currentQuestion,
         context,
-        10
+        10,
+        selectedCaseId || undefined,
+        selectedDocumentId || undefined
       );
 
       const aiMessage: QAMessage = {
@@ -826,6 +928,14 @@ export default function DocumentQA() {
     source: NonNullable<QAMessage["sources"]>[0]
   ) => {
     try {
+      const parsedPage = Number(source.page_number);
+      const initialPage =
+        Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : undefined;
+      const initialSearchText =
+        typeof source.content === "string"
+          ? source.content.replace(/\s+/g, " ").trim().slice(0, 120)
+          : undefined;
+
       const document = (await apiClient.getDocument(source.document_id)) as {
         id: string;
         title?: string;
@@ -837,10 +947,8 @@ export default function DocumentQA() {
         documentTitle:
           document.title?.trim() || source.document_title || "Document",
         fileType: document.fileType || "application/pdf",
-        initialPage:
-          source.page_number != null && source.page_number > 0
-            ? source.page_number
-            : undefined,
+        initialPage,
+        initialSearchText,
       });
     } catch (error) {
       console.error("Error opening source document:", error);
@@ -853,6 +961,95 @@ export default function DocumentQA() {
       ...prev,
       [messageId]: !prev[messageId],
     }));
+  };
+
+  const selectedCaseLabel = selectedCaseId
+    ? availableCases.find((c) => c.id === selectedCaseId)?.title || "Selected case"
+    : null;
+  const selectedDocumentLabel = selectedDocumentId
+    ? availableDocuments.find((d) => d.id === selectedDocumentId)?.title ||
+      "Selected document"
+    : null;
+
+  const renderAnswerContent = (message: QAMessage) => {
+    const normalized = formatDocumentAssistantAnswer(message.content);
+    const lines = normalized.split("\n");
+    const sourcePattern = /\[Source\s+([0-9,\s]+)\]/gi;
+    const sources = message.sources ?? [];
+
+    return (
+      <div className="text-sm whitespace-pre-wrap space-y-1">
+        {lines.map((line, lineIndex) => {
+          const matches = Array.from(line.matchAll(sourcePattern));
+          if (matches.length === 0) {
+            return <p key={`line-${lineIndex}`}>{renderInlineBold(line)}</p>;
+          }
+
+          const parts: React.ReactNode[] = [];
+          let cursor = 0;
+
+          matches.forEach((match, matchIndex) => {
+            const start = match.index ?? 0;
+            const end = start + match[0].length;
+
+            if (start > cursor) {
+              parts.push(
+                <React.Fragment key={`text-${lineIndex}-${matchIndex}`}>
+                  {renderInlineBold(line.slice(cursor, start))}
+                </React.Fragment>
+              );
+            }
+
+            const numbers = parseSourceNumbers(match[1] ?? "");
+            parts.push(
+              <span
+                key={`sources-${lineIndex}-${matchIndex}`}
+                className="inline-flex items-center gap-1 align-middle"
+              >
+                {numbers.map((number) => {
+                  const source = sources[number - 1];
+                  if (!source) {
+                    return (
+                      <span
+                        key={`missing-source-${lineIndex}-${matchIndex}-${number}`}
+                        className="inline-flex items-center rounded border border-dashed border-gray-300 px-1.5 py-0.5 text-[11px] text-gray-500 dark:border-gray-600 dark:text-gray-400"
+                        title="No matching source found in retrieved citations"
+                      >
+                        Source {number}
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={`source-${lineIndex}-${matchIndex}-${number}`}
+                      type="button"
+                      className="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-medium text-blue-800 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:hover:bg-blue-900/60"
+                      onClick={() => openDocumentFileAtSource(source)}
+                      title={`Open source ${number} file`}
+                    >
+                      Source {number}
+                    </button>
+                  );
+                })}
+              </span>
+            );
+
+            cursor = end;
+          });
+
+          if (cursor < line.length) {
+            parts.push(
+              <React.Fragment key={`tail-${lineIndex}`}>
+                {renderInlineBold(line.slice(cursor))}
+              </React.Fragment>
+            );
+          }
+
+          return <p key={`line-${lineIndex}`}>{parts}</p>;
+        })}
+      </div>
+    );
   };
 
   const handleSuggestedQuestionClick = async (suggestion: string) => {
@@ -876,7 +1073,13 @@ export default function DocumentQA() {
 
     try {
       // Conversation history is now handled automatically by the backend
-      const response = await apiClient.queryDocuments(suggestion, context, 10);
+      const response = await apiClient.queryDocuments(
+        suggestion,
+        context,
+        10,
+        selectedCaseId || undefined,
+        selectedDocumentId || undefined
+      );
 
       const answerMessage: QAMessage = {
         id: (Date.now() + 1).toString(),
@@ -922,14 +1125,38 @@ export default function DocumentQA() {
                 <h2 className="text-lg font-semibold text-foreground">
                   Document AI Assistant
                 </h2>
-                {messages.length > 0 && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    <MessageSquare className="w-3 h-3 mr-1" />
-                    Context: Auto-managed by AI
-                  </span>
-                )}
               </div>
               <div className="flex items-center space-x-2">
+                <select
+                  value={selectedCaseId}
+                  onChange={(e) => {
+                    setSelectedCaseId(e.target.value);
+                    setSelectedDocumentId("");
+                  }}
+                  className="h-9 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+                  title="Scope to a case (optional)"
+                >
+                  <option value="">All Cases</option>
+                  {availableCases.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                      {c.caseNumber ? ` (${c.caseNumber})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedDocumentId}
+                  onChange={(e) => setSelectedDocumentId(e.target.value)}
+                  className="h-9 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+                  title="Scope to a document (optional)"
+                >
+                  <option value="">All Documents</option>
+                  {availableDocuments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.title}
+                    </option>
+                  ))}
+                </select>
                 <button
                   onClick={async () => {
                     await loadAnalytics();
@@ -949,6 +1176,37 @@ export default function DocumentQA() {
                 </button>
               </div>
             </div>
+
+            {(selectedCaseLabel || selectedDocumentLabel) && (
+              <div className="flex-shrink-0 px-4 py-2 border-b border-border bg-muted/40">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Active scope:
+                  </span>
+                  {selectedCaseLabel && (
+                    <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+                      Case: {selectedCaseLabel}
+                    </span>
+                  )}
+                  {selectedDocumentLabel && (
+                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">
+                      Document: {selectedDocumentLabel}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCaseId("");
+                      setSelectedDocumentId("");
+                    }}
+                    className="ml-1 inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted"
+                    title="Clear selected case and document scope"
+                  >
+                    Clear scope
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Context Input - Hidden but keeping structure */}
             <div className="flex-shrink-0 p-4 border-b border-border hidden">
@@ -1020,15 +1278,20 @@ export default function DocumentQA() {
                           <Bot className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600" />
                         )}
                         <div className="flex-1">
-                          <p className="text-sm whitespace-pre-wrap">
-                            {message.type === "answer"
-                              ? formatDocumentAssistantAnswer(message.content)
-                              : message.content}
-                          </p>
+                          {message.type === "answer" ? (
+                            renderAnswerContent(message)
+                          ) : (
+                            <p className="text-sm whitespace-pre-wrap">
+                              {message.content}
+                            </p>
+                          )}
 
                           {message.type === "answer" &&
                             message.sources &&
-                            message.sources.length > 0 && (
+                            message.sources.length > 0 &&
+                            !hasInlineSourceCitations(
+                              formatDocumentAssistantAnswer(message.content)
+                            ) && (
                               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
                                 <button
                                   onClick={() =>
@@ -1037,8 +1300,7 @@ export default function DocumentQA() {
                                   className="w-full flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 bg-muted rounded p-2 hover:bg-muted/80 transition-colors"
                                 >
                                   <span>
-                                    Sources ({Math.min(message.sources.length, 3)}
-                                    )
+                                    Sources ({message.sources.length})
                                   </span>
                                   {expandedSourcesByMessage[message.id] ? (
                                     <ChevronDown className="w-3.5 h-3.5" />
@@ -1048,9 +1310,7 @@ export default function DocumentQA() {
                                 </button>
                                 {expandedSourcesByMessage[message.id] && (
                                   <div className="space-y-1 mt-2">
-                                    {message.sources
-                                      .slice(0, 3)
-                                      .map((source, index) => (
+                                    {message.sources.map((source, index) => (
                                         <div
                                           key={index}
                                           className="w-full text-xs bg-muted rounded p-2"
@@ -1252,6 +1512,7 @@ export default function DocumentQA() {
           documentTitle={selectedFileDocument.documentTitle}
           fileType={selectedFileDocument.fileType}
           initialPage={selectedFileDocument.initialPage}
+          initialSearchText={selectedFileDocument.initialSearchText}
           onClose={() => setSelectedFileDocument(null)}
         />
       )}

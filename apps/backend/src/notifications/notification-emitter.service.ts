@@ -34,6 +34,44 @@ export class NotificationEmitterService {
     }
   }
 
+  emitUnreadNotificationCount(userId: string, unreadCount: number) {
+    if (!this.socketServer) {
+      return;
+    }
+
+    this.socketServer.to(`user_${userId}`).emit('notification_unread_count', {
+      unreadCount,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  emitDocumentStatusUpdate(
+    userId: string,
+    aiDocumentId: string,
+    status: {
+      status: string;
+      details?: string;
+      error?: string;
+      progress?: number;
+      timestamp?: string;
+    },
+    diagnostics: {
+      statusSource?: string;
+      ocrProvider?: string;
+      note?: string;
+    },
+  ) {
+    if (!this.socketServer) {
+      return;
+    }
+
+    this.socketServer.to(`user_${userId}`).emit('document_status_update', {
+      aiDocumentId,
+      status,
+      diagnostics,
+    });
+  }
+
   static getInstance(): NotificationEmitterService {
     return NotificationEmitterService.instance;
   }

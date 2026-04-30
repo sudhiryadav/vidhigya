@@ -33,6 +33,9 @@ export default function UploadDocumentModal({
     caseId: "",
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [errors, setErrors] = useState<
+    Partial<Record<"title" | "files", string>>
+  >({});
 
   useEffect(() => {
     if (isOpen) {
@@ -54,6 +57,9 @@ export default function UploadDocumentModal({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setSelectedFiles((prev) => [...prev, ...files]);
+    if (files.length > 0 && errors.files) {
+      setErrors((prev) => ({ ...prev, files: undefined }));
+    }
   };
 
   const removeFile = (index: number) => {
@@ -63,10 +69,17 @@ export default function UploadDocumentModal({
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title || selectedFiles.length === 0) {
-      toast.error("Please provide a title and select at least one file");
+    const nextErrors: Partial<Record<"title" | "files", string>> = {};
+    if (!formData.title.trim()) nextErrors.title = "Document title is required";
+    if (selectedFiles.length === 0) {
+      nextErrors.files = "Please select at least one file";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
+    setErrors({});
 
     try {
       setLoading(true);
@@ -158,15 +171,23 @@ export default function UploadDocumentModal({
               type="text"
               required
               value={formData.title}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   title: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                });
+                if (errors.title && e.target.value.trim()) {
+                  setErrors((prev) => ({ ...prev, title: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                errors.title ? "border-red-500" : "border-border"
+              }`}
               placeholder="Enter document title"
             />
+            {errors.title && (
+              <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+            )}
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-foreground mb-1">
@@ -264,6 +285,9 @@ export default function UploadDocumentModal({
               PDF, DOC, DOCX, TXT, JPG, JPEG, PNG files accepted
             </p>
           </div>
+          {errors.files && (
+            <p className="mt-2 text-sm text-red-600">{errors.files}</p>
+          )}
         </div>
 
         {selectedFiles.length > 0 && (

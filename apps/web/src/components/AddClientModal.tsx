@@ -17,8 +17,13 @@ export default function AddClientModal({
   onClose,
   onSuccess,
 }: AddClientModalProps) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^[+]?[0-9\s\-()]{7,20}$/;
   const { currentPractice } = usePractice();
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<
+    Partial<Record<"name" | "email" | "phone", string>>
+  >({});
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -31,10 +36,22 @@ export default function AddClientModal({
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email) {
-      toast.error("Please provide at least name and email");
+    const nextErrors: Partial<Record<"name" | "email" | "phone", string>> = {};
+    if (!formData.name.trim()) nextErrors.name = "Full name is required";
+    if (!formData.email.trim()) {
+      nextErrors.email = "Email is required";
+    } else if (!emailRegex.test(formData.email.trim())) {
+      nextErrors.email = "Please enter a valid email address";
+    }
+    if (formData.phone.trim() && !phoneRegex.test(formData.phone.trim())) {
+      nextErrors.phone = "Please enter a valid phone number";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
+    setErrors({});
 
     if (!currentPractice) {
       toast.error("No practice selected");
@@ -121,14 +138,24 @@ export default function AddClientModal({
               required
               value={formData.name}
               onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  name: e.target.value,
-                })
+                {
+                  setFormData({
+                    ...formData,
+                    name: e.target.value,
+                  });
+                  if (errors.name && e.target.value.trim()) {
+                    setErrors((prev) => ({ ...prev, name: undefined }));
+                  }
+                }
               }
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                errors.name ? "border-red-500" : "border-border"
+              }`}
               placeholder="Enter full name"
             />
+            {errors.name && (
+              <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
@@ -139,14 +166,24 @@ export default function AddClientModal({
               required
               value={formData.email}
               onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  email: e.target.value,
-                })
+                {
+                  setFormData({
+                    ...formData,
+                    email: e.target.value,
+                  });
+                  if (errors.email && e.target.value.trim()) {
+                    setErrors((prev) => ({ ...prev, email: undefined }));
+                  }
+                }
               }
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                errors.email ? "border-red-500" : "border-border"
+              }`}
               placeholder="Enter email address"
             />
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
@@ -155,15 +192,23 @@ export default function AddClientModal({
             <input
               type="tel"
               value={formData.phone}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   phone: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                });
+                if (errors.phone && !e.target.value.trim()) {
+                  setErrors((prev) => ({ ...prev, phone: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                errors.phone ? "border-red-500" : "border-border"
+              }`}
               placeholder="Enter phone number"
             />
+            {errors.phone && (
+              <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">

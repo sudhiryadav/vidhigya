@@ -801,12 +801,14 @@ class ApiClient {
   async queryDocuments(
     query: string,
     context?: string,
-    limit: number = 10
+    limit: number = 10,
+    caseId?: string,
+    documentId?: string
     // conversationHistory is now handled by the backend automatically
   ): Promise<any> {
     return this.request("/documents/query", {
       method: "POST",
-      body: JSON.stringify({ query, context, limit }),
+      body: JSON.stringify({ query, context, limit, caseId, documentId }),
     });
   }
 

@@ -5,6 +5,7 @@ import { CommonModule } from '../common/common.module';
 import { QdrantModule } from '../config/qdrant.module';
 import { S3Module } from '../config/s3.module';
 import { LogsModule } from '../logs/logs.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PermissionModule } from '../common/permissions/permission.module';
 import { DocumentsController } from './documents.controller';
@@ -17,6 +18,7 @@ import { GoogleOcrService } from './google-ocr.service';
     S3Module,
     QdrantModule,
     LogsModule,
+    NotificationsModule,
     CommonModule,
     PermissionModule,
     MulterModule.register({

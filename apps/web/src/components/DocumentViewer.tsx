@@ -2,6 +2,7 @@
 
 import { Download, ExternalLink, FileText, Loader2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
 
 /** NEXT_PUBLIC_API_URL may be `http://host:port` or `http://host:port/api`. */
 function documentsApiBase(): string {
@@ -17,7 +18,14 @@ interface DocumentViewerProps {
   onClose: () => void;
   /** 1-based page index for PDF viewers (uses `#page=` fragment). */
   initialPage?: number;
+  /** Optional snippet to search/highlight in PDF viewers (best effort). */
+  initialSearchText?: string;
 }
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
 
 export default function DocumentViewer({
   documentId,
@@ -25,10 +33,21 @@ export default function DocumentViewer({
   fileType,
   onClose,
   initialPage,
+  initialSearchText,
 }: DocumentViewerProps) {
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
+  const [currentPdfPage, setCurrentPdfPage] = useState(
+    typeof initialPage === "number" && initialPage > 0 ? initialPage : 1
+  );
+
+  useEffect(() => {
+    setCurrentPdfPage(
+      typeof initialPage === "number" && initialPage > 0 ? initialPage : 1
+    );
+  }, [initialPage, documentId]);
 
   useEffect(() => {
     const fetchDocumentUrl = async () => {
@@ -90,19 +109,50 @@ export default function DocumentViewer({
     };
   }, [documentId]);
 
+  const isPdf = useMemo(() => {
+    const normalizedType = fileType.toLowerCase();
+    const normalizedTitle = documentTitle.toLowerCase();
+    return normalizedType.includes("pdf") || normalizedTitle.endsWith(".pdf");
+  }, [fileType, documentTitle]);
+
   const viewerMediaUrl = useMemo(() => {
     if (!documentUrl) return null;
-    const page =
-      typeof initialPage === "number" && initialPage > 0 ? initialPage : null;
-    if (!page || !fileType.toLowerCase().includes("pdf")) {
+    if (!isPdf) {
       return documentUrl;
     }
-    const hash = `page=${page}`;
+
+    const hashParams: string[] = [];
+    if (typeof initialPage === "number" && initialPage > 0) {
+      hashParams.push(`page=${initialPage}`);
+    }
+
+    const searchText =
+      typeof initialSearchText === "string"
+        ? initialSearchText.trim().slice(0, 120)
+        : "";
+    if (searchText) {
+      hashParams.push(`search=${encodeURIComponent(searchText)}`);
+    }
+
+    if (hashParams.length === 0) {
+      return documentUrl;
+    }
+
+    const hash = hashParams.join("&");
     if (documentUrl.includes("#")) {
       return `${documentUrl}&${hash}`;
     }
     return `${documentUrl}#${hash}`;
-  }, [documentUrl, initialPage, fileType]);
+  }, [documentUrl, initialPage, initialSearchText, isPdf]);
+
+  const escapedSearchText = useMemo(() => {
+    const searchText =
+      typeof initialSearchText === "string"
+        ? initialSearchText.replace(/\s+/g, " ").trim().slice(0, 120)
+        : "";
+    if (!searchText) return "";
+    return searchText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }, [initialSearchText]);
 
   const handleDownload = () => {
     if (documentUrl) {
@@ -164,13 +214,81 @@ export default function DocumentViewer({
     }
 
     // Render based on file type
-    if (fileType.includes("pdf")) {
+    if (isPdf) {
       return (
-        <iframe
-          src={viewerMediaUrl || documentUrl}
-          className="w-full h-full border-0"
-          title={documentTitle}
-        />
+        <div className="h-full overflow-auto bg-muted/20">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2 bg-card sticky top-0 z-10">
+            <div className="text-sm text-muted-foreground">
+              {pdfPageCount
+                ? `Page ${currentPdfPage} of ${pdfPageCount}`
+                : "Loading pages..."}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() =>
+                  setCurrentPdfPage((prev) => Math.max(1, prev - 1))
+                }
+                disabled={currentPdfPage <= 1}
+                className="px-2 py-1 text-xs rounded border border-border disabled:opacity-50"
+              >
+                Prev
+              </button>
+              <button
+                onClick={() =>
+                  setCurrentPdfPage((prev) => {
+                    if (!pdfPageCount) return prev + 1;
+                    return Math.min(pdfPageCount, prev + 1);
+                  })
+                }
+                disabled={pdfPageCount != null && currentPdfPage >= pdfPageCount}
+                className="px-2 py-1 text-xs rounded border border-border disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+          <div className="p-4 flex justify-center">
+            <Document
+              file={documentUrl}
+              loading={
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                </div>
+              }
+              onLoadSuccess={({ numPages }) => {
+                setPdfPageCount(numPages);
+                setCurrentPdfPage((prev) => {
+                  const target =
+                    typeof initialPage === "number" && initialPage > 0
+                      ? initialPage
+                      : prev;
+                  return Math.min(Math.max(target, 1), numPages);
+                });
+              }}
+              onLoadError={(pdfError) => {
+                console.error("Error loading PDF:", pdfError);
+                setError("Failed to render PDF preview");
+              }}
+            >
+              <Page
+                pageNumber={currentPdfPage}
+                renderAnnotationLayer={true}
+                renderTextLayer={true}
+                width={1000}
+                customTextRenderer={({ str }) => {
+                  if (!escapedSearchText) {
+                    return str;
+                  }
+                  const re = new RegExp(`(${escapedSearchText})`, "ig");
+                  if (!re.test(str)) {
+                    return str;
+                  }
+                  return str.replace(re, "<mark>$1</mark>");
+                }}
+              />
+            </Document>
+          </div>
+        </div>
       );
     }
 
@@ -289,6 +407,27 @@ export default function DocumentViewer({
         {/* Content */}
         <div className="flex-1 overflow-hidden">{renderDocumentContent()}</div>
       </div>
+      <style jsx global>{`
+        .react-pdf__Page {
+          position: relative;
+          box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+        }
+        .react-pdf__Page__textContent {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          line-height: 1;
+        }
+        .react-pdf__Page__textContent mark {
+          background: rgba(250, 204, 21, 0.45);
+          padding: 0;
+        }
+        .react-pdf__Page__annotations {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+        }
+      `}</style>
     </div>
   );
 }

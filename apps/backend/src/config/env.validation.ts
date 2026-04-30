@@ -58,9 +58,11 @@ const envSchema = z
     GOOGLE_REDIRECT_URI: optionalUrl,
     GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
     GOOGLE_OCR_MODEL: z.string().optional(),
+    GOOGLE_OCR_FALLBACK_MODELS: z.string().optional(),
     OCR_PROVIDER: z.enum(['current', 'google']).optional(),
     DOCUMENT_AI_PROVIDER: z.enum(['current', 'google']).optional(),
     GOOGLE_QUERY_MODEL: z.string().optional(),
+    GOOGLE_QUERY_FALLBACK_MODELS: z.string().optional(),
     GOOGLE_QUERY_FALLBACK_TO_CURRENT: z.string().optional(),
     GOOGLE_QUERY_MAX_CHUNKS: z.string().optional(),
     GOOGLE_QUERY_MAX_CONTEXT_CHARS: z.string().optional(),
@@ -75,6 +77,9 @@ const envSchema = z
 
     RATE_LIMIT_WINDOW_MS: z.string().optional(),
     RATE_LIMIT_MAX_REQUESTS: z.string().optional(),
+    CORS_ALLOWED_ORIGINS: z.string().optional(),
+    BODY_SIZE_LIMIT: z.string().optional(),
+    URL_ENCODED_BODY_SIZE_LIMIT: z.string().optional(),
 
     PUPPETEER_HEADLESS: z.string().optional(),
 

@@ -384,8 +384,28 @@ export class DocumentsService {
       createDocumentDto.practiceId,
     );
 
+    const normalizedCaseId = createDocumentDto.caseId?.trim() || undefined;
+    if (normalizedCaseId) {
+      const linkedCase = await this.prisma.legalCase.findFirst({
+        where: {
+          id: normalizedCaseId,
+          practiceId: createDocumentDto.practiceId,
+        },
+        select: { id: true },
+      });
+
+      if (!linkedCase) {
+        throw new BadRequestException(
+          'Invalid caseId for the selected practice.',
+        );
+      }
+    }
+
     return this.prisma.legalDocument.create({
-      data: createDocumentDto,
+      data: {
+        ...createDocumentDto,
+        caseId: normalizedCaseId,
+      },
       include: {
         case: {
           select: {

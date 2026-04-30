@@ -8,7 +8,9 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 
 export default function ForgotPassword() {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const router = useRouter();
@@ -17,9 +19,14 @@ export default function ForgotPassword() {
     e.preventDefault();
 
     if (!email.trim()) {
-      toast.error("Please enter your email address");
+      setEmailError("Email address is required");
       return;
     }
+    if (!emailRegex.test(email.trim())) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+    setEmailError("");
 
     setIsLoading(true);
 
@@ -113,12 +120,22 @@ export default function ForgotPassword() {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailError && e.target.value.trim()) {
+                      setEmailError("");
+                    }
+                  }}
                   placeholder="Enter your email"
-                  className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                    emailError ? "border-red-500" : "border-border"
+                  }`}
                   required
                 />
               </div>
+              {emailError && (
+                <p className="mt-1 text-sm text-red-600">{emailError}</p>
+              )}
             </div>
 
             <button

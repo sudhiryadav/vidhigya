@@ -20,6 +20,11 @@ export class NotificationsService {
     private emailService: EmailService,
   ) {}
 
+  private async emitUnreadCountForUser(userId: string, practiceId: string) {
+    const unreadCount = await this.getUnreadCount(userId, practiceId);
+    this.notificationEmitter.emitUnreadNotificationCount(userId, unreadCount);
+  }
+
   private async getBrandingContext(practiceId: string) {
     const practice = await this.prisma.practice.findUnique({
       where: { id: practiceId },
@@ -44,7 +49,7 @@ export class NotificationsService {
   }
 
   async create(data: CreateNotificationDto) {
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         title: data.title,
         message: data.message,
@@ -53,6 +58,9 @@ export class NotificationsService {
         practiceId: data.practiceId,
       },
     });
+
+    await this.emitUnreadCountForUser(data.userId, data.practiceId);
+    return notification;
   }
 
   async findAll(
@@ -114,7 +122,7 @@ export class NotificationsService {
       throw new Error('Notification not found');
     }
 
-    return this.prisma.notification.update({
+    const updated = await this.prisma.notification.update({
       where: { id },
       data: { isRead: true },
       include: {
@@ -127,10 +135,13 @@ export class NotificationsService {
         },
       },
     });
+
+    await this.emitUnreadCountForUser(userId, practiceId);
+    return updated;
   }
 
   async markAllAsRead(userId: string, practiceId: string) {
-    return this.prisma.notification.updateMany({
+    const result = await this.prisma.notification.updateMany({
       where: {
         userId,
         practiceId,
@@ -140,6 +151,9 @@ export class NotificationsService {
         isRead: true,
       },
     });
+
+    await this.emitUnreadCountForUser(userId, practiceId);
+    return result;
   }
 
   async remove(id: string, userId: string, practiceId: string) {
@@ -155,9 +169,12 @@ export class NotificationsService {
       throw new Error('Notification not found');
     }
 
-    return this.prisma.notification.delete({
+    const deleted = await this.prisma.notification.delete({
       where: { id },
     });
+
+    await this.emitUnreadCountForUser(userId, practiceId);
+    return deleted;
   }
 
   async getUnreadCount(userId: string, practiceId: string) {

@@ -43,6 +43,9 @@ export default function CreateBillModal({
 }: CreateBillModalProps) {
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<
+    Partial<Record<"amount" | "dueDate" | "clientId" | "description", string>>
+  >({});
   const [formData, setFormData] = useState({
     amount: "",
     billType: "CONSULTATION",
@@ -71,11 +74,25 @@ export default function CreateBillModal({
 
   const handleCreateBill = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.amount || !formData.billType || !formData.dueDate || !formData.clientId || !formData.description) {
-      toast.error("Please fill in all required fields");
+
+    const nextErrors: Partial<
+      Record<"amount" | "dueDate" | "clientId" | "description", string>
+    > = {};
+    if (!formData.amount.trim()) nextErrors.amount = "Amount is required";
+    if (formData.amount.trim() && Number(formData.amount) <= 0) {
+      nextErrors.amount = "Amount must be greater than 0";
+    }
+    if (!formData.dueDate.trim()) nextErrors.dueDate = "Due date is required";
+    if (!formData.clientId.trim()) nextErrors.clientId = "Client is required";
+    if (!formData.description.trim()) {
+      nextErrors.description = "Description is required";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
+    setErrors({});
 
     try {
       setLoading(true);
@@ -174,16 +191,24 @@ export default function CreateBillModal({
                 min="0"
                 required
                 value={formData.amount}
-                onChange={(e) =>
+                onChange={(e) => {
                   setFormData({
                     ...formData,
                     amount: e.target.value,
-                  })
-                }
-                className="w-full pl-8 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  });
+                  if (errors.amount && e.target.value.trim()) {
+                    setErrors((prev) => ({ ...prev, amount: undefined }));
+                  }
+                }}
+                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                  errors.amount ? "border-red-500" : "border-border"
+                }`}
                 placeholder="0.00"
               />
             </div>
+            {errors.amount && (
+              <p className="mt-1 text-sm text-red-600">{errors.amount}</p>
+            )}
           </div>
           <div>
             <CustomSelect
@@ -213,19 +238,28 @@ export default function CreateBillModal({
               type="date"
               required
               value={formData.dueDate}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   dueDate: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground min-h-[42px]"
+                });
+                if (errors.dueDate && e.target.value.trim()) {
+                  setErrors((prev) => ({ ...prev, dueDate: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground min-h-[42px] ${
+                errors.dueDate ? "border-red-500" : "border-border"
+              }`}
             />
+            {errors.dueDate && (
+              <p className="mt-1 text-sm text-red-600">{errors.dueDate}</p>
+            )}
           </div>
           <div>
             <CustomSelect
               label="Client"
               required
+              error={errors.clientId}
               options={[
                 { value: "", label: "Select a client" },
                 ...cases.map((caseItem) => ({
@@ -245,12 +279,15 @@ export default function CreateBillModal({
                     }
                   : { value: "", label: "Select a client" }
               }
-              onChange={(option) =>
+              onChange={(option) => {
                 setFormData({
                   ...formData,
                   clientId: option?.value || "",
-                })
-              }
+                });
+                if (errors.clientId && option?.value) {
+                  setErrors((prev) => ({ ...prev, clientId: undefined }));
+                }
+              }}
               placeholder="Select a client"
             />
           </div>
@@ -291,16 +328,24 @@ export default function CreateBillModal({
           <textarea
             required
             value={formData.description}
-            onChange={(e) =>
+            onChange={(e) => {
               setFormData({
                 ...formData,
                 description: e.target.value,
-              })
-            }
+              });
+              if (errors.description && e.target.value.trim()) {
+                setErrors((prev) => ({ ...prev, description: undefined }));
+              }
+            }}
             rows={4}
-            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+              errors.description ? "border-red-500" : "border-border"
+            }`}
             placeholder="Enter bill description"
           />
+          {errors.description && (
+            <p className="mt-1 text-sm text-red-600">{errors.description}</p>
+          )}
         </div>
       </form>
     </ModalDialog>

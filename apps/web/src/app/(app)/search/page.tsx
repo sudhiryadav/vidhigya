@@ -23,6 +23,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -67,6 +68,8 @@ const TAB_STORAGE_KEY = "vidhigya_search_page_tab_v2";
 
 export default function SearchPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const selectedCaseId = searchParams.get("caseId") || undefined;
 
   // Tab state (default: AI Assistant; optional remembered choice)
   const [activeTab, setActiveTab] = useState<"search" | "qa">("qa");
@@ -705,7 +708,7 @@ export default function SearchPage() {
         {/* AI Assistant Tab */}
         {activeTab === "qa" && (
           <div className="flex-1 bg-card rounded-lg shadow-sm border border-border overflow-hidden min-h-0">
-            <DocumentQA />
+            <DocumentQA caseId={selectedCaseId} />
           </div>
         )}
       </div>

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
+import { NotificationEmitterService } from '../notifications/notification-emitter.service';
 
 interface AuthenticatedUser {
   sub: string;
@@ -30,10 +31,11 @@ export class ChatGateway {
   constructor(
     private readonly chatService: ChatService,
     private readonly jwtService: JwtService,
+    private readonly notificationEmitter: NotificationEmitterService,
   ) {}
 
   afterInit() {
-    // Socket server initialized
+    this.notificationEmitter.setSocketServer(this.server);
   }
 
   handleConnection(client: Socket) {

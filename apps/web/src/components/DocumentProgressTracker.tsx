@@ -1,4 +1,5 @@
 import { apiClient } from "@/services/api";
+import { getSocketService } from "@/services/socket";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -45,8 +46,14 @@ export default function DocumentProgressTracker({
   const [isPolling, setIsPolling] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const cleanupRef = useRef(false);
-  const pollCountRef = useRef(0);
-  const lastSuccessfulPollRef = useRef<number>(Date.now());
+  const onCompleteRef = useRef(onComplete);
+  const onErrorRef = useRef(onError);
+  const lastTerminalStatusRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+    onErrorRef.current = onError;
+  }, [onComplete, onError]);
 
   const parseStatusResponse = (response: unknown): {
     status: ProcessingStatus;
@@ -63,198 +70,139 @@ export default function DocumentProgressTracker({
   };
 
   useEffect(() => {
-    const checkInitialStatus = async () => {
-      try {
-        const response = await apiClient.getDocumentStatus(aiDocumentId);
-        const parsed = parseStatusResponse(response);
-        const currentStatus = parsed.status;
+    const applyStatusUpdate = (incomingStatus: ProcessingStatus) => {
+      setStatus((previousStatus) => {
+        if (!previousStatus) {
+          return incomingStatus;
+        }
 
-        setStatus(currentStatus);
-        setDiagnostics(parsed.diagnostics);
+        const incomingTime = incomingStatus.timestamp
+          ? new Date(incomingStatus.timestamp).getTime()
+          : NaN;
+        const previousTime = previousStatus.timestamp
+          ? new Date(previousStatus.timestamp).getTime()
+          : NaN;
 
-        // If document is already completed, failed, or not found, don't start polling
-        if (
-          currentStatus.status === "COMPLETED" ||
-          currentStatus.status === "ERROR" ||
-          currentStatus.status === "NOT_FOUND" ||
-          currentStatus.status === "CANCELLED"
-        ) {
-          setIsPolling(false);
-          cleanupRef.current = true;
-
-          if (currentStatus.status === "COMPLETED") {
-            onComplete?.();
-          } else if (currentStatus.status === "ERROR") {
-            onError?.(currentStatus.error || "Processing failed");
-          } else if (currentStatus.status === "NOT_FOUND") {
-            // NOT_FOUND usually means processing completed and status was cleared
-            onComplete?.();
-          } else if (currentStatus.status === "CANCELLED") {
-            onError?.(currentStatus.details || "Processing was stopped.");
+        // Prefer newer updates when timestamps are available.
+        if (!Number.isNaN(incomingTime) && !Number.isNaN(previousTime)) {
+          if (incomingTime < previousTime) {
+            return previousStatus;
           }
-          return; // Exit early, no need to set up polling
         }
 
-        // Only start polling if document is actually processing
+        const processingStates = new Set(["PROCESSING", "PENDING"]);
+        const incomingProgress = incomingStatus.progress;
+        const previousProgress = previousStatus.progress;
+
+        // Guard against backward progress jumps for in-flight processing.
         if (
-          currentStatus.status === "PROCESSING" ||
-          currentStatus.status === "PENDING"
+          processingStates.has(incomingStatus.status) &&
+          processingStates.has(previousStatus.status) &&
+          typeof incomingProgress === "number" &&
+          typeof previousProgress === "number" &&
+          incomingProgress < previousProgress
         ) {
-          startPolling();
-        } else {
-          // For any other status, don't poll
-          setIsPolling(false);
-          cleanupRef.current = true;
+          return previousStatus;
         }
-      } catch (error) {
-        console.error("Error checking initial document status:", error);
-        // If we can't get initial status, don't start polling
+
+        return incomingStatus;
+      });
+    };
+
+    const handleTerminalStatus = (currentStatus: ProcessingStatus) => {
+      const terminalStatuses = new Set([
+        "COMPLETED",
+        "ERROR",
+        "NOT_FOUND",
+        "CANCELLED",
+      ]);
+      if (!terminalStatuses.has(currentStatus.status)) {
+        return;
+      }
+      if (lastTerminalStatusRef.current === currentStatus.status) {
+        return;
+      }
+      lastTerminalStatusRef.current = currentStatus.status;
+
+      if (currentStatus.status === "COMPLETED") {
         setIsPolling(false);
         cleanupRef.current = true;
-        onError?.("Unable to check document status. Please try again.");
+        onCompleteRef.current?.();
+      } else if (currentStatus.status === "ERROR") {
+        setIsPolling(false);
+        cleanupRef.current = true;
+        onErrorRef.current?.(currentStatus.error || "Processing failed");
+      } else if (currentStatus.status === "NOT_FOUND") {
+        setIsPolling(false);
+        cleanupRef.current = true;
+        onCompleteRef.current?.();
+      } else if (currentStatus.status === "CANCELLED") {
+        setIsPolling(false);
+        cleanupRef.current = true;
+        onErrorRef.current?.(currentStatus.details || "Processing was stopped.");
       }
     };
 
-    const startPolling = () => {
-      // Reset cleanup flag and counters for new polling cycle
-      cleanupRef.current = false;
-      pollCountRef.current = 0;
-      lastSuccessfulPollRef.current = Date.now();
+    cleanupRef.current = false;
+    setIsPolling(true);
+    lastTerminalStatusRef.current = null;
+    setStatus((prev) =>
+      prev ?? {
+        status: "PROCESSING",
+        details: "Waiting for live processing updates...",
+        progress: 0,
+      }
+    );
 
-      const pollStatus = async () => {
-        // Don't poll if cleanup has been triggered
-        if (cleanupRef.current) return;
-
-        try {
-          const response = await apiClient.getDocumentStatus(aiDocumentId);
-          const parsed = parseStatusResponse(response);
-          const currentStatus = parsed.status;
-
-          // Don't update state if cleanup has been triggered
-          if (cleanupRef.current) return;
-
-          // Update successful poll timestamp
-          lastSuccessfulPollRef.current = Date.now();
-          pollCountRef.current = 0; // Reset error count on successful poll
-
-          setStatus(currentStatus);
-          setDiagnostics(parsed.diagnostics);
-
-          // Stop polling if processing is complete, failed, or not found (likely completed)
-          if (
-            currentStatus.status === "COMPLETED" ||
-            currentStatus.status === "ERROR" ||
-            currentStatus.status === "NOT_FOUND" ||
-            currentStatus.status === "CANCELLED"
-          ) {
-            setIsPolling(false);
-            cleanupRef.current = true;
-
-            if (currentStatus.status === "COMPLETED") {
-              onComplete?.();
-            } else if (currentStatus.status === "ERROR") {
-              onError?.(currentStatus.error || "Processing failed");
-            } else if (currentStatus.status === "NOT_FOUND") {
-              // NOT_FOUND usually means processing completed and status was cleared
-              onComplete?.();
-            } else if (currentStatus.status === "CANCELLED") {
-              onError?.(currentStatus.details || "Processing was stopped.");
-            }
-          }
-        } catch (error) {
-          // Don't log errors if cleanup has been triggered
-          if (cleanupRef.current) return;
-
-          pollCountRef.current++;
-          console.error(
-            `Error polling document status (attempt ${pollCountRef.current}):`,
-            error
-          );
-
-          // Handle different types of errors
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-
-          // If we get network errors or server errors multiple times, stop polling
-          if (pollCountRef.current >= 5) {
-            console.error("Too many consecutive errors, stopping polling");
-            setIsPolling(false);
-            cleanupRef.current = true;
-            onError?.(
-              "Document processing may have been interrupted. Please check the document status or try uploading again."
-            );
-            return;
-          }
-
-          // Check if too much time has passed since last successful poll (timeout)
-          const timeSinceLastSuccess =
-            Date.now() - lastSuccessfulPollRef.current;
-          const timeoutThreshold = 5 * 60 * 1000; // 5 minutes
-
-          if (timeSinceLastSuccess > timeoutThreshold) {
-            console.error(
-              "Polling timeout - no successful response for 5 minutes"
-            );
-            setIsPolling(false);
-            cleanupRef.current = true;
-            onError?.(
-              "Document processing appears to have stopped. Please check the document status or try uploading again."
-            );
-            return;
-          }
-
-          // For temporary errors, continue polling but with exponential backoff
-          const backoffDelay = Math.min(
-            2000 * Math.pow(2, pollCountRef.current - 1),
-            10000
-          ); // Max 10 seconds
-          setTimeout(() => {
-            if (!cleanupRef.current) {
-              pollStatus();
-            }
-          }, backoffDelay);
+    const socketService = getSocketService();
+    const token = localStorage.getItem("token");
+    const userData = localStorage.getItem("user");
+    if (!socketService.isSocketConnected() && token) {
+      socketService.connect(token);
+    }
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData) as { id?: string };
+        if (parsedUser.id) {
+          socketService.joinPersonalRoom(parsedUser.id);
         }
-      };
+      } catch {
+        // ignore malformed local user cache
+      }
+    }
 
-      // Set up polling interval (every 2 seconds)
-      const pollInterval = setInterval(() => {
-        if (!cleanupRef.current) {
-          pollStatus();
-        }
-      }, 2000);
-
-      // Set up a timeout to stop polling if it runs too long
-      const maxPollingTime = 30 * 60 * 1000; // 30 minutes max
-      const timeoutId = setTimeout(() => {
-        if (!cleanupRef.current) {
-          console.error("Maximum polling time exceeded");
-          setIsPolling(false);
-          cleanupRef.current = true;
-          onError?.(
-            "Document processing is taking longer than expected. Please check the document status or try uploading again."
-          );
-        }
-      }, maxPollingTime);
-
-      // Store the interval ID for cleanup
-      return () => {
-        if (pollInterval) {
-          clearInterval(pollInterval);
-        }
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-      };
+    const handleDocumentStatusUpdate = (
+      event: Event
+    ) => {
+      if (cleanupRef.current) {
+        return;
+      }
+      const customEvent = event as CustomEvent<{
+        aiDocumentId?: string;
+        status?: ProcessingStatus;
+        diagnostics?: ProcessingDiagnostics;
+      }>;
+      if (customEvent.detail?.aiDocumentId !== aiDocumentId) {
+        return;
+      }
+      if (!customEvent.detail?.status) {
+        return;
+      }
+      applyStatusUpdate(customEvent.detail.status);
+      setDiagnostics(customEvent.detail.diagnostics ?? null);
+      handleTerminalStatus(customEvent.detail.status);
     };
 
-    // Check initial status first
-    checkInitialStatus();
+    window.addEventListener("documentStatusUpdate", handleDocumentStatusUpdate);
 
     return () => {
-      // Mark cleanup to prevent any further polling
       cleanupRef.current = true;
+      window.removeEventListener(
+        "documentStatusUpdate",
+        handleDocumentStatusUpdate
+      );
     };
-  }, [aiDocumentId, apiClient, onComplete, onError]);
+  }, [aiDocumentId]);
 
   if (!status) {
     return (

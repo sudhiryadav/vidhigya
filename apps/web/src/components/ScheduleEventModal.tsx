@@ -32,6 +32,9 @@ export default function ScheduleEventModal({
   const [cases, setCases] = useState<Case[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<
+    Partial<Record<"title" | "startDate" | "startTime" | "endTime", string>>
+  >({});
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -78,10 +81,30 @@ export default function ScheduleEventModal({
   const handleScheduleEvent = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title || !formData.startDate || !formData.startTime) {
-      toast.error("Please provide at least title, start date, and start time");
+    const nextErrors: Partial<
+      Record<"title" | "startDate" | "startTime" | "endTime", string>
+    > =
+      {};
+    if (!formData.title.trim()) nextErrors.title = "Event title is required";
+    if (!formData.startDate.trim()) {
+      nextErrors.startDate = "Start date is required";
+    }
+    if (!formData.startTime.trim()) {
+      nextErrors.startTime = "Start time is required";
+    }
+    if (formData.endDate && formData.endTime && formData.startDate) {
+      const start = new Date(`${formData.startDate}T${formData.startTime || "00:00"}`);
+      const end = new Date(`${formData.endDate}T${formData.endTime}`);
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end < start) {
+        nextErrors.endTime = "End date/time must be after start date/time";
+      }
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
+    setErrors({});
 
     try {
       setLoading(true);
@@ -171,15 +194,23 @@ export default function ScheduleEventModal({
               type="text"
               required
               value={formData.title}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   title: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                });
+                if (errors.title && e.target.value.trim()) {
+                  setErrors((prev) => ({ ...prev, title: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                errors.title ? "border-red-500" : "border-border"
+              }`}
               placeholder="Enter event title"
             />
+            {errors.title && (
+              <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+            )}
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-foreground mb-1">
@@ -247,14 +278,22 @@ export default function ScheduleEventModal({
               type="date"
               required
               value={formData.startDate}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   startDate: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                });
+                if (errors.startDate && e.target.value.trim()) {
+                  setErrors((prev) => ({ ...prev, startDate: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                errors.startDate ? "border-red-500" : "border-border"
+              }`}
             />
+            {errors.startDate && (
+              <p className="mt-1 text-sm text-red-600">{errors.startDate}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
@@ -264,14 +303,22 @@ export default function ScheduleEventModal({
               type="time"
               required
               value={formData.startTime}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   startTime: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                });
+                if (errors.startTime && e.target.value.trim()) {
+                  setErrors((prev) => ({ ...prev, startTime: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                errors.startTime ? "border-red-500" : "border-border"
+              }`}
             />
+            {errors.startTime && (
+              <p className="mt-1 text-sm text-red-600">{errors.startTime}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
@@ -296,14 +343,22 @@ export default function ScheduleEventModal({
             <input
               type="time"
               value={formData.endTime}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   endTime: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                });
+                if (errors.endTime) {
+                  setErrors((prev) => ({ ...prev, endTime: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                errors.endTime ? "border-red-500" : "border-border"
+              }`}
             />
+            {errors.endTime && (
+              <p className="mt-1 text-sm text-red-600">{errors.endTime}</p>
+            )}
           </div>
           <div>
             <CustomSelect

@@ -280,6 +280,29 @@ def optimize_chunk_size(text: str, target_size: int = 800) -> List[str]:
     return chunks
 
 
+def parse_explicit_page_markers(text: str) -> List[Dict[str, Union[int, str]]]:
+    """Parse OCR page markers like [[PAGE_1]] from plain text payloads."""
+    pattern = re.compile(
+        r"\[\[PAGE_(\d{1,5})\]\]\s*([\s\S]*?)(?=\s*\[\[PAGE_\d{1,5}\]\]|\s*$)"
+    )
+    pages: List[Dict[str, Union[int, str]]] = []
+    for match in pattern.finditer(text or ""):
+        page_num_raw = match.group(1)
+        page_text = (match.group(2) or "").strip()
+        if not page_num_raw or not page_text:
+            continue
+        try:
+            page_num = int(page_num_raw)
+        except Exception:
+            continue
+        if page_num <= 0:
+            continue
+        pages.append({"page_number": page_num, "text": page_text})
+
+    pages.sort(key=lambda p: int(p["page_number"]))  # type: ignore[index]
+    return pages
+
+
 def optimize_chunk_size_with_pages(
     text: str,
     file_extension: str,
@@ -414,7 +437,46 @@ def optimize_chunk_size_with_pages(
                     }
                 )
     else:
-        # For non-PDF files, use simple chunking
+        # For non-PDF files, use page-aware chunking if explicit markers are present.
+        marked_pages = parse_explicit_page_markers(text)
+        if marked_pages:
+            joined_text = "\n\n".join(str(p["text"]) for p in marked_pages)
+            current_pos = 0
+            for page in marked_pages:
+                page_number = int(page["page_number"])  # type: ignore[arg-type]
+                page_text = str(page["text"])
+                page_start = joined_text.find(page_text, current_pos)
+                if page_start == -1:
+                    page_start = current_pos
+                page_end = page_start + len(page_text)
+                current_pos = page_end
+
+                page_chunks = optimize_chunk_size(page_text, 800)
+                for chunk_text in page_chunks:
+                    chunk_start = page_text.find(chunk_text)
+                    if chunk_start != -1:
+                        global_start = page_start + chunk_start
+                        global_end = global_start + len(chunk_text)
+                    else:
+                        global_start = page_start
+                        global_end = page_start + len(chunk_text)
+                    chunks.append(
+                        {
+                            "text": chunk_text,
+                            "page_number": page_number,
+                            "start_char": global_start,
+                            "end_char": global_end,
+                        }
+                    )
+
+            print(
+                f"  📄 Parsed {len(marked_pages)} explicit pages from OCR markers; "
+                f"generated {len(chunks)} chunks with page numbers"
+            )
+            print(f"  📄 Final result: returning {len(chunks)} chunks")
+            return chunks
+
+        # Fallback: no markers available, use simple chunking.
         if document_id:
             update_processing_status(
                 document_id,

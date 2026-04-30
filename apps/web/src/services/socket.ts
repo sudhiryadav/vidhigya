@@ -43,6 +43,27 @@ interface VideoCallNotification {
   callTitle: string;
 }
 
+interface NotificationUnreadCountPayload {
+  unreadCount: number;
+  timestamp?: string;
+}
+
+interface DocumentStatusUpdatePayload {
+  aiDocumentId: string;
+  status: {
+    status: string;
+    details?: string;
+    error?: string;
+    progress?: number;
+    timestamp?: string;
+  };
+  diagnostics?: {
+    statusSource?: string;
+    ocrProvider?: string;
+    note?: string;
+  };
+}
+
 class SocketService {
   private socket: Socket | null = null;
   private isConnected = false;
@@ -223,6 +244,28 @@ class SocketService {
       "personal_room_joined",
       (data: { userId: string; roomName: string }) => {
         // Personal room joined successfully
+      }
+    );
+
+    this.socket.on(
+      "notification_unread_count",
+      (payload: NotificationUnreadCountPayload) => {
+        window.dispatchEvent(
+          new CustomEvent("notificationUnreadCount", {
+            detail: payload,
+          })
+        );
+      }
+    );
+
+    this.socket.on(
+      "document_status_update",
+      (payload: DocumentStatusUpdatePayload) => {
+        window.dispatchEvent(
+          new CustomEvent("documentStatusUpdate", {
+            detail: payload,
+          })
+        );
       }
     );
   }
@@ -511,6 +554,16 @@ class SocketService {
   isSocketConnected() {
     const connected = this.isConnected && this.socket?.connected;
     return connected;
+  }
+
+  subscribe(event: string, handler: (...args: any[]) => void) {
+    if (!this.socket) return;
+    this.socket.on(event, handler);
+  }
+
+  unsubscribe(event: string, handler: (...args: any[]) => void) {
+    if (!this.socket) return;
+    this.socket.off(event, handler);
   }
 
   // Check socket state directly

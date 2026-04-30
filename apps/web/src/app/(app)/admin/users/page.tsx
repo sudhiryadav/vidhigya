@@ -66,6 +66,8 @@ interface PracticeSubscriptionSettings {
 }
 
 export default function AdminUsersPage() {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^[+]?[0-9\s\-()]{7,20}$/;
   const { user: currentUser } = useAuth();
   const { currentPractice } = usePractice();
   const [users, setUsers] = useState<User[]>([]);
@@ -109,6 +111,9 @@ export default function AdminUsersPage() {
     email: "",
     message: "",
   });
+  const [createErrors, setCreateErrors] = useState<
+    Partial<Record<"name" | "email" | "password" | "phone", string>>
+  >({});
 
   // Load users based on current user's role
   useEffect(() => {
@@ -189,10 +194,29 @@ export default function AdminUsersPage() {
 
   const handleCreateUser = async () => {
     try {
-      if (!createForm.name || !createForm.email || !createForm.password) {
-        toast.error("Please fill in all required fields");
+      const nextErrors: Partial<
+        Record<"name" | "email" | "password" | "phone", string>
+      > =
+        {};
+      if (!createForm.name.trim()) nextErrors.name = "Name is required";
+      if (!createForm.email.trim()) {
+        nextErrors.email = "Email is required";
+      } else if (!emailRegex.test(createForm.email.trim())) {
+        nextErrors.email = "Please enter a valid email address";
+      }
+      if (!createForm.password.trim()) {
+        nextErrors.password = "Password is required";
+      } else if (createForm.password.length < 8) {
+        nextErrors.password = "Password must be at least 8 characters long";
+      }
+      if (createForm.phone?.trim() && !phoneRegex.test(createForm.phone.trim())) {
+        nextErrors.phone = "Please enter a valid phone number";
+      }
+      if (Object.keys(nextErrors).length > 0) {
+        setCreateErrors(nextErrors);
         return;
       }
+      setCreateErrors({});
 
       await apiClient.createUser(createForm);
       toast.success("User created successfully");
@@ -204,6 +228,7 @@ export default function AdminUsersPage() {
         role: "LAWYER",
         password: "",
       });
+      setCreateErrors({});
       loadUsers();
       loadSubscriptionSettings();
     } catch (error) {
@@ -918,11 +943,18 @@ export default function AdminUsersPage() {
                   <Input
                     id="create-name"
                     value={createForm.name}
-                    onChange={(e) =>
-                      setCreateForm({ ...createForm, name: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setCreateForm({ ...createForm, name: e.target.value });
+                      if (createErrors.name && e.target.value.trim()) {
+                        setCreateErrors((prev) => ({ ...prev, name: undefined }));
+                      }
+                    }}
                     placeholder="Enter full name"
+                    className={createErrors.name ? "border-red-500" : ""}
                   />
+                  {createErrors.name && (
+                    <p className="mt-1 text-sm text-red-600">{createErrors.name}</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="create-email">Email *</Label>
@@ -930,22 +962,40 @@ export default function AdminUsersPage() {
                     id="create-email"
                     type="email"
                     value={createForm.email}
-                    onChange={(e) =>
-                      setCreateForm({ ...createForm, email: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setCreateForm({ ...createForm, email: e.target.value });
+                      if (createErrors.email && e.target.value.trim()) {
+                        setCreateErrors((prev) => ({ ...prev, email: undefined }));
+                      }
+                    }}
                     placeholder="Enter email address"
+                    className={createErrors.email ? "border-red-500" : ""}
                   />
+                  {createErrors.email && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {createErrors.email}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="create-phone">Phone</Label>
                   <Input
                     id="create-phone"
                     value={createForm.phone}
-                    onChange={(e) =>
-                      setCreateForm({ ...createForm, phone: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setCreateForm({ ...createForm, phone: e.target.value });
+                      if (createErrors.phone) {
+                        setCreateErrors((prev) => ({ ...prev, phone: undefined }));
+                      }
+                    }}
                     placeholder="Enter phone number"
+                    className={createErrors.phone ? "border-red-500" : ""}
                   />
+                  {createErrors.phone && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {createErrors.phone}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="create-role">Role *</Label>
@@ -994,11 +1044,23 @@ export default function AdminUsersPage() {
                     id="create-password"
                     type="password"
                     value={createForm.password}
-                    onChange={(e) =>
-                      setCreateForm({ ...createForm, password: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setCreateForm({ ...createForm, password: e.target.value });
+                      if (createErrors.password && e.target.value.trim()) {
+                        setCreateErrors((prev) => ({
+                          ...prev,
+                          password: undefined,
+                        }));
+                      }
+                    }}
                     placeholder="Enter password"
+                    className={createErrors.password ? "border-red-500" : ""}
                   />
+                  {createErrors.password && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {createErrors.password}
+                    </p>
+                  )}
                 </div>
                 <div className="flex space-x-2 pt-4">
                   <Button

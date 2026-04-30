@@ -203,6 +203,7 @@ export class QdrantService {
     query: string,
     userId: string,
     limit: number = 10,
+    documentIds?: string[],
   ): Promise<
     Array<{
       document_id: string;
@@ -222,6 +223,19 @@ export class QdrantService {
       // Generate embedding for the query using the same model as FastAPI
       const queryEmbedding = this.generateEmbedding(query);
 
+      const mustFilters: Array<Record<string, unknown>> = [
+        {
+          key: 'user_id',
+          match: { value: userId },
+        },
+      ];
+      if (Array.isArray(documentIds) && documentIds.length > 0) {
+        mustFilters.push({
+          key: 'document_id',
+          match: { any: documentIds.slice(0, 200) },
+        });
+      }
+
       // Search in Qdrant directly
       const searchResults = await this.qdrantClient.search(
         this.qdrantCollection,
@@ -229,12 +243,7 @@ export class QdrantService {
           vector: queryEmbedding,
           limit: limit,
           filter: {
-            must: [
-              {
-                key: 'user_id',
-                match: { value: userId },
-              },
-            ],
+            must: mustFilters,
           },
           with_payload: true,
           with_vector: false,

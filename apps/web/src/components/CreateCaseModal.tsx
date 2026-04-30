@@ -27,6 +27,9 @@ export default function CreateCaseModal({
   const { user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<
+    Partial<Record<"title" | "description" | "clientId", string>>
+  >({});
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -57,16 +60,20 @@ export default function CreateCaseModal({
   const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (
-      !formData.title ||
-      !formData.description ||
-      !formData.clientId ||
-      !formData.category ||
-      !formData.priority
-    ) {
-      toast.error("Please fill in all required fields");
+    const nextErrors: Partial<
+      Record<"title" | "description" | "clientId", string>
+    > = {};
+    if (!formData.title.trim()) nextErrors.title = "Case title is required";
+    if (!formData.description.trim()) {
+      nextErrors.description = "Description is required";
+    }
+    if (!formData.clientId.trim()) nextErrors.clientId = "Client is required";
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
+    setErrors({});
 
     try {
       setLoading(true);
@@ -153,15 +160,23 @@ export default function CreateCaseModal({
               type="text"
               required
               value={formData.title}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   title: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                });
+                if (errors.title && e.target.value.trim()) {
+                  setErrors((prev) => ({ ...prev, title: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                errors.title ? "border-red-500" : "border-border"
+              }`}
               placeholder="Enter case title"
             />
+            {errors.title && (
+              <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+            )}
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-foreground mb-1">
@@ -170,21 +185,30 @@ export default function CreateCaseModal({
             <textarea
               required
               value={formData.description}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   description: e.target.value,
-                })
-              }
+                });
+                if (errors.description && e.target.value.trim()) {
+                  setErrors((prev) => ({ ...prev, description: undefined }));
+                }
+              }}
               rows={3}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                errors.description ? "border-red-500" : "border-border"
+              }`}
               placeholder="Enter case description"
             />
+            {errors.description && (
+              <p className="mt-1 text-sm text-red-600">{errors.description}</p>
+            )}
           </div>
           <div>
             <CustomSelect
               label="Client *"
               required
+              error={errors.clientId}
               options={[
                 { value: "", label: "Select a client" },
                 ...clients.map((client) => ({
@@ -203,10 +227,15 @@ export default function CreateCaseModal({
                   : { value: "", label: "Select a client" }
               }
               onChange={(option) =>
-                setFormData({
-                  ...formData,
-                  clientId: option?.value || "",
-                })
+                {
+                  setFormData({
+                    ...formData,
+                    clientId: option?.value || "",
+                  });
+                  if (errors.clientId && option?.value) {
+                    setErrors((prev) => ({ ...prev, clientId: undefined }));
+                  }
+                }
               }
               placeholder="Select a client"
             />

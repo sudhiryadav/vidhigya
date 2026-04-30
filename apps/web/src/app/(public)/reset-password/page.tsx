@@ -15,6 +15,9 @@ function ResetPasswordContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [token, setToken] = useState("");
+  const [errors, setErrors] = useState<
+    Partial<Record<"newPassword" | "confirmPassword", string>>
+  >({});
   const router = useRouter();
 
   useEffect(() => {
@@ -33,19 +36,20 @@ function ResetPasswordContent() {
     e.preventDefault();
 
     if (!newPassword.trim()) {
-      toast.error("Please enter a new password");
+      setErrors({ newPassword: "New password is required" });
       return;
     }
 
     if (newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters long");
+      setErrors({ newPassword: "Password must be at least 8 characters long" });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
+      setErrors({ confirmPassword: "Passwords do not match" });
       return;
     }
+    setErrors({});
 
     setIsLoading(true);
 
@@ -152,9 +156,16 @@ function ResetPasswordContent() {
                   id="newPassword"
                   type={showPassword ? "text" : "password"}
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (errors.newPassword && e.target.value.trim()) {
+                      setErrors((prev) => ({ ...prev, newPassword: undefined }));
+                    }
+                  }}
                   placeholder="Enter new password"
-                  className="w-full pl-10 pr-10 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                    errors.newPassword ? "border-red-500" : "border-border"
+                  }`}
                   required
                   minLength={8}
                 />
@@ -170,6 +181,9 @@ function ResetPasswordContent() {
                   )}
                 </button>
               </div>
+              {errors.newPassword && (
+                <p className="mt-1 text-sm text-red-600">{errors.newPassword}</p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
                 Password must be at least 8 characters long
               </p>
@@ -188,9 +202,19 @@ function ResetPasswordContent() {
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    if (errors.confirmPassword && e.target.value.trim()) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        confirmPassword: undefined,
+                      }));
+                    }
+                  }}
                   placeholder="Confirm new password"
-                  className="w-full pl-10 pr-10 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                  className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground ${
+                    errors.confirmPassword ? "border-red-500" : "border-border"
+                  }`}
                   required
                 />
                 <button
@@ -205,6 +229,11 @@ function ResetPasswordContent() {
                   )}
                 </button>
               </div>
+              {errors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.confirmPassword}
+                </p>
+              )}
             </div>
 
             <button

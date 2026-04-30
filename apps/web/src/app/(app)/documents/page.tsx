@@ -33,7 +33,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 interface Document {
@@ -701,6 +701,10 @@ export default function DocumentsPage() {
   const [viewerInitialPage, setViewerInitialPage] = useState<
     number | undefined
   >();
+  const fetchDocumentsInFlightRef = useRef(false);
+  const fetchDocumentsLastRunRef = useRef(0);
+  const fetchDocumentsQueuedRef = useRef(false);
+  const completedToastByDocumentRef = useRef(new Set<string>());
 
   // Search state
   const [searching, setSearching] = useState(false);
@@ -750,11 +754,11 @@ export default function DocumentsPage() {
   const canUploadDocuments = (isLawyer || isAdmin) && canCreateDocuments;
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchDocuments();
       fetchCases();
     }
-  }, [user]);
+  }, [user?.id]);
 
   // Ensure all state is properly initialized
   if (!user) {
@@ -762,6 +766,29 @@ export default function DocumentsPage() {
   }
 
   const fetchDocuments = async () => {
+    const now = Date.now();
+    const minIntervalMs = 1200;
+    const sinceLastRun = now - fetchDocumentsLastRunRef.current;
+
+    if (fetchDocumentsInFlightRef.current) {
+      fetchDocumentsQueuedRef.current = true;
+      return;
+    }
+
+    if (sinceLastRun < minIntervalMs) {
+      fetchDocumentsQueuedRef.current = true;
+      const delay = minIntervalMs - sinceLastRun;
+      setTimeout(() => {
+        if (fetchDocumentsQueuedRef.current && !fetchDocumentsInFlightRef.current) {
+          fetchDocumentsQueuedRef.current = false;
+          void fetchDocuments();
+        }
+      }, delay);
+      return;
+    }
+
+    fetchDocumentsInFlightRef.current = true;
+    fetchDocumentsLastRunRef.current = now;
     try {
       setLoading(true);
       const data = await apiClient.getDocuments();
@@ -770,6 +797,11 @@ export default function DocumentsPage() {
       console.error("Error fetching documents:", error);
     } finally {
       setLoading(false);
+      fetchDocumentsInFlightRef.current = false;
+      if (fetchDocumentsQueuedRef.current) {
+        fetchDocumentsQueuedRef.current = false;
+        void fetchDocuments();
+      }
     }
   };
 
@@ -1266,7 +1298,10 @@ export default function DocumentsPage() {
                 onDelete={handleDeleteClick}
                 onComplete={() => {
                   fetchDocuments();
-                  toast.success(`${doc.title} processing completed!`);
+                  if (!completedToastByDocumentRef.current.has(doc.id)) {
+                    completedToastByDocumentRef.current.add(doc.id);
+                    toast.success(`${doc.title} processing completed!`);
+                  }
                 }}
                 onError={(error) => {
                   toast.error(`Processing failed for ${doc.title}: ${error}`);
@@ -1332,7 +1367,10 @@ export default function DocumentsPage() {
                     onDelete={handleDeleteClick}
                     onComplete={() => {
                       fetchDocuments();
-                      toast.success(`${doc.title} processing completed!`);
+                      if (!completedToastByDocumentRef.current.has(doc.id)) {
+                        completedToastByDocumentRef.current.add(doc.id);
+                        toast.success(`${doc.title} processing completed!`);
+                      }
                     }}
                     onError={(error) => {
                       toast.error(

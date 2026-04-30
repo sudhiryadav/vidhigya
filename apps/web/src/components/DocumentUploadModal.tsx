@@ -43,6 +43,7 @@ export default function DocumentUploadModal({
   const [cases, setCases] = useState<Case[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileError, setFileError] = useState("");
 
   const resolver = yupResolver(documentUploadSchema) as unknown as Resolver<
     UploadFormData,
@@ -208,15 +209,17 @@ export default function DocumentUploadModal({
 
   const onSubmit = async (data: UploadFormData) => {
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one file to upload");
+      setFileError("Please select at least one file to upload");
       return;
     }
+    setFileError("");
 
     await handleUploadDocument(selectedFiles, data);
   };
 
   const handleClose = () => {
     setSelectedFiles([]);
+    setFileError("");
     reset();
     onClose();
   };
@@ -368,7 +371,12 @@ export default function DocumentUploadModal({
         {/* Drag and Drop Upload Area */}
         <DocumentUpload
           onUpload={(files) => handleUploadDocument(files, watch())}
-          onFilesSelected={setSelectedFiles}
+          onFilesSelected={(files) => {
+            setSelectedFiles(files);
+            if (files.length > 0 && fileError) {
+              setFileError("");
+            }
+          }}
           maxFiles={5}
           maxSize={parseInt(
             process.env.NEXT_PUBLIC_MAX_DOCUMENT_SIZE || "20971520"
@@ -377,6 +385,7 @@ export default function DocumentUploadModal({
           showPreview={false}
           autoUpload={false}
         />
+        {fileError && <p className="text-sm text-red-600">{fileError}</p>}
       </form>
     </ModalDialog>
   );
