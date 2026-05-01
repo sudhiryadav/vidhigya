@@ -1,8 +1,13 @@
 # Deploy uses standard CI/CD variables for SSH + target, and File variables for app env:
 #
 #   Scalar (Type = Variable):
-#     PROD_SERVER_IP, PROD_SSH_USER, PROD_SSH_PRIVATE_KEY_B64
+#     PROD_SERVER_IP, PROD_SSH_USER
+#     PROD_SSH_PRIVATE_KEY — base64-encoded private key, one line (parent groups often use this name)
+#     PROD_SSH_PRIVATE_KEY_B64 — optional alias; used if PROD_SSH_PRIVATE_KEY is unset
 #     PROD_REPO_DIR (optional, default /home/ubuntu/prod/vidhigya)
+#
+#   If group variables do not appear: ensure branch is Protected when vars are Protected;
+#   set Environment scope to * OR scope to production — this job uses environment: production.
 #
 #   File (Type = File):
 #     WEB_ENV_PROD_FILE, BACKEND_ENV_PROD_FILE, AI_ENV_PROD_FILE
@@ -41,20 +46,26 @@ check_changes:
     - apk add --no-cache openssh-client git rsync
     - |
       set -e
-      if [ -z "${PROD_SERVER_IP:-}" ] || [ -z "${PROD_SSH_USER:-}" ] || [ -z "${PROD_SSH_PRIVATE_KEY_B64:-}" ]; then
-        echo "Missing CI/CD variables: PROD_SERVER_IP, PROD_SSH_USER, PROD_SSH_PRIVATE_KEY_B64"
+      SSH_KEY_B64="${PROD_SSH_PRIVATE_KEY_B64:-${PROD_SSH_PRIVATE_KEY:-}}"
+      if [ -z "${PROD_SERVER_IP:-}" ] || [ -z "${PROD_SSH_USER:-}" ] || [ -z "$SSH_KEY_B64" ]; then
+        echo "Missing CI/CD variables: PROD_SERVER_IP, PROD_SSH_USER, and PROD_SSH_PRIVATE_KEY (or PROD_SSH_PRIVATE_KEY_B64)."
+        echo "If they exist on a parent group: mark prod branch Protected (when vars are Protected),"
+        echo "or set variable Environment scope to * or production (this deploy job uses environment: production)."
         exit 1
       fi
       if [ -z "${PROD_REPO_DIR:-}" ]; then export PROD_REPO_DIR="/home/ubuntu/prod/vidhigya"; fi
       export SSH_USER="$PROD_SSH_USER"
       export SERVER_IP="$PROD_SERVER_IP"
       mkdir -p ~/.ssh && chmod 700 ~/.ssh
-      echo "$PROD_SSH_PRIVATE_KEY_B64" | base64 -d | tr -d '\r' > ~/.ssh/id_rsa
+      echo "$SSH_KEY_B64" | base64 -d | tr -d '\r' > ~/.ssh/id_rsa
       chmod 600 ~/.ssh/id_rsa
 
 deploy_production:
   stage: deploy_production
   needs: [check_changes]
+  environment:
+    name: production
+    url: https://vidhigya.qurieus.com
   extends: .deploy_base
   script:
     - |

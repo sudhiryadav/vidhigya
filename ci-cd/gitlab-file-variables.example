@@ -1,14 +1,18 @@
-# GitLab → Settings → CI/CD → Variables
+# GitLab → Settings → CI/CD → Variables (group or project)
 #
-# --- Deploy (Type = Variable, not File) ---
-# PROD_SERVER_IP             e.g. 203.0.113.10
-# PROD_SSH_USER              e.g. ubuntu
-# PROD_REPO_DIR              optional; default /home/ubuntu/prod/vidhigya
-# PROD_SSH_PRIVATE_KEY_B64   entire private key base64-encoded (single line)
-#   macOS:  base64 -i ~/.ssh/id_rsa | tr -d '\n'
-#   Linux:  base64 -w 0 ~/.ssh/id_rsa
+# --- Deploy (Type = Variable) ---
+# PROD_SERVER_IP
+# PROD_SSH_USER             e.g. ubuntu
+# PROD_REPO_DIR             optional; default /home/ubuntu/prod/vidhigya
+# PROD_SSH_PRIVATE_KEY      base64-encoded private key, single line (common parent name)
+#   Optional alias: PROD_SSH_PRIVATE_KEY_B64 (used if PROD_SSH_PRIVATE_KEY is empty)
 #
-# --- App env (Type = File; paste full contents of each .env.prod) ---
-# WEB_ENV_PROD_FILE          → apps/web/.env.prod
-# BACKEND_ENV_PROD_FILE      → apps/backend/.env.prod
-# AI_ENV_PROD_FILE           → apps/ai-service/.env.prod
+# Group variables missing in job? Typical causes:
+#   - Variable is Protected but the pipeline runs on an unprotected branch → protect `prod`.
+#   - Environment scope is "production" but job had no environment → deploy job sets environment: production.
+#   - Project defines same key with empty value → overrides parent; delete or fix at project level.
+#
+# --- App env (Type = File) ---
+# WEB_ENV_PROD_FILE         → apps/web/.env.prod
+# BACKEND_ENV_PROD_FILE     → apps/backend/.env.prod
+# AI_ENV_PROD_FILE          → apps/ai-service/.env.prod
