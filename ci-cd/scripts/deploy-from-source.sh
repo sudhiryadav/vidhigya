@@ -61,8 +61,16 @@ ensure_node_runtime() {
   fi
 
   export NVM_DIR="$nvm_dir"
+  local nvm_src_ec
+  set +o errexit
   # shellcheck disable=SC1090
   . "$nvm_sh"
+  nvm_src_ec=$?
+  set -o errexit
+  if [ "${nvm_src_ec}" -ne 0 ]; then
+    echo "ERROR: Failed to load nvm from ${nvm_sh} (exit ${nvm_src_ec})."
+    exit 1
+  fi
 
   local wanted=""
   if [ -f ".nvmrc" ]; then
@@ -70,18 +78,18 @@ ensure_node_runtime() {
   fi
   wanted="${wanted:-22}"
 
+  # Never run `nvm install` inside $(...) — that is a subshell; PATH/node selection
+  # would not apply to this script, so `node` could stay on system 18 and break under set -e.
   nvm_try_install() {
     local label="$1"
     echo "nvm install ${label}"
     set +o errexit
-    local log
-    log=$(nvm install "$label" 2>&1)
+    nvm install "$label"
     local ec=$?
     set -o errexit
     if [ "$ec" -eq 0 ]; then
       return 0
     fi
-    echo "$log"
     return "$ec"
   }
 
