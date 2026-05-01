@@ -30,7 +30,8 @@ else
   PREV_HEAD=$(git rev-parse HEAD~1 2>/dev/null || echo "HEAD")
 fi
 
-# Nest 11 / Next 15 need Node >= 20. Prefer .nvmrc (default 22) via nvm; fail if unavailable.
+# Nest 11 / Next 15 need Node >= 20. Prefer .nvmrc via nvm; fail if unavailable.
+# nvm often returns exit code 3 for "version not found" — surface logs and retry fallbacks.
 ensure_node_runtime() {
   local min_major=20
   local maj
@@ -63,18 +64,44 @@ ensure_node_runtime() {
   # shellcheck disable=SC1090
   . "$nvm_sh"
 
+  local wanted=""
   if [ -f ".nvmrc" ]; then
-    nvm install
-    nvm use
-  else
-    echo "WARN: missing .nvmrc in repo root; installing Node 22 via nvm"
-    nvm install 22
-    nvm use 22
+    wanted="$(head -n 1 ".nvmrc" | tr -d ' \t\r')"
+  fi
+  wanted="${wanted:-22}"
+
+  nvm_try_install() {
+    local label="$1"
+    echo "nvm install ${label}"
+    set +o errexit
+    local log
+    log=$(nvm install "$label" 2>&1)
+    local ec=$?
+    set -o errexit
+    if [ "$ec" -eq 0 ]; then
+      return 0
+    fi
+    echo "$log"
+    return "$ec"
+  }
+
+  if ! nvm_try_install "$wanted"; then
+    echo "WARN: nvm install ${wanted} failed (see above). Trying 22, then LTS..."
+    if nvm_try_install "22"; then
+      :
+    elif nvm_try_install "lts/*"; then
+      :
+    else
+      echo "ERROR: Could not install Node via nvm (tried .nvmrc, 22, lts/*)."
+      echo "Offline server? Upgrade nvm: cd \"\$NVM_DIR\" && git fetch && git checkout v0.40.1."
+      exit 1
+    fi
   fi
 
+  hash -r 2>/dev/null || true
   maj=$(node -p "parseInt(process.versions.node.split('.')[0],10)" 2>/dev/null || echo 0)
   if [ "$maj" -lt "$min_major" ]; then
-    echo "ERROR: After nvm, Node $(node -v 2>/dev/null) still < ${min_major}."
+    echo "ERROR: After nvm, Node $(command -v node 2>/dev/null) ($(node -v 2>/dev/null)) still < ${min_major}."
     exit 1
   fi
 
