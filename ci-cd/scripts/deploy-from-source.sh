@@ -158,16 +158,20 @@ bash "$VERIFY_ENV" "$REPO_DIR/apps/backend/.env" \
   QDRANT_URL \
   QDRANT_COLLECTION \
   QDRANT_API_KEY \
-  AI_SERVICE_URL \
-  MODAL_DOT_COM_X_API_KEY
+  AI_SERVICE_URL
+bash "$VERIFY_ENV" --any-of "$REPO_DIR/apps/backend/.env" \
+  MODAL_DOT_COM_X_API_KEY \
+  AI_SERVICE_API_KEY
 if [ -f "$REPO_DIR/apps/ai-service/.env" ]; then
   bash "$VERIFY_ENV" "$REPO_DIR/apps/ai-service/.env" \
-    MODAL_DOT_COM_X_API_KEY \
     DATABASE_URL \
     QDRANT_URL \
     QDRANT_COLLECTION \
     QDRANT_API_KEY \
     NEXTAUTH_SECRET
+  bash "$VERIFY_ENV" --any-of "$REPO_DIR/apps/ai-service/.env" \
+    MODAL_DOT_COM_X_API_KEY \
+    AI_SERVICE_API_KEY
 fi
 
 if [ "$BACKEND_CHANGED" != "true" ]; then

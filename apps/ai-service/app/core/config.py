@@ -110,8 +110,18 @@ class Settings(BaseSettings):
     def qdrant_url_trim_slash(cls, v: Optional[str]) -> Optional[str]:
         return v.rstrip("/") if v else v
 
-    # Single API Key for backend/ai-service/modal authentication.
+    # Single API Key for backend/ai-service/modal (X-API-Key). Canonical name follows;
+    # AI_SERVICE_API_KEY is still accepted as a legacy alias in .env.
     MODAL_DOT_COM_X_API_KEY: str = _env_str("MODAL_DOT_COM_X_API_KEY", "")
+
+    @field_validator("MODAL_DOT_COM_X_API_KEY", mode="before")
+    @classmethod
+    def modal_dot_com_api_key_fallback(cls, v):
+        s = _strip_env_quotes(v if isinstance(v, str) else v) or ""
+        if s.strip():
+            return s.strip()
+        legacy = os.getenv("AI_SERVICE_API_KEY")
+        return (_strip_env_quotes(legacy) or "").strip()
 
     # OCR Settings (PDF + images: Tesseract)
     #
