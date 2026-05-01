@@ -64,7 +64,7 @@ ensure_node_runtime() {
   local nvm_src_ec
   set +o errexit
   # shellcheck disable=SC1090
-  . "$nvm_sh"
+  . "$nvm_sh" --no-use
   nvm_src_ec=$?
   set -o errexit
   if [ "${nvm_src_ec}" -ne 0 ]; then
