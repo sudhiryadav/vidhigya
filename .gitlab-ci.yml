@@ -10,7 +10,7 @@
 #   set Environment scope to * OR scope to production — this job uses environment: production.
 #
 #   File (Type = File):
-#     WEB_ENV_PROD_FILE, BACKEND_ENV_PROD_FILE, AI_ENV_PROD_FILE
+#     WEB_ENV_FILE, BACKEND_ENV_FILE, AI_ENV_FILE
 #
 # See ci-cd/gitlab-file-variables.example
 
@@ -69,16 +69,16 @@ deploy_production:
   extends: .deploy_base
   script:
     - |
-      if [ -z "${WEB_ENV_PROD_FILE:-}" ] || [ ! -f "$WEB_ENV_PROD_FILE" ]; then
-        echo "Missing GitLab CI/CD File variable WEB_ENV_PROD_FILE (apps/web/.env.prod)."
+      if [ -z "${WEB_ENV_FILE:-}" ] || [ ! -f "$WEB_ENV_FILE" ]; then
+        echo "Missing GitLab CI/CD File variable WEB_ENV_FILE (apps/web/.env)."
         exit 1
       fi
-      if [ -z "${BACKEND_ENV_PROD_FILE:-}" ] || [ ! -f "$BACKEND_ENV_PROD_FILE" ]; then
-        echo "Missing GitLab CI/CD File variable BACKEND_ENV_PROD_FILE (apps/backend/.env.prod)."
+      if [ -z "${BACKEND_ENV_FILE:-}" ] || [ ! -f "$BACKEND_ENV_FILE" ]; then
+        echo "Missing GitLab CI/CD File variable BACKEND_ENV_FILE (apps/backend/.env)."
         exit 1
       fi
-      if [ -z "${AI_ENV_PROD_FILE:-}" ] || [ ! -f "$AI_ENV_PROD_FILE" ]; then
-        echo "Missing GitLab CI/CD File variable AI_ENV_PROD_FILE (apps/ai-service/.env.prod)."
+      if [ -z "${AI_ENV_FILE:-}" ] || [ ! -f "$AI_ENV_FILE" ]; then
+        echo "Missing GitLab CI/CD File variable AI_ENV_FILE (apps/ai-service/.env)."
         exit 1
       fi
 
@@ -105,10 +105,11 @@ deploy_production:
         exit "$RSYNC_EXIT"
       fi
       ssh -o StrictHostKeyChecking=no "${SSH_USER}@${SERVER_IP}" "mkdir -p '${REPO_DIR}/apps/web' '${REPO_DIR}/apps/backend' '${REPO_DIR}/apps/ai-service'"
-      scp -o StrictHostKeyChecking=no "$WEB_ENV_PROD_FILE" "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/apps/web/.env.prod"
-      scp -o StrictHostKeyChecking=no "$BACKEND_ENV_PROD_FILE" "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/apps/backend/.env.prod"
-      scp -o StrictHostKeyChecking=no "$AI_ENV_PROD_FILE" "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/apps/ai-service/.env.prod"
-      echo "Uploaded .env.prod for web, backend, and ai-service from CI File variables"
+      scp -o StrictHostKeyChecking=no "$WEB_ENV_FILE" "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/apps/web/.env"
+      scp -o StrictHostKeyChecking=no "$BACKEND_ENV_FILE" "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/apps/backend/.env"
+      scp -o StrictHostKeyChecking=no "$AI_ENV_FILE" "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/apps/ai-service/.env"
+      echo "Uploaded .env for web, backend, and ai-service from CI File variables"
+      ssh -o StrictHostKeyChecking=no "${SSH_USER}@${SERVER_IP}" "rm -f /home/ubuntu/prod.vidhigya.web.env /home/ubuntu/prod.vidhigya.backend.env /home/ubuntu/prod.vidhigya.ai-service.env || true"
       ssh -o StrictHostKeyChecking=no "${SSH_USER}@${SERVER_IP}" \
         "export REPO_DIR='${REPO_DIR}' SKIP_GIT_PULL=1 && cd \"\$REPO_DIR\" && bash ci-cd/scripts/deploy-from-source.sh prod prod $F $B"
   rules:

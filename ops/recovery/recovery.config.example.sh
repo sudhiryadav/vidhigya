@@ -29,5 +29,5 @@ export ENV_QURIEUS_BOT="/absolute/path/to/prod.qurieus.bot.env"
 export ENV_MYFLATMATE_BACKEND="/absolute/path/to/prod.myflatmate.backend.env"
 export ENV_MYFLATMATE_FRONTEND="/absolute/path/to/prod.myflatmate.frontend.env"
 
-export ENV_VIDHIGYA_BACKEND="/absolute/path/to/prod.vidhigya.backend.env"
-export ENV_VIDHIGYA_WEB="/absolute/path/to/prod.vidhigya.web.env"
+export ENV_VIDHIGYA_BACKEND="/absolute/path/to/vidhigya.backend.env"
+export ENV_VIDHIGYA_WEB="/absolute/path/to/vidhigya.web.env"

@@ -13,6 +13,6 @@
 #   - Project defines same key with empty value → overrides parent; delete or fix at project level.
 #
 # --- App env (Type = File) ---
-# WEB_ENV_PROD_FILE         → apps/web/.env.prod
-# BACKEND_ENV_PROD_FILE     → apps/backend/.env.prod
-# AI_ENV_PROD_FILE          → apps/ai-service/.env.prod
+# WEB_ENV_FILE              → apps/web/.env
+# BACKEND_ENV_FILE          → apps/backend/.env
+# AI_ENV_FILE               → apps/ai-service/.env

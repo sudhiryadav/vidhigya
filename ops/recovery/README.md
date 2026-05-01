@@ -3,7 +3,7 @@
 Use this when a server is gone and you need to recreate everything quickly on a new EC2 host:
 
 - repo checkout for all 3 apps (`qurieus`, `myflatmate`, `vidhigya`)
-- prod env file placement in `/home/ubuntu/*.env`
+- prod env file placement (`qurieus`/`myflatmate`: `/home/ubuntu/*.env`, `vidhigya`: app-local `apps/*/.env`)
 - app deployments via existing deploy scripts
 - nginx sites (`sites-available` + `sites-enabled`)
 - optional certbot SSL
@@ -20,7 +20,7 @@ Update `recovery.config.sh`:
 
 - `SSH_HOST` (your SSH alias or user@host)
 - domain values
-- local absolute paths to prod env files for each app
+- local absolute paths to prod env files for each app (for vidhigya these map to app-local `.env` files)
 - optional GitLab token/user (if target server cannot clone via SSH key)
 - set `ENABLE_CERTBOT=true` + `CERTBOT_EMAIL` when DNS is already pointed
 

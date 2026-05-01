@@ -156,70 +156,19 @@ needs_frontend_rebuild() {
   fi
 }
 
-# Copy app-specific env files from server.
-# Expected server files:
-#   /home/ubuntu/prod.vidhigya.web.env
-#   /home/ubuntu/prod.vidhigya.backend.env
-ENV_DIR="${ENV_DIR:-/home/ubuntu}"
-ENV_PREFIX="$([ "$ENV" = "prod" ] && echo "prod" || echo "staging").vidhigya"
-
-sync_server_env_from_repo() {
+ensure_env_file() {
   local app_dir=$1
-  local app_name=$2
-  local server_file="$ENV_DIR/${ENV_PREFIX}.${app_name}.env"
-  local source_file=""
-
-  if [ "$ENV" = "prod" ]; then
-    [ -f "$REPO_DIR/$app_dir/.env.prod" ] && source_file="$REPO_DIR/$app_dir/.env.prod"
-  else
-    [ -f "$REPO_DIR/$app_dir/.env.staging" ] && source_file="$REPO_DIR/$app_dir/.env.staging"
-    [ -z "$source_file" ] && [ -f "$REPO_DIR/$app_dir/.env.stage" ] && source_file="$REPO_DIR/$app_dir/.env.stage"
-  fi
-  [ -z "$source_file" ] && [ -f "$REPO_DIR/$app_dir/.env.prod" ] && source_file="$REPO_DIR/$app_dir/.env.prod"
-
-  if [ -n "$source_file" ]; then
-    cp "$source_file" "$server_file"
-    echo "synced $source_file -> $server_file"
-  else
-    echo "No repo env source found for $app_dir ($ENV). Keeping existing $server_file"
-  fi
-}
-
-copy_app_env() {
-  local app_dir=$1
-  local app_name=$2
-  local src="$ENV_DIR/${ENV_PREFIX}.${app_name}.env"
-  local dest="$REPO_DIR/$app_dir/.env"
-  if [ -f "$src" ]; then
-    cp "$src" "$dest"
-    echo "$app_dir: ${ENV_PREFIX}.${app_name}.env -> .env"
-  else
-    echo "Missing $src on server"
+  local env_file="$REPO_DIR/$app_dir/.env"
+  if [ ! -f "$env_file" ]; then
+    echo "Missing required env file: $env_file"
     exit 1
   fi
 }
 
-# Same as copy_app_env but does not fail (e.g. ai-service env only supplied via CI File var).
-copy_app_env_if_present() {
-  local app_dir=$1
-  local app_name=$2
-  local src="$ENV_DIR/${ENV_PREFIX}.${app_name}.env"
-  local dest="$REPO_DIR/$app_dir/.env"
-  if [ -f "$src" ]; then
-    cp "$src" "$dest"
-    echo "$app_dir: ${ENV_PREFIX}.${app_name}.env -> .env"
-  else
-    echo "Optional env missing for $app_dir — skipping $dest (provide CI File var or repo .env.prod)"
-  fi
-}
-
-echo "Copying env files for $ENV..."
-sync_server_env_from_repo "apps/web" "web"
-sync_server_env_from_repo "apps/backend" "backend"
-sync_server_env_from_repo "apps/ai-service" "ai-service"
-copy_app_env "apps/web" "web"
-copy_app_env "apps/backend" "backend"
-copy_app_env_if_present "apps/ai-service" "ai-service"
+echo "Validating deployed .env files for $ENV..."
+ensure_env_file "apps/web"
+ensure_env_file "apps/backend"
+# ai-service can be optional in some deployments; verify only when present.
 
 VERIFY_ENV="$REPO_DIR/ci-cd/scripts/verify-deploy-env.sh"
 if [ ! -x "$VERIFY_ENV" ]; then chmod +x "$VERIFY_ENV" || true; fi
@@ -240,9 +189,8 @@ bash "$VERIFY_ENV" "$REPO_DIR/apps/backend/.env" \
   QDRANT_COLLECTION \
   QDRANT_API_KEY \
   AI_SERVICE_URL
-bash "$VERIFY_ENV" --any-of "$REPO_DIR/apps/backend/.env" \
-  MODAL_DOT_COM_X_API_KEY \
-  AI_SERVICE_API_KEY
+bash "$VERIFY_ENV" "$REPO_DIR/apps/backend/.env" \
+  MODAL_DOT_COM_X_API_KEY
 if [ -f "$REPO_DIR/apps/ai-service/.env" ]; then
   bash "$VERIFY_ENV" "$REPO_DIR/apps/ai-service/.env" \
     DATABASE_URL \
@@ -250,9 +198,8 @@ if [ -f "$REPO_DIR/apps/ai-service/.env" ]; then
     QDRANT_COLLECTION \
     QDRANT_API_KEY \
     NEXTAUTH_SECRET
-  bash "$VERIFY_ENV" --any-of "$REPO_DIR/apps/ai-service/.env" \
-    MODAL_DOT_COM_X_API_KEY \
-    AI_SERVICE_API_KEY
+  bash "$VERIFY_ENV" "$REPO_DIR/apps/ai-service/.env" \
+    MODAL_DOT_COM_X_API_KEY
 fi
 
 if [ "$BACKEND_CHANGED" != "true" ]; then

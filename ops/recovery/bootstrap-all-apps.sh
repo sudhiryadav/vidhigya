@@ -59,8 +59,8 @@ scp "$ENV_QURIEUS_FRONTEND" "$SSH_HOST:/home/ubuntu/prod.qurieus.frontend.env"
 scp "$ENV_QURIEUS_BOT" "$SSH_HOST:/home/ubuntu/prod.qurieus.bot.env"
 scp "$ENV_MYFLATMATE_BACKEND" "$SSH_HOST:/home/ubuntu/prod.myflatmate.backend.env"
 scp "$ENV_MYFLATMATE_FRONTEND" "$SSH_HOST:/home/ubuntu/prod.myflatmate.frontend.env"
-scp "$ENV_VIDHIGYA_BACKEND" "$SSH_HOST:/home/ubuntu/prod.vidhigya.backend.env"
-scp "$ENV_VIDHIGYA_WEB" "$SSH_HOST:/home/ubuntu/prod.vidhigya.web.env"
+scp "$ENV_VIDHIGYA_BACKEND" "$SSH_HOST:/home/ubuntu/prod/vidhigya/apps/backend/.env"
+scp "$ENV_VIDHIGYA_WEB" "$SSH_HOST:/home/ubuntu/prod/vidhigya/apps/web/.env"
 
 echo "Running remote bootstrap..."
 ssh "$SSH_HOST" \

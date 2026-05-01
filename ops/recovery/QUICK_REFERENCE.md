@@ -13,7 +13,7 @@ Edit `ops/recovery/recovery.config.sh` and set:
 
 - `SSH_HOST`
 - domains
-- local absolute paths to all prod env files
+- local absolute paths to all prod env files (vidhigya values are copied to app-local `.env`)
 - optional `GITLAB_DEPLOY_USER` / `GITLAB_DEPLOY_TOKEN`
 - `ENABLE_CERTBOT=true` only after DNS points to new server
 

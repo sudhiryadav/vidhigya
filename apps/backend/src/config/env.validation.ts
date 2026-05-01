@@ -38,11 +38,6 @@ const envSchema = z
     QDRANT_API_KEY: nonempty,
 
     AI_SERVICE_URL: z.string().url('AI_SERVICE_URL must be a valid URL'),
-    /** Legacy alias; normalized into MODAL_DOT_COM_X_API_KEY in validateEnv. */
-    AI_SERVICE_API_KEY: z.preprocess(
-      (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
-      z.string().optional(),
-    ),
     MODAL_DOT_COM_X_API_KEY: nonempty,
 
     MODAL_ENDPOINT_URL: optionalUrl,
@@ -130,25 +125,10 @@ const envSchema = z
 
 export type EnvVars = z.infer<typeof envSchema>;
 
-/** Single shared AI/Modal/FastAPI API key — prefer MODAL_DOT_COM_X_API_KEY in .env. */
-export function normalizeModalApiKeyIntoConfig(
-  config: Record<string, unknown>,
-): Record<string, unknown> {
-  const next = { ...config };
-  const trim = (v: unknown): string =>
-    typeof v === 'string' ? v.trim() : '';
-  const modal = trim(next.MODAL_DOT_COM_X_API_KEY);
-  const legacy = trim(next.AI_SERVICE_API_KEY);
-  if (!modal && legacy) {
-    next.MODAL_DOT_COM_X_API_KEY = legacy;
-  }
-  return next;
-}
-
 export function validateEnv(
   config: Record<string, unknown>,
 ): Record<string, unknown> {
-  const parsed = envSchema.safeParse(normalizeModalApiKeyIntoConfig(config));
+  const parsed = envSchema.safeParse(config);
   if (!parsed.success) {
     const flat = parsed.error.flatten();
     const detail = JSON.stringify(
