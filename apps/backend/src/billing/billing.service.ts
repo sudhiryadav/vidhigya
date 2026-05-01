@@ -82,7 +82,7 @@ export class BillingService {
     return {
       apiKey: this.configService.get<string>('PADDLE_API_KEY') || '',
       webhookSecret:
-        this.configService.get<string>('PADDLE_WEBHOOK_SECRET') || '',
+        this.configService.get<string>('PADDLE_WEBHOOK_SECRET_KEY') || '',
       apiBaseUrl:
         this.configService.get<string>('PADDLE_API_BASE_URL') ||
         'https://api.paddle.com',

@@ -110,8 +110,8 @@ class Settings(BaseSettings):
     def qdrant_url_trim_slash(cls, v: Optional[str]) -> Optional[str]:
         return v.rstrip("/") if v else v
 
-    # Backend API Key for authentication
-    AI_SERVICE_API_KEY: str = _env_str("AI_SERVICE_API_KEY", "")
+    # Single API Key for backend/ai-service/modal authentication.
+    MODAL_DOT_COM_X_API_KEY: str = _env_str("MODAL_DOT_COM_X_API_KEY", "")
 
     # OCR Settings (PDF + images: Tesseract)
     #
@@ -154,10 +154,6 @@ class Settings(BaseSettings):
     METADATA_EXTRACTION_ENABLED: bool = _env_bool("METADATA_EXTRACTION_ENABLED", True)
     METADATA_EXTRACTION_TIMEOUT: int = _env_int("METADATA_EXTRACTION_TIMEOUT", 120)
     MODAL_EXTRACT_METADATA_URL: Optional[str] = _env_str("MODAL_EXTRACT_METADATA_URL")
-    # MODAL_API_KEY is only needed if Modal's shared secret differs from
-    # AI_SERVICE_API_KEY; otherwise AI_SERVICE_API_KEY is used.
-    MODAL_API_KEY: Optional[str] = _env_str("MODAL_API_KEY")
-
     # Hard cap for background PDF+OCR+embed (seconds); cancel/abort after this
     DOCUMENT_PROCESSING_TIMEOUT_SEC: int = _env_int(
         "DOCUMENT_PROCESSING_TIMEOUT_SEC", 3600

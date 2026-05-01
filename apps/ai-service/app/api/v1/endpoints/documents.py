@@ -1450,7 +1450,7 @@ async def upload_files(
     """Upload one or more documents (PDF, DOC, DOCX, TXT, CSV, XLS, XLSX) for processing."""
     try:
         # Validate API key
-        if api_key != settings.AI_SERVICE_API_KEY:
+        if api_key != settings.MODAL_DOT_COM_X_API_KEY:
             raise HTTPException(status_code=401, detail="Invalid API key")
 
         # For now, we'll need to get user ID from the request or use a default
@@ -1586,7 +1586,7 @@ async def cancel_document_processing(
     api_key: str = Header(..., alias="X-API-Key"),
 ):
     """Request cooperative cancellation of background processing (e.g. user deleted the document)."""
-    if api_key != settings.AI_SERVICE_API_KEY:
+    if api_key != settings.MODAL_DOT_COM_X_API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
     request_cancel_processing(document_id)
     log_to_backend(
@@ -1608,7 +1608,7 @@ async def restart_document_processing(
     """Restart processing for a document that appears to be stuck."""
     try:
         # Validate API key
-        if api_key != settings.AI_SERVICE_API_KEY:
+        if api_key != settings.MODAL_DOT_COM_X_API_KEY:
             raise HTTPException(status_code=401, detail="Invalid API key")
 
         # Check if document exists in processing status
@@ -1684,7 +1684,7 @@ async def get_document_status(
     """Get processing status for a document."""
     try:
         # Validate API key
-        if api_key != settings.AI_SERVICE_API_KEY:
+        if api_key != settings.MODAL_DOT_COM_X_API_KEY:
             raise HTTPException(status_code=401, detail="Invalid API key")
 
         status = get_processing_status(document_id)
@@ -1709,7 +1709,7 @@ async def generate_embedding(
     """Generate embedding for text using the same model as document processing."""
     try:
         # Validate API key
-        if api_key != settings.AI_SERVICE_API_KEY:
+        if api_key != settings.MODAL_DOT_COM_X_API_KEY:
             raise HTTPException(status_code=401, detail="Invalid API key")
 
         if not embedding_model:

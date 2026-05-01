@@ -524,9 +524,7 @@ def _call_modal_extractor(text: str, filename: Optional[str]) -> Optional[Profil
     if not settings.METADATA_EXTRACTION_ENABLED:
         print("[document_profile] Modal extractor SKIPPED: METADATA_EXTRACTION_ENABLED=False")
         return None
-    api_key = (
-        settings.MODAL_API_KEY or settings.AI_SERVICE_API_KEY or ""
-    ).strip()
+    api_key = (settings.MODAL_DOT_COM_X_API_KEY or "").strip()
     if not api_key:
         print("[document_profile] Modal extractor SKIPPED: no API key")
         return None

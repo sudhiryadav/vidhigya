@@ -190,10 +190,10 @@ export class DocumentsService {
    */
   private async cancelAiProcessing(aiDocumentId: string): Promise<void> {
     const base = this.configService.get<string>('AI_SERVICE_URL');
-    const key = this.configService.get<string>('AI_SERVICE_API_KEY');
+    const key = this.configService.get<string>('MODAL_DOT_COM_X_API_KEY');
     if (!base?.trim() || !key?.trim()) {
       this.logger.warn(
-        'AI_SERVICE_URL or AI_SERVICE_API_KEY not set; skip AI cancel',
+        'AI_SERVICE_URL or MODAL_DOT_COM_X_API_KEY not set; skip AI cancel',
       );
       return;
     }

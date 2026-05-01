@@ -69,7 +69,7 @@ async def health_check(
     """Health check endpoint for the FastAPI service."""
     try:
         # Validate API key
-        if api_key != settings.AI_SERVICE_API_KEY:
+        if api_key != settings.MODAL_DOT_COM_X_API_KEY:
             raise HTTPException(status_code=401, detail="Invalid API key")
 
         # Import the services from documents module

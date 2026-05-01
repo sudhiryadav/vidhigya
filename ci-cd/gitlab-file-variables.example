@@ -1,0 +1,14 @@
+# GitLab → Settings → CI/CD → Variables
+#
+# --- Deploy (Type = Variable, not File) ---
+# PROD_SERVER_IP             e.g. 203.0.113.10
+# PROD_SSH_USER              e.g. ubuntu
+# PROD_REPO_DIR              optional; default /home/ubuntu/prod/vidhigya
+# PROD_SSH_PRIVATE_KEY_B64   entire private key base64-encoded (single line)
+#   macOS:  base64 -i ~/.ssh/id_rsa | tr -d '\n'
+#   Linux:  base64 -w 0 ~/.ssh/id_rsa
+#
+# --- App env (Type = File; paste full contents of each .env.prod) ---
+# WEB_ENV_PROD_FILE          → apps/web/.env.prod
+# BACKEND_ENV_PROD_FILE      → apps/backend/.env.prod
+# AI_ENV_PROD_FILE           → apps/ai-service/.env.prod

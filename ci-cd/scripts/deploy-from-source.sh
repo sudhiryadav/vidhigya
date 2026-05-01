@@ -118,11 +118,27 @@ copy_app_env() {
   fi
 }
 
+# Same as copy_app_env but does not fail (e.g. ai-service env only supplied via CI File var).
+copy_app_env_if_present() {
+  local app_dir=$1
+  local app_name=$2
+  local src="$ENV_DIR/${ENV_PREFIX}.${app_name}.env"
+  local dest="$REPO_DIR/$app_dir/.env"
+  if [ -f "$src" ]; then
+    cp "$src" "$dest"
+    echo "$app_dir: ${ENV_PREFIX}.${app_name}.env -> .env"
+  else
+    echo "Optional env missing for $app_dir — skipping $dest (provide CI File var or repo .env.prod)"
+  fi
+}
+
 echo "Copying env files for $ENV..."
 sync_server_env_from_repo "apps/web" "web"
 sync_server_env_from_repo "apps/backend" "backend"
+sync_server_env_from_repo "apps/ai-service" "ai-service"
 copy_app_env "apps/web" "web"
 copy_app_env "apps/backend" "backend"
+copy_app_env_if_present "apps/ai-service" "ai-service"
 
 if [ "$BACKEND_CHANGED" != "true" ]; then
   BACKEND_STALE=$(needs_backend_rebuild)

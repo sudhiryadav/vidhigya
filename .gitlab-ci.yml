@@ -1,3 +1,14 @@
+# Deploy uses standard CI/CD variables for SSH + target, and File variables for app env:
+#
+#   Scalar (Type = Variable):
+#     PROD_SERVER_IP, PROD_SSH_USER, PROD_SSH_PRIVATE_KEY_B64
+#     PROD_REPO_DIR (optional, default /home/ubuntu/prod/vidhigya)
+#
+#   File (Type = File):
+#     WEB_ENV_PROD_FILE, BACKEND_ENV_PROD_FILE, AI_ENV_PROD_FILE
+#
+# See ci-cd/gitlab-file-variables.example
+
 variables:
   RUN_PIPELINE: "false"
   FORCE_FRONTEND: "false"
@@ -28,40 +39,53 @@ check_changes:
   image: alpine:latest
   before_script:
     - apk add --no-cache openssh-client git rsync
-    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" | base64 -d | tr -d '\r' > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
+    - |
+      set -e
+      if [ -z "${PROD_SERVER_IP:-}" ] || [ -z "${PROD_SSH_USER:-}" ] || [ -z "${PROD_SSH_PRIVATE_KEY_B64:-}" ]; then
+        echo "Missing CI/CD variables: PROD_SERVER_IP, PROD_SSH_USER, PROD_SSH_PRIVATE_KEY_B64"
+        exit 1
+      fi
+      if [ -z "${PROD_REPO_DIR:-}" ]; then export PROD_REPO_DIR="/home/ubuntu/prod/vidhigya"; fi
+      export SSH_USER="$PROD_SSH_USER"
+      export SERVER_IP="$PROD_SERVER_IP"
+      mkdir -p ~/.ssh && chmod 700 ~/.ssh
+      echo "$PROD_SSH_PRIVATE_KEY_B64" | base64 -d | tr -d '\r' > ~/.ssh/id_rsa
+      chmod 600 ~/.ssh/id_rsa
 
 deploy_production:
   stage: deploy_production
   needs: [check_changes]
   extends: .deploy_base
-  variables:
-    SSH_PRIVATE_KEY: $PROD_SSH_PRIVATE_KEY
-    SSH_USER: $PROD_SSH_USER
-    SERVER_IP: $PROD_SERVER_IP
   script:
     - |
-      if [ -z "$PROD_SERVER_IP" ] || [ -z "$PROD_SSH_USER" ] || [ -z "$PROD_SSH_PRIVATE_KEY" ]; then
-        echo "ERROR: Missing CI/CD variables. Add in GitLab: Settings -> CI/CD -> Variables"
-        echo "  PROD_SERVER_IP, PROD_SSH_USER, PROD_SSH_PRIVATE_KEY"
+      if [ -z "${WEB_ENV_PROD_FILE:-}" ] || [ ! -f "$WEB_ENV_PROD_FILE" ]; then
+        echo "Missing GitLab CI/CD File variable WEB_ENV_PROD_FILE (apps/web/.env.prod)."
         exit 1
       fi
-      REPO_DIR="${PROD_REPO_DIR:-/home/ubuntu/prod/vidhigya}"
+      if [ -z "${BACKEND_ENV_PROD_FILE:-}" ] || [ ! -f "$BACKEND_ENV_PROD_FILE" ]; then
+        echo "Missing GitLab CI/CD File variable BACKEND_ENV_PROD_FILE (apps/backend/.env.prod)."
+        exit 1
+      fi
+      if [ -z "${AI_ENV_PROD_FILE:-}" ] || [ ! -f "$AI_ENV_PROD_FILE" ]; then
+        echo "Missing GitLab CI/CD File variable AI_ENV_PROD_FILE (apps/ai-service/.env.prod)."
+        exit 1
+      fi
+
+      REPO_DIR="$PROD_REPO_DIR"
       BRANCH="prod"
-      F=$([ "$FRONTEND_CHANGED" = "true" ] || [ "$FORCE_FRONTEND" = "true" ] && echo "true" || echo "false")
-      B=$([ "$BACKEND_CHANGED" = "true" ] || [ "$FORCE_BACKEND" = "true" ] && echo "true" || echo "false")
+      F=$([ "$FRONTEND_CHANGED" = "true" ] || [ "$FORCE_FRONTEND" = "true" ] && echo true || echo false)
+      B=$([ "$BACKEND_CHANGED" = "true" ] || [ "$FORCE_BACKEND" = "true" ] && echo true || echo false)
       git clone --depth 50 --branch "$BRANCH" "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/frontslash/apps/vidhigya.git" /tmp/vidhigya-deploy
       echo "Deploy target: ${SSH_USER}@${SERVER_IP}:${REPO_DIR}"
-      ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "mkdir -p '${REPO_DIR}' && test -d '${REPO_DIR}' && echo 'Remote dir ready: ${REPO_DIR}'"
+      ssh -o StrictHostKeyChecking=no "${SSH_USER}@${SERVER_IP}" "mkdir -p '${REPO_DIR}' && test -d '${REPO_DIR}' && echo 'Remote dir ready: ${REPO_DIR}'"
       set +e
-      rsync -avz --delete --exclude=node_modules --exclude=.next --exclude=dist --exclude='*.env' --exclude='.git' --exclude='.cursor' --exclude='.vscode' --rsync-path="mkdir -p ${REPO_DIR} && rsync" -e "ssh -o StrictHostKeyChecking=no" /tmp/vidhigya-deploy/ ${SSH_USER}@${SERVER_IP}:${REPO_DIR}/
+      rsync -avz --delete --exclude=node_modules --exclude=.next --exclude=dist --exclude='*.env' --exclude='.git' --exclude='.cursor' --exclude='.vscode' --rsync-path="mkdir -p ${REPO_DIR} && rsync" -e "ssh -o StrictHostKeyChecking=no" /tmp/vidhigya-deploy/ "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/"
       RSYNC_EXIT=$?
       set -e
       if [ "$RSYNC_EXIT" -ne 0 ]; then
         echo "Primary rsync failed with exit code ${RSYNC_EXIT}. Retrying with no owner/group/perms/times..."
         set +e
-        rsync -rvz --delete --no-owner --no-group --no-perms --omit-dir-times --exclude=node_modules --exclude=.next --exclude=dist --exclude='*.env' --exclude='.git' --exclude='.cursor' --exclude='.vscode' --rsync-path="mkdir -p ${REPO_DIR} && rsync" -e "ssh -o StrictHostKeyChecking=no" /tmp/vidhigya-deploy/ ${SSH_USER}@${SERVER_IP}:${REPO_DIR}/
+        rsync -rvz --delete --no-owner --no-group --no-perms --omit-dir-times --exclude=node_modules --exclude=.next --exclude=dist --exclude='*.env' --exclude='.git' --exclude='.cursor' --exclude='.vscode' --rsync-path="mkdir -p ${REPO_DIR} && rsync" -e "ssh -o StrictHostKeyChecking=no" /tmp/vidhigya-deploy/ "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/"
         RSYNC_EXIT=$?
         set -e
       fi
@@ -69,7 +93,12 @@ deploy_production:
         echo "rsync failed after retry with exit code ${RSYNC_EXIT}"
         exit "$RSYNC_EXIT"
       fi
-      ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} \
+      ssh -o StrictHostKeyChecking=no "${SSH_USER}@${SERVER_IP}" "mkdir -p '${REPO_DIR}/apps/web' '${REPO_DIR}/apps/backend' '${REPO_DIR}/apps/ai-service'"
+      scp -o StrictHostKeyChecking=no "$WEB_ENV_PROD_FILE" "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/apps/web/.env.prod"
+      scp -o StrictHostKeyChecking=no "$BACKEND_ENV_PROD_FILE" "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/apps/backend/.env.prod"
+      scp -o StrictHostKeyChecking=no "$AI_ENV_PROD_FILE" "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/apps/ai-service/.env.prod"
+      echo "Uploaded .env.prod for web, backend, and ai-service from CI File variables"
+      ssh -o StrictHostKeyChecking=no "${SSH_USER}@${SERVER_IP}" \
         "export REPO_DIR='${REPO_DIR}' SKIP_GIT_PULL=1 && cd \"\$REPO_DIR\" && bash ci-cd/scripts/deploy-from-source.sh prod prod $F $B"
   rules:
     - if: '$CI_COMMIT_BRANCH == "prod"'

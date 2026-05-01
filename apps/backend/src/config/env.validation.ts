@@ -38,12 +38,11 @@ const envSchema = z
     QDRANT_API_KEY: nonempty,
 
     AI_SERVICE_URL: z.string().url('AI_SERVICE_URL must be a valid URL'),
-    AI_SERVICE_API_KEY: nonempty,
+    MODAL_DOT_COM_X_API_KEY: nonempty,
 
     MODAL_ENDPOINT_URL: optionalUrl,
     MODAL_HEALTH_CHECK_URL: optionalUrl,
     MODAL_KEEP_WARM_URL: optionalUrl,
-    MODAL_API_KEY: z.string().optional(),
 
     REDIS_URL: z.string().optional(),
     REDIS_PASSWORD: z.string().optional(),
@@ -84,7 +83,7 @@ const envSchema = z
     PUPPETEER_HEADLESS: z.string().optional(),
 
     PADDLE_API_KEY: z.string().optional(),
-    PADDLE_WEBHOOK_SECRET: z.string().optional(),
+    PADDLE_WEBHOOK_SECRET_KEY: z.string().optional(),
     PADDLE_API_BASE_URL: z.string().optional(),
     PADDLE_WEBHOOK_VERSION: z.string().optional(),
     PADDLE_SOURCE_APP: z.string().optional(),

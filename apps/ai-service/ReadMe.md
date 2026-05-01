@@ -72,7 +72,7 @@ This is the AI service for Vidhigya, providing document processing, OCR, and AI-
    PORT=8001
 
    # Backend API Key for authentication
-   AI_SERVICE_API_KEY=your-backend-api-key
+   MODAL_DOT_COM_X_API_KEY=your-backend-api-key
 
    # Qdrant Vector Database
    QDRANT_URL=https://your-qdrant-instance:6333
@@ -152,7 +152,7 @@ Key environment variables:
 
 - `HOST`: Server host (default: 0.0.0.0)
 - `PORT`: Server port (default: 8001)
-- `AI_SERVICE_API_KEY`: Authentication key for backend requests
+- `MODAL_DOT_COM_X_API_KEY`: Authentication key for backend requests
 - `QDRANT_URL`: Vector database URL
 - `QDRANT_COLLECTION`: Collection name for document embeddings
 - `QDRANT_API_KEY`: Vector database API key

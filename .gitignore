@@ -1,5 +1,7 @@
 .env*
 .env.*
+# Explicit: keep `.env.prod` on disk / in GitLab File vars — never commit.
+.env.prod
 node_modules
 .turbo
 

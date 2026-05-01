@@ -83,7 +83,7 @@ export class DocumentProcessingMonitorService {
         {
           method: 'GET',
           headers: {
-            'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+            'X-API-Key': this.configService.get('MODAL_DOT_COM_X_API_KEY'),
           },
           signal: AbortSignal.timeout(5000), // 5 second timeout
         },
@@ -280,7 +280,7 @@ export class DocumentProcessingMonitorService {
         {
           method: 'POST',
           headers: {
-            'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+            'X-API-Key': this.configService.get('MODAL_DOT_COM_X_API_KEY'),
           },
           body: formData,
           signal: AbortSignal.timeout(30000), // 30 second timeout
@@ -474,7 +474,7 @@ export class DocumentProcessingMonitorService {
         {
           method: 'GET',
           headers: {
-            'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+            'X-API-Key': this.configService.get('MODAL_DOT_COM_X_API_KEY'),
           },
           signal: AbortSignal.timeout(10000), // 10 second timeout
         },
@@ -561,7 +561,7 @@ export class DocumentProcessingMonitorService {
         {
           method: 'POST',
           headers: {
-            'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+            'X-API-Key': this.configService.get('MODAL_DOT_COM_X_API_KEY'),
             'Content-Type': 'application/json',
           },
           signal: AbortSignal.timeout(15000), // 15 second timeout

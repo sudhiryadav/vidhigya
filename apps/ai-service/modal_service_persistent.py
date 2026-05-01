@@ -25,8 +25,8 @@ from sentence_transformers import SentenceTransformer
 app = modal.App("vidhigya")
 
 def _modal_expected_api_key() -> Optional[str]:
-    """Must match backend AI_SERVICE_API_KEY (or MODAL_API_KEY). Modal secret QURIEUS_KEY may define API_KEY or AI_SERVICE_API_KEY."""
-    return os.environ.get("API_KEY") or os.environ.get("AI_SERVICE_API_KEY")
+    """Must match Modal secret API_KEY and MODAL_DOT_COM_X_API_KEY."""
+    return os.environ.get("API_KEY") or os.environ.get("MODAL_DOT_COM_X_API_KEY")
 
 # Hugging Face token (no longer directly used for llama-cpp-python wheel download, but kept if other HF models/data are used later)
 HF_TOKEN = "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"

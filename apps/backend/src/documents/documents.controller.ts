@@ -175,18 +175,13 @@ export class DocumentsController {
   }
 
   /**
-   * Modal secret `QURIEUS_KEY` supplies `API_KEY` on the GPU deployment — typically the same
-   * value as `AI_SERVICE_API_KEY` (FastAPI ai-service). Prefer that to avoid `.env` drift;
-   * set `MODAL_API_KEY` only when Modal intentionally uses a different key.
+   * Modal secret `QURIEUS_KEY` supplies `API_KEY` on the GPU deployment.
+   * MODAL_DOT_COM_X_API_KEY is the single API key for AI/Modal requests.
    */
   private getModalApiKey(): string | undefined {
-    const sharedWithAiService = this.normalizeEnvSecret(
-      this.configService.get<string>('AI_SERVICE_API_KEY'),
+    return this.normalizeEnvSecret(
+      this.configService.get<string>('MODAL_DOT_COM_X_API_KEY'),
     );
-    const modalOnly = this.normalizeEnvSecret(
-      this.configService.get<string>('MODAL_API_KEY'),
-    );
-    return sharedWithAiService ?? modalOnly;
   }
 
   private getAiProvider(): 'current' | 'google' {
@@ -608,7 +603,7 @@ export class DocumentsController {
             {
               method: 'GET',
               headers: {
-                'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+                'X-API-Key': this.configService.get('MODAL_DOT_COM_X_API_KEY'),
               },
             },
           );
@@ -684,7 +679,7 @@ export class DocumentsController {
         {
           method: 'GET',
           headers: {
-            'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+            'X-API-Key': this.configService.get('MODAL_DOT_COM_X_API_KEY'),
           },
         },
       );
@@ -1130,7 +1125,7 @@ export class DocumentsController {
         const detail = responseText?.slice(0, 500) || '';
         if (modalResponse.status === 401) {
           this.logger.error(
-            'Modal.com 401: X-API-Key did not match Modal secret API_KEY (align AI_SERVICE_API_KEY or MODAL_API_KEY with QURIEUS_KEY).',
+            'Modal.com 401: X-API-Key did not match Modal secret API_KEY (align MODAL_DOT_COM_X_API_KEY with QURIEUS_KEY).',
             detail,
           );
         }
@@ -2014,7 +2009,7 @@ export class DocumentsController {
       {
         method: 'POST',
         headers: {
-          'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+          'X-API-Key': this.configService.get('MODAL_DOT_COM_X_API_KEY'),
         },
         body: formData,
         signal: AbortSignal.timeout(30_000),
@@ -2152,7 +2147,7 @@ export class DocumentsController {
           {
             method: 'GET',
             headers: {
-              'X-API-Key': this.configService.get('AI_SERVICE_API_KEY'),
+              'X-API-Key': this.configService.get('MODAL_DOT_COM_X_API_KEY'),
             },
             signal: AbortSignal.timeout(10_000),
           },
