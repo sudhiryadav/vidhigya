@@ -4,15 +4,6 @@
 
 set -e
 
-# Load nvm for yarn/node in non-interactive SSH sessions.
-if [ -f "/home/ubuntu/.nvm/nvm.sh" ]; then
-  export NVM_DIR="/home/ubuntu/.nvm"
-  set +e
-  . "/home/ubuntu/.nvm/nvm.sh"
-  nvm use 20 >/dev/null 2>&1 || nvm use 22 >/dev/null 2>&1 || true
-  set -e
-fi
-
 ENV=${1:-prod}
 BRANCH=${2:-prod}
 FRONTEND_CHANGED=${3:-true}
@@ -38,6 +29,61 @@ else
   git pull origin "$BRANCH"
   PREV_HEAD=$(git rev-parse HEAD~1 2>/dev/null || echo "HEAD")
 fi
+
+# Nest 11 / Next 15 need Node >= 20. Prefer .nvmrc (default 22) via nvm; fail if unavailable.
+ensure_node_runtime() {
+  local min_major=20
+  local maj
+  maj=$(node -p "parseInt(process.versions.node.split('.')[0],10)" 2>/dev/null || echo 0)
+  if [ "$maj" -ge "$min_major" ]; then
+    echo "Node $(node -v) OK (need >= ${min_major})"
+    export PM2_NODE_INTERPRETER
+    PM2_NODE_INTERPRETER="$(command -v node)"
+    export PATH
+    return 0
+  fi
+
+  local nvm_dir="${NVM_DIR:-}"
+  if [ -z "$nvm_dir" ] && [ -f "/home/ubuntu/.nvm/nvm.sh" ]; then
+    nvm_dir="/home/ubuntu/.nvm"
+  fi
+  if [ -z "$nvm_dir" ] && [ -f "${HOME:-}/.nvm/nvm.sh" ]; then
+    nvm_dir="${HOME}/.nvm"
+  fi
+  local nvm_sh=""
+  [ -n "$nvm_dir" ] && [ -f "$nvm_dir/nvm.sh" ] && nvm_sh="$nvm_dir/nvm.sh"
+
+  if [ -z "$nvm_sh" ]; then
+    echo "ERROR: Node is v$(node -v 2>/dev/null || echo '?') (< ${min_major}) and nvm was not found."
+    echo "Install nvm + Node ${min_major}+ on the server, or run: curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"
+    exit 1
+  fi
+
+  export NVM_DIR="$nvm_dir"
+  # shellcheck disable=SC1090
+  . "$nvm_sh"
+
+  if [ -f ".nvmrc" ]; then
+    nvm install
+    nvm use
+  else
+    echo "WARN: missing .nvmrc in repo root; installing Node 22 via nvm"
+    nvm install 22
+    nvm use 22
+  fi
+
+  maj=$(node -p "parseInt(process.versions.node.split('.')[0],10)" 2>/dev/null || echo 0)
+  if [ "$maj" -lt "$min_major" ]; then
+    echo "ERROR: After nvm, Node $(node -v 2>/dev/null) still < ${min_major}."
+    exit 1
+  fi
+
+  export PM2_NODE_INTERPRETER
+  PM2_NODE_INTERPRETER="$(command -v node)"
+  echo "Using Node $(node -v) (PM2_NODE_INTERPRETER=$PM2_NODE_INTERPRETER)"
+}
+
+ensure_node_runtime
 
 packages_changed() {
   local app_path=$1

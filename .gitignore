@@ -2,6 +2,10 @@
 .env.*
 # Explicit: keep `.env.prod` on disk / in GitLab File vars — never commit.
 .env.prod
+
+# Yarn monorepo; avoid npm lockfile drift.
+/package-lock.json
+
 node_modules
 .turbo
 

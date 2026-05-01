@@ -1,1 +1,20 @@
-{"name": "vidhigya", "version": "1.0.0", "private": true, "workspaces": ["apps/*", "packages/*"], "packageManager": "yarn@1.22.22", "devDependencies": {"turbo": "^2.5.5"}, "scripts": {"build": "turbo run build", "dev": "turbo run dev", "lint": "turbo run lint", "test": "turbo run test", "clean": "turbo run clean"}}
+{
+  "name": "vidhigya",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "packageManager": "yarn@1.22.22",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.5"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean"
+  }
+}
