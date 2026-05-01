@@ -109,7 +109,6 @@ deploy_production:
       scp -o StrictHostKeyChecking=no "$BACKEND_ENV_PROD_FILE" "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/apps/backend/.env"
       scp -o StrictHostKeyChecking=no "$AI_ENV_PROD_FILE" "${SSH_USER}@${SERVER_IP}:${REPO_DIR}/apps/ai-service/.env"
       echo "Uploaded .env for web, backend, and ai-service from CI File variables"
-      ssh -o StrictHostKeyChecking=no "${SSH_USER}@${SERVER_IP}" "rm -f /home/ubuntu/prod.vidhigya.web.env /home/ubuntu/prod.vidhigya.backend.env /home/ubuntu/prod.vidhigya.ai-service.env || true"
       ssh -o StrictHostKeyChecking=no "${SSH_USER}@${SERVER_IP}" \
         "export REPO_DIR='${REPO_DIR}' SKIP_GIT_PULL=1 && cd \"\$REPO_DIR\" && bash ci-cd/scripts/deploy-from-source.sh prod prod $F $B"
   rules:
