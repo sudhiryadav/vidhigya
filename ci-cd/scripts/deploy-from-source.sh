@@ -140,6 +140,36 @@ copy_app_env "apps/web" "web"
 copy_app_env "apps/backend" "backend"
 copy_app_env_if_present "apps/ai-service" "ai-service"
 
+VERIFY_ENV="$REPO_DIR/ci-cd/scripts/verify-deploy-env.sh"
+if [ ! -x "$VERIFY_ENV" ]; then chmod +x "$VERIFY_ENV" || true; fi
+echo "Verifying required keys in deployed .env files..."
+bash "$VERIFY_ENV" "$REPO_DIR/apps/web/.env" \
+  NEXT_PUBLIC_API_URL \
+  NEXT_PUBLIC_MAX_DOCUMENT_SIZE \
+  NEXT_PUBLIC_MAX_AVATAR_SIZE
+bash "$VERIFY_ENV" "$REPO_DIR/apps/backend/.env" \
+  DATABASE_URL \
+  JWT_SECRET \
+  FRONTEND_URL \
+  AWS_REGION \
+  AWS_ACCESS_KEY_ID \
+  AWS_SECRET_ACCESS_KEY \
+  AWS_S3_BUCKET \
+  QDRANT_URL \
+  QDRANT_COLLECTION \
+  QDRANT_API_KEY \
+  AI_SERVICE_URL \
+  MODAL_DOT_COM_X_API_KEY
+if [ -f "$REPO_DIR/apps/ai-service/.env" ]; then
+  bash "$VERIFY_ENV" "$REPO_DIR/apps/ai-service/.env" \
+    MODAL_DOT_COM_X_API_KEY \
+    DATABASE_URL \
+    QDRANT_URL \
+    QDRANT_COLLECTION \
+    QDRANT_API_KEY \
+    NEXTAUTH_SECRET
+fi
+
 if [ "$BACKEND_CHANGED" != "true" ]; then
   BACKEND_STALE=$(needs_backend_rebuild)
   if [ "$BACKEND_STALE" = "yes" ]; then
@@ -159,8 +189,9 @@ fi
 if [ "$FRONTEND_CHANGED" = "true" ]; then
   echo "Deploying frontend..."
   cd "$REPO_DIR"
-  PKG_CHANGED=$(packages_changed "apps/web")
-  [ ! -d "node_modules" ] || [ "$PKG_CHANGED" = "yes" ] && yarn install --frozen-lockfile
+  # Always install workspace deps before Next build: CI/rsync updates files without moving
+  # Git HEAD; skipping install leaves stale hoisted deps (e.g. missing react-pdf).
+  yarn install --frozen-lockfile
   rm -rf "$REPO_DIR/apps/web/.next"
   yarn workspace vidhigya-frontend build
   pm2 restart vidhigya-frontend --update-env 2>/dev/null || (cd "$REPO_DIR" && REPO_DIR="$REPO_DIR" pm2 start ecosystem.config.cjs --only vidhigya-frontend)
